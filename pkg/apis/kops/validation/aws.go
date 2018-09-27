@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"fmt"
+
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -76,8 +77,10 @@ func awsValidateMachineType(fieldPath *field.Path, machineType string) field.Err
 	allErrs := field.ErrorList{}
 
 	if machineType != "" {
-		if _, err := awsup.GetMachineTypeInfo(machineType); err != nil {
-			allErrs = append(allErrs, field.Invalid(fieldPath, machineType, "machine type specified is invalid"))
+		for _, typ := range strings.Split(machineType, ",") {
+			if _, err := awsup.GetMachineTypeInfo(typ); err != nil {
+				allErrs = append(allErrs, field.Invalid(fieldPath, typ, "machine type specified is invalid"))
+			}
 		}
 	}
 
