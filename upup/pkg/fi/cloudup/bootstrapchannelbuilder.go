@@ -572,7 +572,7 @@ func (b *BootstrapChannelBuilder) buildAddons() *channelsapi.Addons {
 
 	if featureflag.Spotinst.Enabled() {
 		key := "spotinst-kubernetes-cluster-controller.addons.k8s.io"
-		version := "1.0.18"
+		version := "1.0.39"
 
 		{
 			id := "v1.8.0"
