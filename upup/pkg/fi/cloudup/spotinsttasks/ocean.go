@@ -435,7 +435,7 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			// Tags.
 			{
 				if e.Tags != nil {
-					ocean.Compute.LaunchSpecification.SetTags(e.buildTags())
+					ocean.Compute.LaunchSpecification.SetTags(buildOceanTags(e.Tags))
 				}
 			}
 		}
@@ -676,7 +676,7 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 						ocean.Compute.LaunchSpecification = new(aws.LaunchSpecification)
 					}
 
-					ocean.Compute.LaunchSpecification.SetTags(e.buildTags())
+					ocean.Compute.LaunchSpecification.SetTags(buildOceanTags(e.Tags))
 					changes.Tags = nil
 					changed = true
 				}
@@ -894,16 +894,23 @@ type terraformOceanStrategy struct {
 }
 
 type terraformOceanLaunchSpec struct {
-	Monitoring               *bool                `json:"monitoring,omitempty"`
-	EBSOptimized             *bool                `json:"ebs_optimized,omitempty"`
-	ImageID                  *string              `json:"image_id,omitempty"`
-	AssociatePublicIPAddress *bool                `json:"associate_public_ip_address,omitempty"`
-	RootVolumeSize           *int32               `json:"root_volume_size,omitempty"`
-	UserData                 *terraform.Literal   `json:"user_data,omitempty"`
-	IAMInstanceProfile       *terraform.Literal   `json:"iam_instance_profile,omitempty"`
-	KeyName                  *terraform.Literal   `json:"key_name,omitempty"`
-	SecurityGroups           []*terraform.Literal `json:"security_groups,omitempty"`
-	Labels                   []*terraformKV       `json:"labels,omitempty"`
+	Monitoring               *bool                            `json:"monitoring,omitempty"`
+	EBSOptimized             *bool                            `json:"ebs_optimized,omitempty"`
+	ImageID                  *string                          `json:"image_id,omitempty"`
+	AssociatePublicIPAddress *bool                            `json:"associate_public_ip_address,omitempty"`
+	RootVolumeSize           *int32                           `json:"root_volume_size,omitempty"`
+	UserData                 *terraform.Literal               `json:"user_data,omitempty"`
+	IAMInstanceProfile       *terraform.Literal               `json:"iam_instance_profile,omitempty"`
+	KeyName                  *terraform.Literal               `json:"key_name,omitempty"`
+	SecurityGroups           []*terraform.Literal             `json:"security_groups,omitempty"`
+	Labels                   []*terraformKV                   `json:"labels,omitempty"`
+	Taints                   []*terraformOceanLaunchSpecTaint `json:"taints,omitempty"`
+}
+
+type terraformOceanLaunchSpecTaint struct {
+	Key    *string `json:"key,omitempty"`
+	Value  *string `json:"value,omitempty"`
+	Effect *string `json:"effect,omitempty"`
 }
 
 func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Ocean) error {
@@ -1051,7 +1058,7 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 	// Tags.
 	{
 		if e.Tags != nil {
-			for _, tag := range e.buildTags() {
+			for _, tag := range buildOceanTags(e.Tags) {
 				tf.Tags = append(tf.Tags, &terraformKV{
 					Key:   tag.Key,
 					Value: tag.Value,
@@ -1065,19 +1072,6 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 
 func (o *Ocean) TerraformLink() *terraform.Literal {
 	return terraform.LiteralProperty("spotinst_ocean_aws", *o.Name, "id")
-}
-
-func (o *Ocean) buildTags() []*aws.Tag {
-	tags := make([]*aws.Tag, 0, len(o.Tags))
-
-	for key, value := range o.Tags {
-		tags = append(tags, &aws.Tag{
-			Key:   fi.String(key),
-			Value: fi.String(value),
-		})
-	}
-
-	return tags
 }
 
 func (o *Ocean) applyDefaults() {
