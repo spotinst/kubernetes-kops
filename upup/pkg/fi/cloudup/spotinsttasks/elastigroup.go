@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/aws"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/client"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/util/stringutil"
@@ -35,7 +34,6 @@ import (
 	"k8s.io/kops/upup/pkg/fi/cloudup/awstasks"
 	"k8s.io/kops/upup/pkg/fi/cloudup/awsup"
 	"k8s.io/kops/upup/pkg/fi/cloudup/terraform"
-	"k8s.io/kops/upup/pkg/fi/utils"
 )
 
 //go:generate fitask -type=Elastigroup
@@ -80,6 +78,7 @@ type AutoScalerOpts struct {
 	Enabled   *bool
 	ClusterID *string
 	Labels    map[string]string
+	Taints    []string
 	Headroom  *AutoScalerHeadroomOpts
 	Down      *AutoScalerDownOpts
 }
@@ -497,12 +496,12 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 
 			// Block device mappings.
 			{
-				rootDevices, err := e.buildRootDevice(cloud)
+				rootDevices, err := buildRootDevice(cloud, e.ImageID, e.RootVolumeOpts)
 				if err != nil {
 					return err
 				}
 
-				ephemeralDevices, err := e.buildEphemeralDevices(e.OnDemandInstanceType)
+				ephemeralDevices, err := buildEphemeralDevices(e.OnDemandInstanceType)
 				if err != nil {
 					return err
 				}
@@ -510,10 +509,10 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 				if len(rootDevices) != 0 || len(ephemeralDevices) != 0 {
 					var mappings []*aws.BlockDeviceMapping
 					for device, bdm := range rootDevices {
-						mappings = append(mappings, e.buildBlockDeviceMapping(device, bdm))
+						mappings = append(mappings, buildBlockDeviceMapping(device, bdm))
 					}
 					for device, bdm := range ephemeralDevices {
-						mappings = append(mappings, e.buildBlockDeviceMapping(device, bdm))
+						mappings = append(mappings, buildBlockDeviceMapping(device, bdm))
 					}
 					if len(mappings) > 0 {
 						group.Compute.LaunchSpecification.SetBlockDeviceMappings(mappings)
@@ -599,7 +598,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			// Tags.
 			{
 				if e.Tags != nil {
-					group.Compute.LaunchSpecification.SetTags(e.buildTags())
+					group.Compute.LaunchSpecification.SetTags(buildElastigroupTags(e.Tags))
 				}
 			}
 
@@ -645,7 +644,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 
 				// Labels.
 				if labels := opts.Labels; labels != nil {
-					autoScaler.Labels = e.buildAutoScaleLabels(labels)
+					autoScaler.Labels = buildAutoScaleLabels(labels)
 				}
 
 				k8s.SetAutoScale(autoScaler)
@@ -909,12 +908,12 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 					// Block device mappings.
 					{
 						if opts.Type != nil || opts.Size != nil || opts.IOPS != nil {
-							rootDevices, err := e.buildRootDevice(cloud)
+							rootDevices, err := buildRootDevice(cloud, e.ImageID, e.RootVolumeOpts)
 							if err != nil {
 								return err
 							}
 
-							ephemeralDevices, err := e.buildEphemeralDevices(e.OnDemandInstanceType)
+							ephemeralDevices, err := buildEphemeralDevices(e.OnDemandInstanceType)
 							if err != nil {
 								return err
 							}
@@ -922,10 +921,10 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 							if len(rootDevices) != 0 || len(ephemeralDevices) != 0 {
 								var mappings []*aws.BlockDeviceMapping
 								for device, bdm := range rootDevices {
-									mappings = append(mappings, e.buildBlockDeviceMapping(device, bdm))
+									mappings = append(mappings, buildBlockDeviceMapping(device, bdm))
 								}
 								for device, bdm := range ephemeralDevices {
-									mappings = append(mappings, e.buildBlockDeviceMapping(device, bdm))
+									mappings = append(mappings, buildBlockDeviceMapping(device, bdm))
 								}
 								if len(mappings) > 0 {
 									if group.Compute == nil {
@@ -995,7 +994,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 						group.Compute.LaunchSpecification = new(aws.LaunchSpecification)
 					}
 
-					group.Compute.LaunchSpecification.SetTags(e.buildTags())
+					group.Compute.LaunchSpecification.SetTags(buildElastigroupTags(e.Tags))
 					changes.Tags = nil
 					changed = true
 				}
@@ -1175,7 +1174,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 
 				// Labels.
 				if labels := opts.Labels; labels != nil {
-					autoScaler.Labels = e.buildAutoScaleLabels(e.AutoScalerOpts.Labels)
+					autoScaler.Labels = buildAutoScaleLabels(e.AutoScalerOpts.Labels)
 				} else if a.AutoScalerOpts.Labels != nil {
 					autoScaler.SetLabels(nil)
 				}
@@ -1443,12 +1442,12 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 
 			// Block device mappings.
 			{
-				rootDevices, err := e.buildRootDevice(t.Cloud.(awsup.AWSCloud))
+				rootDevices, err := buildRootDevice(t.Cloud.(awsup.AWSCloud), e.ImageID, opts)
 				if err != nil {
 					return err
 				}
 
-				ephemeralDevices, err := e.buildEphemeralDevices(e.OnDemandInstanceType)
+				ephemeralDevices, err := buildEphemeralDevices(e.OnDemandInstanceType)
 				if err != nil {
 					return err
 				}
@@ -1549,7 +1548,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 	// Tags.
 	{
 		if e.Tags != nil {
-			tags := e.buildTags()
+			tags := buildElastigroupTags(e.Tags)
 			for _, tag := range tags {
 				tf.Tags = append(tf.Tags, &terraformKV{
 					Key:   tag.Key,
@@ -1564,97 +1563,6 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 
 func (e *Elastigroup) TerraformLink() *terraform.Literal {
 	return terraform.LiteralProperty("spotinst_elastigroup_aws", *e.Name, "id")
-}
-
-func (e *Elastigroup) buildTags() []*aws.Tag {
-	tags := make([]*aws.Tag, 0, len(e.Tags))
-
-	for key, value := range e.Tags {
-		tags = append(tags, &aws.Tag{
-			Key:   fi.String(key),
-			Value: fi.String(value),
-		})
-	}
-
-	return tags
-}
-
-func (e *Elastigroup) buildAutoScaleLabels(labelsMap map[string]string) []*aws.AutoScaleLabel {
-	labels := make([]*aws.AutoScaleLabel, 0, len(labelsMap))
-	for key, value := range labelsMap {
-		labels = append(labels, &aws.AutoScaleLabel{
-			Key:   fi.String(key),
-			Value: fi.String(value),
-		})
-	}
-
-	return labels
-}
-
-func (e *Elastigroup) buildEphemeralDevices(instanceTypeName *string) (map[string]*awstasks.BlockDeviceMapping, error) {
-	if instanceTypeName == nil {
-		return nil, fi.RequiredField("InstanceType")
-	}
-
-	instanceType, err := awsup.GetMachineTypeInfo(*instanceTypeName)
-	if err != nil {
-		return nil, err
-	}
-
-	blockDeviceMappings := make(map[string]*awstasks.BlockDeviceMapping)
-	for _, ed := range instanceType.EphemeralDevices() {
-		m := &awstasks.BlockDeviceMapping{
-			VirtualName: fi.String(ed.VirtualName),
-		}
-		blockDeviceMappings[ed.DeviceName] = m
-	}
-
-	return blockDeviceMappings, nil
-}
-
-func (e *Elastigroup) buildRootDevice(cloud awsup.AWSCloud) (map[string]*awstasks.BlockDeviceMapping, error) {
-	image, err := resolveImage(cloud, fi.StringValue(e.ImageID))
-	if err != nil {
-		return nil, err
-	}
-
-	rootDeviceName := fi.StringValue(image.RootDeviceName)
-	blockDeviceMappings := make(map[string]*awstasks.BlockDeviceMapping)
-
-	rootDeviceMapping := &awstasks.BlockDeviceMapping{
-		EbsDeleteOnTermination: fi.Bool(true),
-		EbsVolumeSize:          fi.Int64(int64(fi.Int32Value(e.RootVolumeOpts.Size))),
-		EbsVolumeType:          e.RootVolumeOpts.Type,
-	}
-
-	// The parameter IOPS is not supported for gp2 volumes.
-	if e.RootVolumeOpts.IOPS != nil && fi.StringValue(e.RootVolumeOpts.Type) != "gp2" {
-		rootDeviceMapping.EbsVolumeIops = fi.Int64(int64(fi.Int32Value(e.RootVolumeOpts.IOPS)))
-	}
-
-	blockDeviceMappings[rootDeviceName] = rootDeviceMapping
-
-	return blockDeviceMappings, nil
-}
-
-func (e *Elastigroup) buildBlockDeviceMapping(deviceName string, i *awstasks.BlockDeviceMapping) *aws.BlockDeviceMapping {
-	o := &aws.BlockDeviceMapping{}
-	o.DeviceName = fi.String(deviceName)
-	o.VirtualName = i.VirtualName
-
-	if i.EbsDeleteOnTermination != nil || i.EbsVolumeSize != nil || i.EbsVolumeType != nil {
-		o.EBS = &aws.EBS{}
-		o.EBS.DeleteOnTermination = i.EbsDeleteOnTermination
-		o.EBS.VolumeSize = fi.Int(int(fi.Int64Value(i.EbsVolumeSize)))
-		o.EBS.VolumeType = i.EbsVolumeType
-
-		// The parameter IOPS is not supported for gp2 volumes.
-		if i.EbsVolumeIops != nil && fi.StringValue(i.EbsVolumeType) != "gp2" {
-			o.EBS.IOPS = fi.Int(int(fi.Int64Value(i.EbsVolumeIops)))
-		}
-	}
-
-	return o
 }
 
 func (e *Elastigroup) applyDefaults() {
@@ -1681,62 +1589,4 @@ func (e *Elastigroup) applyDefaults() {
 	if e.HealthCheckType == nil {
 		e.HealthCheckType = fi.String("K8S_NODE")
 	}
-}
-
-func resolveImage(cloud awsup.AWSCloud, name string) (*ec2.Image, error) {
-	image, err := cloud.ResolveImage(name)
-	if err != nil {
-		return nil, fmt.Errorf("spotinst: unable to resolve image %q: %v", name, err)
-	} else if image == nil {
-		return nil, fmt.Errorf("spotinst: unable to resolve image %q: not found", name)
-	}
-
-	return image, nil
-}
-
-func subnetSlicesEqualIgnoreOrder(l, r []*awstasks.Subnet) bool {
-	var lIDs []string
-	for _, s := range l {
-		lIDs = append(lIDs, *s.ID)
-	}
-
-	var rIDs []string
-	for _, s := range r {
-		if s.ID == nil {
-			klog.V(4).Infof("Subnet ID not set; returning not-equal: %v", s)
-			return false
-		}
-		rIDs = append(rIDs, *s.ID)
-	}
-
-	return utils.StringSlicesEqualIgnoreOrder(lIDs, rIDs)
-}
-
-type Orientation string
-
-const (
-	OrientationBalanced              Orientation = "balanced"
-	OrientationCost                  Orientation = "costOriented"
-	OrientationAvailability          Orientation = "availabilityOriented"
-	OrientationEqualZoneDistribution Orientation = "equalAzDistribution"
-)
-
-func normalizeOrientation(orientation *string) Orientation {
-	out := OrientationBalanced
-
-	// Fast path.
-	if orientation == nil {
-		return out
-	}
-
-	switch *orientation {
-	case "cost":
-		out = OrientationCost
-	case "availability":
-		out = OrientationAvailability
-	case "equal-distribution":
-		out = OrientationEqualZoneDistribution
-	}
-
-	return out
 }

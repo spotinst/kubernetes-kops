@@ -484,6 +484,7 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 		return fmt.Errorf("error building auto scaler options: %v", err)
 	}
 	launchSpec.Labels = autoScalerOpts.Labels
+	launchSpec.Taints = autoScalerOpts.Taints
 
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
 	c.AddTask(launchSpec)
@@ -749,17 +750,27 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 		}
 	}
 
-	// Set the node labels.
+	// Set the node labels and taints.
 	if fi.BoolValue(opts.Enabled) {
-		labels := make(map[string]string)
-		for k, v := range ig.Spec.NodeLabels {
-			if strings.HasPrefix(k, kops.NodeLabelInstanceGroup) && !defaultNodeLabels {
-				continue
+		// Labels.
+		{
+			labels := make(map[string]string)
+			for k, v := range ig.Spec.NodeLabels {
+				if strings.HasPrefix(k, kops.NodeLabelInstanceGroup) && !defaultNodeLabels {
+					continue
+				}
+				labels[k] = v
 			}
-			labels[k] = v
+			if len(labels) > 0 {
+				opts.Labels = labels
+			}
 		}
-		if len(labels) > 0 {
-			opts.Labels = labels
+
+		// Taints.
+		{
+			if len(ig.Spec.Taints) > 0 {
+				opts.Taints = ig.Spec.Taints
+			}
 		}
 	}
 
