@@ -44,6 +44,7 @@ type LaunchSpec struct {
 	IAMInstanceProfile *awstasks.IAMInstanceProfile
 	ImageID            *string
 	Labels             map[string]string
+	Taints             []string
 
 	Ocean *Ocean
 }
@@ -176,6 +177,18 @@ func (o *LaunchSpec) Find(c *fi.Context) (*LaunchSpec, error) {
 		}
 	}
 
+	// Taints.
+	if spec.Taints != nil {
+		actual.Taints = make([]string, len(spec.Taints))
+
+		for i, taint := range spec.Taints {
+			actual.Taints[i] = fmt.Sprintf("%s=%s:%s",
+				fi.StringValue(taint.Key),
+				fi.StringValue(taint.Value),
+				fi.StringValue(taint.Effect))
+		}
+	}
+
 	// Avoid spurious changes.
 	actual.Lifecycle = o.Lifecycle
 
@@ -268,14 +281,21 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	// Labels.
 	{
 		if e.Labels != nil && len(e.Labels) > 0 {
-			var labels []*aws.Label
-			for k, v := range e.Labels {
-				labels = append(labels, &aws.Label{
-					Key:   fi.String(k),
-					Value: fi.String(v),
-				})
+			spec.SetLabels(buildOceanLabels(e.Labels))
+		}
+	}
+
+	// Taints.
+	{
+		if e.Taints != nil && len(e.Taints) > 0 {
+			taints, err := buildOceanTaints(e.Taints)
+			if err != nil {
+				return err
 			}
-			spec.SetLabels(labels)
+
+			if len(taints) > 0 {
+				spec.SetTaints(taints)
+			}
 		}
 	}
 
@@ -369,19 +389,31 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	// Labels.
 	{
 		if changes.Labels != nil {
-			labels := make([]*aws.Label, 0, len(e.Labels))
-			for k, v := range e.Labels {
-				labels = append(labels, &aws.Label{
-					Key:   fi.String(k),
-					Value: fi.String(v),
-				})
-			}
-
-			spec.SetLabels(labels)
+			spec.SetLabels(buildOceanLabels(e.Labels))
 			changes.Labels = nil
 			changed = true
 		} else if a.Labels != nil { // Forcibly remove all existing labels.
 			spec.SetLabels(nil)
+			changed = true
+		}
+	}
+
+	// Taints.
+	{
+		if changes.Taints != nil {
+			taints, err := buildOceanTaints(e.Taints)
+			if err != nil {
+				return err
+			}
+
+			if len(taints) > 0 {
+				spec.SetTaints(taints)
+			}
+
+			changes.Taints = nil
+			changed = true
+		} else if a.Taints != nil { // Forcibly remove all existing taints.
+			spec.SetTaints(nil)
 			changed = true
 		}
 	}
@@ -482,6 +514,25 @@ func (_ *LaunchSpec) RenderTerraform(t *terraform.TerraformTarget, a, e, changes
 				tf.Labels = append(tf.Labels, &terraformKV{
 					Key:   fi.String(k),
 					Value: fi.String(v),
+				})
+			}
+		}
+	}
+
+	// Taints.
+	{
+		if e.Taints != nil {
+			taints, err := buildOceanTaints(e.Taints)
+			if err != nil {
+				return err
+			}
+
+			tf.Taints = make([]*terraformOceanLaunchSpecTaint, 0, len(taints))
+			for _, taint := range taints {
+				tf.Taints = append(tf.Taints, &terraformOceanLaunchSpecTaint{
+					Key:    taint.Key,
+					Value:  taint.Value,
+					Effect: taint.Effect,
 				})
 			}
 		}
