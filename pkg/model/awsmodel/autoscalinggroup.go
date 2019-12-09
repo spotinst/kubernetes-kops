@@ -20,9 +20,12 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/klog"
 	"k8s.io/kops/pkg/apis/kops"
+	"k8s.io/kops/pkg/featureflag"
 	"k8s.io/kops/pkg/model"
 	"k8s.io/kops/pkg/model/defaults"
+	"k8s.io/kops/pkg/model/spotinstmodel"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/cloudup/awstasks"
 
@@ -54,7 +57,20 @@ func (b *AutoscalingGroupModelBuilder) Build(c *fi.ModelBuilderContext) error {
 	for _, ig := range b.InstanceGroups {
 		name := b.AutoscalingGroupName(ig)
 
+<<<<<<< HEAD
 		// @check if his instancegroup is backed by a fleet and override with a launch template
+||||||| parent of a861cda18b... feat(spot): cherry-picked changes
+		// @check if his instancegroup is backed by a fleet and overide with a launch template
+=======
+		if featureflag.SpotinstHybrid.Enabled() {
+			if spotinstmodel.HybridInstanceGroup(ig) {
+				klog.V(2).Infof("Skipping instance group: %q", name)
+				continue
+			}
+		}
+
+		// @check if his instancegroup is backed by a fleet and override with a launch template
+>>>>>>> a861cda18b... feat(spot): cherry-picked changes
 		task, err := func() (fi.Task, error) {
 			switch UseLaunchTemplate(ig) {
 			case true:

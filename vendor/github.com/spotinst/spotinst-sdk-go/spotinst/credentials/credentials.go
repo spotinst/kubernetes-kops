@@ -1,34 +1,12 @@
 package credentials
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 )
 
-// A Value is the Spotinst credentials value for individual credential fields.
-type Value struct {
-	// Spotinst API token.
-	Token string `json:"token"`
-
-	// Spotinst account ID.
-	Account string `json:"account"`
-
-	// Provider used to get credentials.
-	ProviderName string `json:"-"`
-}
-
-// A Provider is the interface for any component which will provide credentials
-// Value.
-//
-// The Provider should not need to implement its own mutexes, because
-// that will be managed by Credentials.
-type Provider interface {
-	fmt.Stringer
-
-	// Refresh returns nil if it successfully retrieved the value.
-	// Error is returned if the value were not obtainable, or empty.
-	Retrieve() (Value, error)
-}
+// ErrNoValidTokenFound is returned when there is no valid token.
+var ErrNoValidTokenFound = errors.New("spotinst: no valid token found")
 
 // A Credentials provides synchronous safe retrieval of Spotinst credentials.
 // Credentials will cache the credentials value.
@@ -38,8 +16,8 @@ type Provider interface {
 // synchronization.
 //
 // The first Credentials.Get() will always call Provider.Retrieve() to get the
-// first instance of the credentials Value. All calls to Get() after that
-// will return the cached credentials Value.
+// first instance of the credentials Value. All calls to Get() after that will
+// return the cached credentials Value.
 type Credentials struct {
 	provider     Provider
 	mu           sync.Mutex
@@ -69,6 +47,9 @@ func (c *Credentials) Get() (Value, error) {
 		if err != nil {
 			return Value{}, err
 		}
+		if creds.Token == "" {
+			return Value{ProviderName: creds.ProviderName}, ErrNoValidTokenFound
+		}
 		c.creds = creds
 		c.forceRefresh = false
 	}
@@ -76,8 +57,8 @@ func (c *Credentials) Get() (Value, error) {
 	return c.creds, nil
 }
 
-// Refresh refreshes the credentials and forces them to be retrieved on the
-// next call to Get().
+// Refresh refreshes the credentials and forces them to be retrieved on the next
+// call to Get().
 func (c *Credentials) Refresh() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
