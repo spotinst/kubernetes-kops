@@ -89,7 +89,7 @@ require (
 	github.com/evanphx/json-patch v4.2.0+incompatible // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20180422025557-ae226422660e
 	github.com/ghodss/yaml v0.0.0-20180820084758-c7ce16629ff4
-	github.com/go-ini/ini v1.25.4
+	github.com/go-ini/ini v1.51.0
 	github.com/gogo/protobuf v0.0.0-20171007142547-342cbe0a0415
 	github.com/golang/protobuf v1.2.0
 	github.com/google/uuid v1.1.0 // indirect
@@ -110,8 +110,8 @@ require (
 	github.com/spf13/cobra v0.0.0-20180319062004-c439c4fa0937
 	github.com/spf13/pflag v1.0.1
 	github.com/spf13/viper v0.0.0-20160820190039-7fb2782df3d8
-	github.com/spotinst/spotinst-sdk-go v0.0.0-20190505130751-eb52d7ac273c
-	github.com/stretchr/testify v1.3.0
+	github.com/spotinst/spotinst-sdk-go v1.43.0
+	github.com/stretchr/testify v1.4.0
 	github.com/urfave/cli v1.20.0
 	github.com/vmware/govmomi v0.20.1
 	github.com/weaveworks/mesh v0.0.0-20170419100114-1f158d31de55

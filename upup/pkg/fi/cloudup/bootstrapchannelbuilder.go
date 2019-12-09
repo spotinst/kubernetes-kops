@@ -571,11 +571,11 @@ func (b *BootstrapChannelBuilder) buildAddons() *channelsapi.Addons {
 
 	if featureflag.Spotinst.Enabled() {
 		key := "spotinst-kubernetes-cluster-controller.addons.k8s.io"
-		version := "1.0.39"
 
 		{
 			id := "v1.8.0"
 			location := key + "/" + id + ".yaml"
+			version := "1.0.39"
 
 			addons.Spec.Addons = append(addons.Spec.Addons, &channelsapi.AddonSpec{
 				Name:              fi.String(key),
@@ -590,6 +590,7 @@ func (b *BootstrapChannelBuilder) buildAddons() *channelsapi.Addons {
 		{
 			id := "v1.9.0"
 			location := key + "/" + id + ".yaml"
+			version := "1.0.39"
 
 			addons.Spec.Addons = append(addons.Spec.Addons, &channelsapi.AddonSpec{
 				Name:              fi.String(key),
@@ -597,6 +598,21 @@ func (b *BootstrapChannelBuilder) buildAddons() *channelsapi.Addons {
 				Selector:          map[string]string{"k8s-addon": key},
 				Manifest:          fi.String(location),
 				KubernetesVersion: ">=1.9.0",
+				Id:                id,
+			})
+		}
+
+		{
+			id := "v1.14.0"
+			location := key + "/" + id + ".yaml"
+			version := "1.0.62"
+
+			addons.Spec.Addons = append(addons.Spec.Addons, &channelsapi.AddonSpec{
+				Name:              fi.String(key),
+				Version:           fi.String(version),
+				Selector:          map[string]string{"k8s-addon": key},
+				Manifest:          fi.String(location),
+				KubernetesVersion: ">=1.14.0",
 				Id:                id,
 			})
 		}

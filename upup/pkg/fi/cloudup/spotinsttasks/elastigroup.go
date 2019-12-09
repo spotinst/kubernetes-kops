@@ -28,6 +28,7 @@ import (
 	"github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/aws"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/client"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/util/stringutil"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"k8s.io/kops/pkg/resources/spotinst"
@@ -49,6 +50,7 @@ type Elastigroup struct {
 	SpotPercentage           *float64
 	UtilizeReservedInstances *bool
 	FallbackToOnDemand       *bool
+	DrainingTimeout          *int64
 	HealthCheckType          *string
 	Product                  *string
 	Orientation              *string
@@ -79,7 +81,9 @@ type RootVolumeOpts struct {
 type AutoScalerOpts struct {
 	Enabled   *bool
 	ClusterID *string
+	Cooldown  *int
 	Labels    map[string]string
+	Taints    []corev1.Taint
 	Headroom  *AutoScalerHeadroomOpts
 	Down      *AutoScalerDownOpts
 }
@@ -183,6 +187,10 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 		actual.Orientation = group.Strategy.AvailabilityVsCost
 		actual.FallbackToOnDemand = group.Strategy.FallbackToOnDemand
 		actual.UtilizeReservedInstances = group.Strategy.UtilizeReservedInstances
+
+		if group.Strategy.DrainingTimeout != nil {
+			actual.DrainingTimeout = fi.Int64(int64(fi.IntValue(group.Strategy.DrainingTimeout)))
+		}
 	}
 
 	// Compute.
@@ -274,7 +282,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 			// EBS optimization.
 			{
-				if lc.EBSOptimized != nil {
+				if fi.BoolValue(lc.EBSOptimized) {
 					if actual.RootVolumeOpts == nil {
 						actual.RootVolumeOpts = new(RootVolumeOpts)
 					}
@@ -286,18 +294,22 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 		// User data.
 		{
+			var userData []byte
+
 			if lc.UserData != nil {
-				userData, err := base64.StdEncoding.DecodeString(fi.StringValue(lc.UserData))
+				userData, err = base64.StdEncoding.DecodeString(fi.StringValue(lc.UserData))
 				if err != nil {
 					return nil, err
 				}
-				actual.UserData = fi.WrapResource(fi.NewStringResource(string(userData)))
 			}
+
+			actual.UserData = fi.WrapResource(fi.NewStringResource(string(userData)))
 		}
 
 		// Network interfaces.
 		{
 			associatePublicIP := false
+
 			if lc.NetworkInterfaces != nil && len(lc.NetworkInterfaces) > 0 {
 				for _, iface := range lc.NetworkInterfaces {
 					if fi.BoolValue(iface.AssociatePublicIPAddress) {
@@ -306,6 +318,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 					}
 				}
 			}
+
 			actual.AssociatePublicIP = fi.Bool(associatePublicIP)
 		}
 
@@ -364,14 +377,23 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 			if integration.AutoScale != nil {
 				actual.AutoScalerOpts.Enabled = integration.AutoScale.IsEnabled
+				actual.AutoScalerOpts.Cooldown = integration.AutoScale.Cooldown
 
 				// Headroom.
 				if headroom := integration.AutoScale.Headroom; headroom != nil {
-					actual.AutoScalerOpts.Headroom = &AutoScalerHeadroomOpts{
-						CPUPerUnit: headroom.CPUPerUnit,
-						GPUPerUnit: headroom.GPUPerUnit,
-						MemPerUnit: headroom.MemoryPerUnit,
-						NumOfUnits: headroom.NumOfUnits,
+					actual.AutoScalerOpts.Headroom = new(AutoScalerHeadroomOpts)
+
+					if v := fi.IntValue(headroom.CPUPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.CPUPerUnit = headroom.CPUPerUnit
+					}
+					if v := fi.IntValue(headroom.GPUPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.GPUPerUnit = headroom.GPUPerUnit
+					}
+					if v := fi.IntValue(headroom.MemoryPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.MemPerUnit = headroom.MemoryPerUnit
+					}
+					if v := fi.IntValue(headroom.NumOfUnits); v > 0 {
+						actual.AutoScalerOpts.Headroom.NumOfUnits = headroom.NumOfUnits
 					}
 				}
 
@@ -462,6 +484,10 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 		group.Strategy.SetAvailabilityVsCost(fi.String(string(normalizeOrientation(e.Orientation))))
 		group.Strategy.SetFallbackToOnDemand(e.FallbackToOnDemand)
 		group.Strategy.SetUtilizeReservedInstances(e.UtilizeReservedInstances)
+
+		if e.DrainingTimeout != nil {
+			group.Strategy.SetDrainingTimeout(fi.Int(int(*e.DrainingTimeout)))
+		}
 	}
 
 	// Compute.
@@ -537,8 +563,11 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 					if err != nil {
 						return err
 					}
-					encoded := base64.StdEncoding.EncodeToString([]byte(userData))
-					group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+
+					if len(userData) > 0 {
+						encoded := base64.StdEncoding.EncodeToString([]byte(userData))
+						group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+					}
 				}
 			}
 
@@ -623,6 +652,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 				autoScaler := new(aws.AutoScaleKubernetes)
 				autoScaler.IsEnabled = opts.Enabled
 				autoScaler.IsAutoConfig = fi.Bool(true)
+				autoScaler.Cooldown = opts.Cooldown
 
 				// Headroom.
 				if headroom := opts.Headroom; headroom != nil {
@@ -761,6 +791,17 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			changes.UtilizeReservedInstances = nil
 			changed = true
 		}
+
+		// Draining timeout.
+		if changes.DrainingTimeout != nil {
+			if group.Strategy == nil {
+				group.Strategy = new(aws.Strategy)
+			}
+
+			group.Strategy.SetDrainingTimeout(fi.Int(int(*e.DrainingTimeout)))
+			changes.DrainingTimeout = nil
+			changed = true
+		}
 	}
 
 	// Compute.
@@ -860,22 +901,25 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			// User data.
 			{
 				if changes.UserData != nil {
-					if group.Compute == nil {
-						group.Compute = new(aws.Compute)
-					}
-					if group.Compute.LaunchSpecification == nil {
-						group.Compute.LaunchSpecification = new(aws.LaunchSpecification)
-					}
-
 					userData, err := e.UserData.AsString()
 					if err != nil {
 						return err
 					}
-					encoded := base64.StdEncoding.EncodeToString([]byte(userData))
 
-					group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+					if len(userData) > 0 {
+						if group.Compute == nil {
+							group.Compute = new(aws.Compute)
+						}
+						if group.Compute.LaunchSpecification == nil {
+							group.Compute.LaunchSpecification = new(aws.LaunchSpecification)
+						}
+
+						encoded := base64.StdEncoding.EncodeToString([]byte(userData))
+						group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+						changed = true
+					}
+
 					changes.UserData = nil
-					changed = true
 				}
 			}
 
@@ -1148,6 +1192,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			if opts.Enabled != nil {
 				autoScaler := new(aws.AutoScaleKubernetes)
 				autoScaler.IsEnabled = e.AutoScalerOpts.Enabled
+				autoScaler.Cooldown = e.AutoScalerOpts.Cooldown
 
 				// Headroom.
 				if headroom := opts.Headroom; headroom != nil {
@@ -1158,7 +1203,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 						MemoryPerUnit: e.AutoScalerOpts.Headroom.MemPerUnit,
 						NumOfUnits:    e.AutoScalerOpts.Headroom.NumOfUnits,
 					}
-				} else if a.AutoScalerOpts.Headroom != nil {
+				} else if a.AutoScalerOpts != nil && a.AutoScalerOpts.Headroom != nil {
 					autoScaler.IsAutoConfig = fi.Bool(true)
 					autoScaler.SetHeadroom(nil)
 				}
@@ -1252,6 +1297,7 @@ type terraformElastigroupStrategy struct {
 	Orientation              *string  `json:"orientation,omitempty"`
 	FallbackToOnDemand       *bool    `json:"fallback_to_ondemand,omitempty"`
 	UtilizeReservedInstances *bool    `json:"utilize_reserved_instances,omitempty"`
+	DrainingTimeout          *int64   `json:"draining_timeout,omitempty"`
 }
 
 type terraformElastigroupInstanceTypes struct {
@@ -1295,6 +1341,7 @@ type terraformElastigroupIntegration struct {
 type terraformAutoScaler struct {
 	Enabled    *bool                        `json:"autoscale_is_enabled,omitempty"`
 	AutoConfig *bool                        `json:"autoscale_is_auto_config,omitempty"`
+	Cooldown   *int                         `json:"autoscale_cooldown,omitempty"`
 	Headroom   *terraformAutoScalerHeadroom `json:"autoscale_headroom,omitempty"`
 	Down       *terraformAutoScalerDown     `json:"autoscale_down,omitempty"`
 	Labels     []*terraformKV               `json:"autoscale_labels,omitempty"`
@@ -1341,6 +1388,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 			Orientation:              fi.String(string(normalizeOrientation(e.Orientation))),
 			FallbackToOnDemand:       e.FallbackToOnDemand,
 			UtilizeReservedInstances: e.UtilizeReservedInstances,
+			DrainingTimeout:          e.DrainingTimeout,
 		},
 		terraformElastigroupInstanceTypes: &terraformElastigroupInstanceTypes{
 			OnDemand: e.OnDemandInstanceType,
@@ -1501,6 +1549,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 				tf.Integration.terraformAutoScaler = &terraformAutoScaler{
 					Enabled:    opts.Enabled,
 					AutoConfig: fi.Bool(true),
+					Cooldown:   opts.Cooldown,
 				}
 
 				// Headroom.
