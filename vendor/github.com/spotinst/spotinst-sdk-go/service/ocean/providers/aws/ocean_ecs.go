@@ -22,6 +22,7 @@ type ECSCluster struct {
 	Compute     *ECSCompute    `json:"compute,omitempty"`
 	AutoScaler  *ECSAutoScaler `json:"autoScaler,omitempty"`
 	Strategy    *ECSStrategy   `json:"strategy,omitempty"`
+	Scheduling  *ECSScheduling `json:"scheduling,omitempty"`
 
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -47,6 +48,32 @@ type ECSCluster struct {
 type ECSStrategy struct {
 	DrainingTimeout          *int  `json:"drainingTimeout,omitempty"`
 	UtilizeReservedInstances *bool `json:"utilizeReservedInstances,omitempty"`
+	UtilizeCommitments       *bool `json:"utilizeCommitments,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSScheduling struct {
+	Tasks         []*ECSTask        `json:"tasks,omitempty"`
+	ShutdownHours *ECSShutdownHours `json:"shutdownHours,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSShutdownHours struct {
+	IsEnabled   *bool    `json:"isEnabled,omitempty"`
+	TimeWindows []string `json:"timeWindows,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSTask struct {
+	IsEnabled      *bool   `json:"isEnabled,omitempty"`
+	Type           *string `json:"taskType,omitempty"`
+	CronExpression *string `json:"cronExpression,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -64,6 +91,7 @@ type ECSCapacity struct {
 type ECSCompute struct {
 	InstanceTypes       *ECSInstanceTypes       `json:"instanceTypes,omitempty"`
 	LaunchSpecification *ECSLaunchSpecification `json:"launchSpecification,omitempty"`
+	OptimizeImages      *ECSOptimizeImages      `json:"optimizeImages,omitempty"`
 	SubnetIDs           []string                `json:"subnetIds,omitempty"`
 
 	forceSendFields []string
@@ -78,15 +106,25 @@ type ECSInstanceTypes struct {
 }
 
 type ECSLaunchSpecification struct {
-	AssociatePublicIPAddress *bool                  `json:"associatePublicIpAddress,omitempty"`
-	SecurityGroupIDs         []string               `json:"securityGroupIds,omitempty"`
-	ImageID                  *string                `json:"imageId,omitempty"`
-	KeyPair                  *string                `json:"keyPair,omitempty"`
-	UserData                 *string                `json:"userData,omitempty"`
-	IAMInstanceProfile       *ECSIAMInstanceProfile `json:"iamInstanceProfile,omitempty"`
-	Tags                     []*Tag                 `json:"tags,omitempty"`
-	Monitoring               *bool                  `json:"monitoring,omitempty"`
-	EBSOptimized             *bool                  `json:"ebsOptimized,omitempty"`
+	AssociatePublicIPAddress *bool                    `json:"associatePublicIpAddress,omitempty"`
+	SecurityGroupIDs         []string                 `json:"securityGroupIds,omitempty"`
+	ImageID                  *string                  `json:"imageId,omitempty"`
+	KeyPair                  *string                  `json:"keyPair,omitempty"`
+	UserData                 *string                  `json:"userData,omitempty"`
+	IAMInstanceProfile       *ECSIAMInstanceProfile   `json:"iamInstanceProfile,omitempty"`
+	Tags                     []*Tag                   `json:"tags,omitempty"`
+	Monitoring               *bool                    `json:"monitoring,omitempty"`
+	EBSOptimized             *bool                    `json:"ebsOptimized,omitempty"`
+	BlockDeviceMappings      []*ECSBlockDeviceMapping `json:"blockDeviceMappings,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSOptimizeImages struct {
+	PerformAt            *string  `json:"performAt,omitempty"`
+	TimeWindows          []string `json:"timeWindows,omitempty"`
+	ShouldOptimizeECSAMI *bool    `json:"shouldOptimizeEcsAmi,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -130,7 +168,7 @@ type ECSAutoScalerResourceLimits struct {
 }
 
 type ECSAutoScalerDown struct {
-	MaxScaleDownPercentage *int `json:"maxScaleDownPercentage,omitempty"`
+	MaxScaleDownPercentage *float64 `json:"maxScaleDownPercentage,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -181,8 +219,14 @@ type ECSRollClusterOutput struct {
 }
 
 type ECSRoll struct {
-	ClusterID           *string `json:"clusterId,omitempty"`
-	BatchSizePercentage *int    `json:"batchSizePercentage,omitempty"`
+	ClusterID           *string  `json:"clusterId,omitempty"`
+	Comment             *string  `json:"comment,omitempty"`
+	BatchSizePercentage *int     `json:"batchSizePercentage,omitempty"`
+	LaunchSpecIDs       []string `json:"launchSpecIds,omitempty"`
+	InstanceIDs         []string `json:"instanceIds,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
 }
 
 type ECSRollClusterStatus struct {
@@ -238,19 +282,37 @@ func ecsClustersFromHttpResponse(resp *http.Response) ([]*ECSCluster, error) {
 
 func ecsRollStatusFromJSON(in []byte) (*ECSRollClusterStatus, error) {
 	b := new(ECSRollClusterStatus)
-
 	if err := json.Unmarshal(in, b); err != nil {
 		return nil, err
 	}
 	return b, nil
 }
 
-func ecsRollStatusFromHttpResponse(resp *http.Response) (*ECSRollClusterStatus, error) {
+func ecsRollStatusesFromJSON(in []byte) ([]*ECSRollClusterStatus, error) {
+	var rw client.Response
+	if err := json.Unmarshal(in, &rw); err != nil {
+		return nil, err
+	}
+	out := make([]*ECSRollClusterStatus, len(rw.Response.Items))
+	if len(out) == 0 {
+		return out, nil
+	}
+	for i, rb := range rw.Response.Items {
+		b, err := ecsRollStatusFromJSON(rb)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = b
+	}
+	return out, nil
+}
+
+func ecsRollStatusesFromHttpResponse(resp *http.Response) ([]*ECSRollClusterStatus, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	return ecsRollStatusFromJSON(body)
+	return ecsRollStatusesFromJSON(body)
 }
 
 func (s *ServiceOp) ListECSClusters(ctx context.Context, input *ListECSClustersInput) (*ListECSClustersOutput, error) {
@@ -392,12 +454,17 @@ func (s *ServiceOp) RollECS(ctx context.Context, input *ECSRollClusterInput) (*E
 	}
 	defer resp.Body.Close()
 
-	_, err = ecsRollStatusFromHttpResponse(resp)
+	rs, err := ecsRollStatusesFromHttpResponse(resp)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ECSRollClusterOutput{}, nil
+	output := new(ECSRollClusterOutput)
+	if len(rs) > 0 {
+		output.RollClusterStatus = rs[0]
+	}
+
+	return output, nil
 }
 
 // region Cluster
@@ -491,6 +558,92 @@ func (o *ECSCluster) SetAutoScaler(v *ECSAutoScaler) *ECSCluster {
 	return o
 }
 
+func (o *ECSCluster) SetScheduling(v *ECSScheduling) *ECSCluster {
+	if o.Scheduling = v; o.Scheduling == nil {
+		o.nullFields = append(o.nullFields, "Scheduling")
+	}
+	return o
+}
+
+// endregion
+
+// region Scheduling
+
+func (o ECSScheduling) MarshalJSON() ([]byte, error) {
+	type noMethod ECSScheduling
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSScheduling) SetTasks(v []*ECSTask) *ECSScheduling {
+	if o.Tasks = v; o.Tasks == nil {
+		o.nullFields = append(o.nullFields, "Tasks")
+	}
+	return o
+}
+
+func (o *ECSScheduling) SetShutdownHours(v *ECSShutdownHours) *ECSScheduling {
+	if o.ShutdownHours = v; o.ShutdownHours == nil {
+		o.nullFields = append(o.nullFields, "ShutdownHours")
+	}
+	return o
+}
+
+// endregion
+
+// region ShutdownHours
+
+func (o ECSShutdownHours) MarshalJSON() ([]byte, error) {
+	type noMethod ECSShutdownHours
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSShutdownHours) SetIsEnabled(v *bool) *ECSShutdownHours {
+	if o.IsEnabled = v; o.IsEnabled == nil {
+		o.nullFields = append(o.nullFields, "IsEnabled")
+	}
+	return o
+}
+
+func (o *ECSShutdownHours) SetTimeWindows(v []string) *ECSShutdownHours {
+	if o.TimeWindows = v; o.TimeWindows == nil {
+		o.nullFields = append(o.nullFields, "TimeWindows")
+	}
+	return o
+}
+
+// endregion
+
+// region Tasks
+
+func (o ECSTask) MarshalJSON() ([]byte, error) {
+	type noMethod ECSTask
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSTask) SetIsEnabled(v *bool) *ECSTask {
+	if o.IsEnabled = v; o.IsEnabled == nil {
+		o.nullFields = append(o.nullFields, "IsEnabled")
+	}
+	return o
+}
+
+func (o *ECSTask) SetType(v *string) *ECSTask {
+	if o.Type = v; o.Type == nil {
+		o.nullFields = append(o.nullFields, "Type")
+	}
+	return o
+}
+
+func (o *ECSTask) SetCronExpression(v *string) *ECSTask {
+	if o.CronExpression = v; o.CronExpression == nil {
+		o.nullFields = append(o.nullFields, "CronExpression")
+	}
+	return o
+}
+
 // endregion
 
 // region Compute
@@ -522,6 +675,13 @@ func (o *ECSCompute) SetSubnetIDs(v []string) *ECSCompute {
 	return o
 }
 
+func (o *ECSCompute) SetOptimizeImages(v *ECSOptimizeImages) *ECSCompute {
+	if o.OptimizeImages = v; o.OptimizeImages == nil {
+		o.nullFields = append(o.nullFields, "OptimizeImages")
+	}
+	return o
+}
+
 // endregion
 
 // region Strategy
@@ -542,6 +702,13 @@ func (o *ECSStrategy) SetDrainingTimeout(v *int) *ECSStrategy {
 func (o *ECSStrategy) SetUtilizeReservedInstances(v *bool) *ECSStrategy {
 	if o.UtilizeReservedInstances = v; o.UtilizeReservedInstances == nil {
 		o.nullFields = append(o.nullFields, "UtilizeReservedInstances")
+	}
+	return o
+}
+
+func (o *ECSStrategy) SetUtilizeCommitments(v *bool) *ECSStrategy {
+	if o.UtilizeCommitments = v; o.UtilizeCommitments == nil {
+		o.nullFields = append(o.nullFields, "UtilizeCommitments")
 	}
 	return o
 }
@@ -632,6 +799,44 @@ func (o *ECSLaunchSpecification) SetMonitoring(v *bool) *ECSLaunchSpecification 
 func (o *ECSLaunchSpecification) SetEBSOptimized(v *bool) *ECSLaunchSpecification {
 	if o.EBSOptimized = v; o.EBSOptimized == nil {
 		o.nullFields = append(o.nullFields, "EBSOptimized")
+	}
+	return o
+}
+
+func (o *ECSLaunchSpecification) SetBlockDeviceMappings(v []*ECSBlockDeviceMapping) *ECSLaunchSpecification {
+	if o.BlockDeviceMappings = v; o.BlockDeviceMappings == nil {
+		o.nullFields = append(o.nullFields, "BlockDeviceMappings")
+	}
+	return o
+}
+
+// endregion
+
+// region ECSOptimizeImages
+
+func (o ECSOptimizeImages) MarshalJSON() ([]byte, error) {
+	type noMethod ECSOptimizeImages
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSOptimizeImages) SetPerformAt(v *string) *ECSOptimizeImages {
+	if o.PerformAt = v; o.PerformAt == nil {
+		o.nullFields = append(o.nullFields, "PerformAt")
+	}
+	return o
+}
+
+func (o *ECSOptimizeImages) SetTimeWindows(v []string) *ECSOptimizeImages {
+	if o.TimeWindows = v; o.TimeWindows == nil {
+		o.nullFields = append(o.nullFields, "TimeWindows")
+	}
+	return o
+}
+
+func (o *ECSOptimizeImages) SetShouldOptimizeECSAMI(v *bool) *ECSOptimizeImages {
+	if o.ShouldOptimizeECSAMI = v; o.ShouldOptimizeECSAMI == nil {
+		o.nullFields = append(o.nullFields, "ShouldOptimizeECSAMI")
 	}
 	return o
 }
@@ -777,9 +982,47 @@ func (o ECSAutoScalerDown) MarshalJSON() ([]byte, error) {
 	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
 }
 
-func (o *ECSAutoScalerDown) SetMaxScaleDownPercentage(v *int) *ECSAutoScalerDown {
+func (o *ECSAutoScalerDown) SetMaxScaleDownPercentage(v *float64) *ECSAutoScalerDown {
 	if o.MaxScaleDownPercentage = v; o.MaxScaleDownPercentage == nil {
 		o.nullFields = append(o.nullFields, "MaxScaleDownPercentage")
+	}
+	return o
+}
+
+// endregion
+
+// region ECSRoll
+
+func (o ECSRoll) MarshalJSON() ([]byte, error) {
+	type noMethod ECSRoll
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSRoll) SetComment(v *string) *ECSRoll {
+	if o.Comment = v; o.Comment == nil {
+		o.nullFields = append(o.nullFields, "Comment")
+	}
+	return o
+}
+
+func (o *ECSRoll) SetBatchSizePercentage(v *int) *ECSRoll {
+	if o.BatchSizePercentage = v; o.BatchSizePercentage == nil {
+		o.nullFields = append(o.nullFields, "BatchSizePercentage")
+	}
+	return o
+}
+
+func (o *ECSRoll) SetLaunchSpecIDs(v []string) *ECSRoll {
+	if o.LaunchSpecIDs = v; o.LaunchSpecIDs == nil {
+		o.nullFields = append(o.nullFields, "LaunchSpecIDs")
+	}
+	return o
+}
+
+func (o *ECSRoll) SetInstanceIDs(v []string) *ECSRoll {
+	if o.InstanceIDs = v; o.InstanceIDs == nil {
+		o.nullFields = append(o.nullFields, "InstanceIDs")
 	}
 	return o
 }
