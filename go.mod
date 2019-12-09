@@ -111,8 +111,8 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
-	github.com/spotinst/spotinst-sdk-go v1.36.1
-	github.com/stretchr/testify v1.5.1
+	github.com/spotinst/spotinst-sdk-go v1.78.0
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.20.0
 	github.com/vmware/govmomi v0.20.1
 	github.com/weaveworks/mesh v0.0.0-20170419100114-1f158d31de55

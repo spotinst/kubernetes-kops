@@ -19,6 +19,7 @@ type Service interface {
 	Delete(context.Context, *DeleteGroupInput) (*DeleteGroupOutput, error)
 	Status(context.Context, *StatusGroupInput) (*StatusGroupOutput, error)
 	DeploymentStatus(context.Context, *DeploymentStatusInput) (*RollGroupOutput, error)
+	DeploymentStatusECS(context.Context, *DeploymentStatusInput) (*RollGroupOutput, error)
 	StopDeployment(context.Context, *StopDeploymentInput) (*StopDeploymentOutput, error)
 	Detach(context.Context, *DetachGroupInput) (*DetachGroupOutput, error)
 	Roll(context.Context, *RollGroupInput) (*RollGroupOutput, error)
@@ -30,6 +31,9 @@ type Service interface {
 	StartBeanstalkMaintenance(context.Context, *BeanstalkMaintenanceInput) (*BeanstalkMaintenanceOutput, error)
 	FinishBeanstalkMaintenance(context.Context, *BeanstalkMaintenanceInput) (*BeanstalkMaintenanceOutput, error)
 	GetBeanstalkMaintenanceStatus(context.Context, *BeanstalkMaintenanceInput) (*string, error)
+	CreateSuspensions(context.Context, *CreateSuspensionsInput) (*CreateSuspensionsOutput, error)
+	ListSuspensions(context.Context, *ListSuspensionsInput) (*ListSuspensionsOutput, error)
+	DeleteSuspensions(context.Context, *DeleteSuspensionsInput) (*DeleteSuspensionsOutput, error)
 }
 
 type ServiceOp struct {
