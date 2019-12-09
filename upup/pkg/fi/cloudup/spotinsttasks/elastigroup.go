@@ -28,6 +28,7 @@ import (
 	"github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/aws"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/client"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/util/stringutil"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"k8s.io/kops/pkg/resources/spotinst"
@@ -49,6 +50,7 @@ type Elastigroup struct {
 	SpotPercentage           *float64
 	UtilizeReservedInstances *bool
 	FallbackToOnDemand       *bool
+	DrainingTimeout          *int64
 	HealthCheckType          *string
 	Product                  *string
 	Orientation              *string
@@ -79,7 +81,9 @@ type RootVolumeOpts struct {
 type AutoScalerOpts struct {
 	Enabled   *bool
 	ClusterID *string
+	Cooldown  *int
 	Labels    map[string]string
+	Taints    []*corev1.Taint
 	Headroom  *AutoScalerHeadroomOpts
 	Down      *AutoScalerDownOpts
 }
@@ -96,13 +100,13 @@ type AutoScalerDownOpts struct {
 	EvaluationPeriods *int
 }
 
+var _ fi.Task = &Elastigroup{}
 var _ fi.CompareWithID = &Elastigroup{}
+var _ fi.HasDependencies = &Elastigroup{}
 
 func (e *Elastigroup) CompareWithID() *string {
 	return e.Name
 }
-
-var _ fi.HasDependencies = &Elastigroup{}
 
 func (e *Elastigroup) GetDependencies(tasks map[string]fi.Task) []fi.Task {
 	var deps []fi.Task
@@ -183,6 +187,10 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 		actual.Orientation = group.Strategy.AvailabilityVsCost
 		actual.FallbackToOnDemand = group.Strategy.FallbackToOnDemand
 		actual.UtilizeReservedInstances = group.Strategy.UtilizeReservedInstances
+
+		if group.Strategy.DrainingTimeout != nil {
+			actual.DrainingTimeout = fi.Int64(int64(fi.IntValue(group.Strategy.DrainingTimeout)))
+		}
 	}
 
 	// Compute.
@@ -274,7 +282,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 			// EBS optimization.
 			{
-				if lc.EBSOptimized != nil {
+				if fi.BoolValue(lc.EBSOptimized) {
 					if actual.RootVolumeOpts == nil {
 						actual.RootVolumeOpts = new(RootVolumeOpts)
 					}
@@ -286,18 +294,22 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 		// User data.
 		{
+			var userData []byte
+
 			if lc.UserData != nil {
-				userData, err := base64.StdEncoding.DecodeString(fi.StringValue(lc.UserData))
+				userData, err = base64.StdEncoding.DecodeString(fi.StringValue(lc.UserData))
 				if err != nil {
 					return nil, err
 				}
-				actual.UserData = fi.WrapResource(fi.NewStringResource(string(userData)))
 			}
+
+			actual.UserData = fi.WrapResource(fi.NewStringResource(string(userData)))
 		}
 
 		// Network interfaces.
 		{
 			associatePublicIP := false
+
 			if lc.NetworkInterfaces != nil && len(lc.NetworkInterfaces) > 0 {
 				for _, iface := range lc.NetworkInterfaces {
 					if fi.BoolValue(iface.AssociatePublicIPAddress) {
@@ -306,6 +318,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 					}
 				}
 			}
+
 			actual.AssociatePublicIP = fi.Bool(associatePublicIP)
 		}
 
@@ -364,14 +377,23 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 			if integration.AutoScale != nil {
 				actual.AutoScalerOpts.Enabled = integration.AutoScale.IsEnabled
+				actual.AutoScalerOpts.Cooldown = integration.AutoScale.Cooldown
 
 				// Headroom.
 				if headroom := integration.AutoScale.Headroom; headroom != nil {
-					actual.AutoScalerOpts.Headroom = &AutoScalerHeadroomOpts{
-						CPUPerUnit: headroom.CPUPerUnit,
-						GPUPerUnit: headroom.GPUPerUnit,
-						MemPerUnit: headroom.MemoryPerUnit,
-						NumOfUnits: headroom.NumOfUnits,
+					actual.AutoScalerOpts.Headroom = new(AutoScalerHeadroomOpts)
+
+					if v := fi.IntValue(headroom.CPUPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.CPUPerUnit = headroom.CPUPerUnit
+					}
+					if v := fi.IntValue(headroom.GPUPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.GPUPerUnit = headroom.GPUPerUnit
+					}
+					if v := fi.IntValue(headroom.MemoryPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.MemPerUnit = headroom.MemoryPerUnit
+					}
+					if v := fi.IntValue(headroom.NumOfUnits); v > 0 {
+						actual.AutoScalerOpts.Headroom.NumOfUnits = headroom.NumOfUnits
 					}
 				}
 
@@ -462,6 +484,10 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 		group.Strategy.SetAvailabilityVsCost(fi.String(string(normalizeOrientation(e.Orientation))))
 		group.Strategy.SetFallbackToOnDemand(e.FallbackToOnDemand)
 		group.Strategy.SetUtilizeReservedInstances(e.UtilizeReservedInstances)
+
+		if e.DrainingTimeout != nil {
+			group.Strategy.SetDrainingTimeout(fi.Int(int(*e.DrainingTimeout)))
+		}
 	}
 
 	// Compute.
@@ -502,7 +528,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 					return err
 				}
 
-				ephemeralDevices, err := e.buildEphemeralDevices(e.OnDemandInstanceType)
+				ephemeralDevices, err := e.buildEphemeralDevices(cloud, e.OnDemandInstanceType)
 				if err != nil {
 					return err
 				}
@@ -537,8 +563,11 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 					if err != nil {
 						return err
 					}
-					encoded := base64.StdEncoding.EncodeToString([]byte(userData))
-					group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+
+					if len(userData) > 0 {
+						encoded := base64.StdEncoding.EncodeToString([]byte(userData))
+						group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+					}
 				}
 			}
 
@@ -623,6 +652,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 				autoScaler := new(aws.AutoScaleKubernetes)
 				autoScaler.IsEnabled = opts.Enabled
 				autoScaler.IsAutoConfig = fi.Bool(true)
+				autoScaler.Cooldown = opts.Cooldown
 
 				// Headroom.
 				if headroom := opts.Headroom; headroom != nil {
@@ -761,6 +791,17 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			changes.UtilizeReservedInstances = nil
 			changed = true
 		}
+
+		// Draining timeout.
+		if changes.DrainingTimeout != nil {
+			if group.Strategy == nil {
+				group.Strategy = new(aws.Strategy)
+			}
+
+			group.Strategy.SetDrainingTimeout(fi.Int(int(*e.DrainingTimeout)))
+			changes.DrainingTimeout = nil
+			changed = true
+		}
 	}
 
 	// Compute.
@@ -858,22 +899,25 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			// User data.
 			{
 				if changes.UserData != nil {
-					if group.Compute == nil {
-						group.Compute = new(aws.Compute)
-					}
-					if group.Compute.LaunchSpecification == nil {
-						group.Compute.LaunchSpecification = new(aws.LaunchSpecification)
-					}
-
 					userData, err := e.UserData.AsString()
 					if err != nil {
 						return err
 					}
-					encoded := base64.StdEncoding.EncodeToString([]byte(userData))
 
-					group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+					if len(userData) > 0 {
+						if group.Compute == nil {
+							group.Compute = new(aws.Compute)
+						}
+						if group.Compute.LaunchSpecification == nil {
+							group.Compute.LaunchSpecification = new(aws.LaunchSpecification)
+						}
+
+						encoded := base64.StdEncoding.EncodeToString([]byte(userData))
+						group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+						changed = true
+					}
+
 					changes.UserData = nil
-					changed = true
 				}
 			}
 
@@ -912,7 +956,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 								return err
 							}
 
-							ephemeralDevices, err := e.buildEphemeralDevices(e.OnDemandInstanceType)
+							ephemeralDevices, err := e.buildEphemeralDevices(cloud, e.OnDemandInstanceType)
 							if err != nil {
 								return err
 							}
@@ -1146,6 +1190,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			if opts.Enabled != nil {
 				autoScaler := new(aws.AutoScaleKubernetes)
 				autoScaler.IsEnabled = e.AutoScalerOpts.Enabled
+				autoScaler.Cooldown = e.AutoScalerOpts.Cooldown
 
 				// Headroom.
 				if headroom := opts.Headroom; headroom != nil {
@@ -1156,7 +1201,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 						MemoryPerUnit: e.AutoScalerOpts.Headroom.MemPerUnit,
 						NumOfUnits:    e.AutoScalerOpts.Headroom.NumOfUnits,
 					}
-				} else if a.AutoScalerOpts.Headroom != nil {
+				} else if a.AutoScalerOpts != nil && a.AutoScalerOpts.Headroom != nil {
 					autoScaler.IsAutoConfig = fi.Bool(true)
 					autoScaler.SetHeadroom(nil)
 				}
@@ -1219,18 +1264,18 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 }
 
 type terraformElastigroup struct {
-	Name                 *string                                 `json:"name,omitempty"`
-	Description          *string                                 `json:"description,omitempty"`
-	Product              *string                                 `json:"product,omitempty"`
-	Region               *string                                 `json:"region,omitempty"`
-	SubnetIDs            []*terraform.Literal                    `json:"subnet_ids,omitempty"`
-	LoadBalancers        []*terraform.Literal                    `json:"elastic_load_balancers,omitempty"`
-	NetworkInterfaces    []*terraformElastigroupNetworkInterface `json:"network_interface,omitempty"`
-	RootBlockDevice      *terraformElastigroupBlockDevice        `json:"ebs_block_device,omitempty"`
-	EphemeralBlockDevice []*terraformElastigroupBlockDevice      `json:"ephemeral_block_device,omitempty"`
-	Integration          *terraformElastigroupIntegration        `json:"integration_kubernetes,omitempty"`
-	Tags                 []*terraformKV                          `json:"tags,omitempty"`
-	Lifecycle            *terraformLifecycle                     `json:"lifecycle,omitempty"`
+	Name                 *string                                 `json:"name,omitempty" cty:"name"`
+	Description          *string                                 `json:"description,omitempty" cty:"description"`
+	Product              *string                                 `json:"product,omitempty" cty:"product"`
+	Region               *string                                 `json:"region,omitempty" cty:"region"`
+	SubnetIDs            []*terraform.Literal                    `json:"subnet_ids,omitempty" cty:"subnet_ids"`
+	LoadBalancers        []*terraform.Literal                    `json:"elastic_load_balancers,omitempty" cty:"elastic_load_balancers"`
+	NetworkInterfaces    []*terraformElastigroupNetworkInterface `json:"network_interface,omitempty" cty:"network_interface"`
+	RootBlockDevice      *terraformElastigroupBlockDevice        `json:"ebs_block_device,omitempty" cty:"ebs_block_device"`
+	EphemeralBlockDevice []*terraformElastigroupBlockDevice      `json:"ephemeral_block_device,omitempty" cty:"ephemeral_block_device"`
+	Integration          *terraformElastigroupIntegration        `json:"integration_kubernetes,omitempty" cty:"integration_kubernetes"`
+	Tags                 []*terraformKV                          `json:"tags,omitempty" cty:"tags"`
+	Lifecycle            *terraformLifecycle                     `json:"lifecycle,omitempty" cty:"lifecycle"`
 
 	*terraformElastigroupCapacity
 	*terraformElastigroupStrategy
@@ -1239,84 +1284,86 @@ type terraformElastigroup struct {
 }
 
 type terraformElastigroupCapacity struct {
-	MinSize         *int64  `json:"min_size,omitempty"`
-	MaxSize         *int64  `json:"max_size,omitempty"`
-	DesiredCapacity *int64  `json:"desired_capacity,omitempty"`
-	CapacityUnit    *string `json:"capacity_unit,omitempty"`
+	MinSize         *int64  `json:"min_size,omitempty" cty:"min_size"`
+	MaxSize         *int64  `json:"max_size,omitempty" cty:"max_size"`
+	DesiredCapacity *int64  `json:"desired_capacity,omitempty" cty:"desired_capacity"`
+	CapacityUnit    *string `json:"capacity_unit,omitempty" cty:"capacity_unit"`
 }
 
 type terraformElastigroupStrategy struct {
-	SpotPercentage           *float64 `json:"spot_percentage,omitempty"`
-	Orientation              *string  `json:"orientation,omitempty"`
-	FallbackToOnDemand       *bool    `json:"fallback_to_ondemand,omitempty"`
-	UtilizeReservedInstances *bool    `json:"utilize_reserved_instances,omitempty"`
+	SpotPercentage           *float64 `json:"spot_percentage,omitempty" cty:"spot_percentage"`
+	Orientation              *string  `json:"orientation,omitempty" cty:"orientation"`
+	FallbackToOnDemand       *bool    `json:"fallback_to_ondemand,omitempty" cty:"fallback_to_ondemand"`
+	UtilizeReservedInstances *bool    `json:"utilize_reserved_instances,omitempty" cty:"utilize_reserved_instances"`
+	DrainingTimeout          *int64   `json:"draining_timeout,omitempty" cty:"draining_timeout"`
 }
 
 type terraformElastigroupInstanceTypes struct {
-	OnDemand *string  `json:"instance_types_ondemand,omitempty"`
-	Spot     []string `json:"instance_types_spot,omitempty"`
+	OnDemand *string  `json:"instance_types_ondemand,omitempty" cty:"instance_types_ondemand"`
+	Spot     []string `json:"instance_types_spot,omitempty" cty:"instance_types_spot"`
 }
 
 type terraformElastigroupLaunchSpec struct {
-	Monitoring         *bool                `json:"enable_monitoring,omitempty"`
-	EBSOptimized       *bool                `json:"ebs_optimized,omitempty"`
-	ImageID            *string              `json:"image_id,omitempty"`
-	HealthCheckType    *string              `json:"health_check_type,omitempty"`
-	SecurityGroups     []*terraform.Literal `json:"security_groups,omitempty"`
-	UserData           *terraform.Literal   `json:"user_data,omitempty"`
-	IAMInstanceProfile *terraform.Literal   `json:"iam_instance_profile,omitempty"`
-	KeyName            *terraform.Literal   `json:"key_name,omitempty"`
+	Monitoring         *bool                `json:"enable_monitoring,omitempty" cty:"enable_monitoring"`
+	EBSOptimized       *bool                `json:"ebs_optimized,omitempty" cty:"ebs_optimized"`
+	ImageID            *string              `json:"image_id,omitempty" cty:"image_id"`
+	HealthCheckType    *string              `json:"health_check_type,omitempty" cty:"health_check_type"`
+	SecurityGroups     []*terraform.Literal `json:"security_groups,omitempty" cty:"security_groups"`
+	UserData           *terraform.Literal   `json:"user_data,omitempty" cty:"user_data"`
+	IAMInstanceProfile *terraform.Literal   `json:"iam_instance_profile,omitempty" cty:"iam_instance_profile"`
+	KeyName            *terraform.Literal   `json:"key_name,omitempty" cty:"key_name"`
 }
 
 type terraformElastigroupBlockDevice struct {
-	DeviceName          *string `json:"device_name,omitempty"`
-	VirtualName         *string `json:"virtual_name,omitempty"`
-	VolumeType          *string `json:"volume_type,omitempty"`
-	VolumeSize          *int64  `json:"volume_size,omitempty"`
-	DeleteOnTermination *bool   `json:"delete_on_termination,omitempty"`
+	DeviceName          *string `json:"device_name,omitempty" cty:"device_name"`
+	VirtualName         *string `json:"virtual_name,omitempty" cty:"virtual_name"`
+	VolumeType          *string `json:"volume_type,omitempty" cty:"volume_type"`
+	VolumeSize          *int64  `json:"volume_size,omitempty" cty:"volume_size"`
+	DeleteOnTermination *bool   `json:"delete_on_termination,omitempty" cty:"delete_on_termination"`
 }
 
 type terraformElastigroupNetworkInterface struct {
-	Description              *string `json:"description,omitempty"`
-	DeviceIndex              *int    `json:"device_index,omitempty"`
-	AssociatePublicIPAddress *bool   `json:"associate_public_ip_address,omitempty"`
-	DeleteOnTermination      *bool   `json:"delete_on_termination,omitempty"`
+	Description              *string `json:"description,omitempty" cty:"description"`
+	DeviceIndex              *int    `json:"device_index,omitempty" cty:"device_index"`
+	AssociatePublicIPAddress *bool   `json:"associate_public_ip_address,omitempty" cty:"associate_public_ip_address"`
+	DeleteOnTermination      *bool   `json:"delete_on_termination,omitempty" cty:"delete_on_termination"`
 }
 
 type terraformElastigroupIntegration struct {
-	IntegrationMode   *string `json:"integration_mode,omitempty"`
-	ClusterIdentifier *string `json:"cluster_identifier,omitempty"`
+	IntegrationMode   *string `json:"integration_mode,omitempty" cty:"integration_mode"`
+	ClusterIdentifier *string `json:"cluster_identifier,omitempty" cty:"cluster_identifier"`
 
 	*terraformAutoScaler
 }
 
 type terraformAutoScaler struct {
-	Enabled    *bool                        `json:"autoscale_is_enabled,omitempty"`
-	AutoConfig *bool                        `json:"autoscale_is_auto_config,omitempty"`
-	Headroom   *terraformAutoScalerHeadroom `json:"autoscale_headroom,omitempty"`
-	Down       *terraformAutoScalerDown     `json:"autoscale_down,omitempty"`
-	Labels     []*terraformKV               `json:"autoscale_labels,omitempty"`
+	Enabled    *bool                        `json:"autoscale_is_enabled,omitempty" cty:"autoscale_is_enabled"`
+	AutoConfig *bool                        `json:"autoscale_is_auto_config,omitempty" cty:"autoscale_is_auto_config"`
+	Cooldown   *int                         `json:"autoscale_cooldown,omitempty" cty:"autoscale_cooldown"`
+	Headroom   *terraformAutoScalerHeadroom `json:"autoscale_headroom,omitempty" cty:"autoscale_headroom"`
+	Down       *terraformAutoScalerDown     `json:"autoscale_down,omitempty" cty:"autoscale_down"`
+	Labels     []*terraformKV               `json:"autoscale_labels,omitempty" cty:"autoscale_labels"`
 }
 
 type terraformAutoScalerHeadroom struct {
-	CPUPerUnit *int `json:"cpu_per_unit,omitempty"`
-	GPUPerUnit *int `json:"gpu_per_unit,omitempty"`
-	MemPerUnit *int `json:"memory_per_unit,omitempty"`
-	NumOfUnits *int `json:"num_of_units,omitempty"`
+	CPUPerUnit *int `json:"cpu_per_unit,omitempty" cty:"cpu_per_unit"`
+	GPUPerUnit *int `json:"gpu_per_unit,omitempty" cty:"gpu_per_unit"`
+	MemPerUnit *int `json:"memory_per_unit,omitempty" cty:"memory_per_unit"`
+	NumOfUnits *int `json:"num_of_units,omitempty" cty:"num_of_units"`
 }
 
 type terraformAutoScalerDown struct {
-	MaxPercentage     *int `json:"max_scale_down_percentage,omitempty"`
-	EvaluationPeriods *int `json:"evaluation_periods,omitempty"`
+	MaxPercentage     *int `json:"max_scale_down_percentage,omitempty" cty:"max_scale_down_percentage"`
+	EvaluationPeriods *int `json:"evaluation_periods,omitempty" cty:"evaluation_periods"`
 }
 
 type terraformKV struct {
-	Key   *string `json:"key"`
-	Value *string `json:"value"`
+	Key   *string `json:"key" cty:"key"`
+	Value *string `json:"value" cty:"value"`
 }
 
 type terraformLifecycle struct {
-	IgnoreChanges []string `json:"ignore_changes,omitempty"`
+	IgnoreChanges []string `json:"ignore_changes,omitempty" cty:"ignore_changes"`
 }
 
 func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Elastigroup) error {
@@ -1339,6 +1386,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 			Orientation:              fi.String(string(normalizeOrientation(e.Orientation))),
 			FallbackToOnDemand:       e.FallbackToOnDemand,
 			UtilizeReservedInstances: e.UtilizeReservedInstances,
+			DrainingTimeout:          e.DrainingTimeout,
 		},
 		terraformElastigroupInstanceTypes: &terraformElastigroupInstanceTypes{
 			OnDemand: e.OnDemandInstanceType,
@@ -1446,7 +1494,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 					return err
 				}
 
-				ephemeralDevices, err := e.buildEphemeralDevices(e.OnDemandInstanceType)
+				ephemeralDevices, err := e.buildEphemeralDevices(cloud, e.OnDemandInstanceType)
 				if err != nil {
 					return err
 				}
@@ -1499,6 +1547,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 				tf.Integration.terraformAutoScaler = &terraformAutoScaler{
 					Enabled:    opts.Enabled,
 					AutoConfig: fi.Bool(true),
+					Cooldown:   opts.Cooldown,
 				}
 
 				// Headroom.
@@ -1589,7 +1638,7 @@ func (e *Elastigroup) buildAutoScaleLabels(labelsMap map[string]string) []*aws.A
 	return labels
 }
 
-func (e *Elastigroup) buildEphemeralDevices(instanceTypeName *string) (map[string]*awstasks.BlockDeviceMapping, error) {
+func (e *Elastigroup) buildEphemeralDevices(c awsup.AWSCloud, instanceTypeName *string) (map[string]*awstasks.BlockDeviceMapping, error) {
 	if instanceTypeName == nil {
 		return nil, fi.RequiredField("InstanceType")
 	}
