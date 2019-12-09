@@ -3,23 +3,26 @@ package gcp
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"time"
+
 	"github.com/spotinst/spotinst-sdk-go/spotinst"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/client"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/util/jsonutil"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/util/uritemplates"
-	"io/ioutil"
-	"net/http"
-	"time"
 )
 
 type Cluster struct {
+	ID                  *string     `json:"id,omitempty"`
+	ControllerClusterID *string     `json:"controllerClusterId,omitempty"`
+	Name                *string     `json:"name,omitempty"`
+	Scheduling          *Scheduling `json:"scheduling,omitempty"`
 	AutoScaler          *AutoScaler `json:"autoScaler,omitempty"`
 	Capacity            *Capacity   `json:"capacity,omitempty"`
 	Compute             *Compute    `json:"compute,omitempty"`
-	ControllerClusterID *string     `json:"controllerClusterId,omitempty"`
+	Strategy            *Strategy   `json:"strategy,omitempty"`
 	GKE                 *GKE        `json:"gke,omitempty"`
-	ID                  *string     `json:"id,omitempty"`
-	Name                *string     `json:"name,omitempty"`
 
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -42,21 +45,29 @@ type Cluster struct {
 	nullFields []string
 }
 
+type Strategy struct {
+	DrainingTimeout *int `json:"drainingTimeout,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
 type AutoScaler struct {
-	IsEnabled      *bool                     `json:"isEnabled,omitempty"`
-	IsAutoConfig   *bool                     `json:"isAutoConfig,omitempty"`
-	Cooldown       *int                      `json:"cooldown,omitempty"`
-	Headroom       *AutoScalerHeadroom       `json:"headroom,omitempty"`
-	ResourceLimits *AutoScalerResourceLimits `json:"resourceLimits,omitempty"`
-	Down           *AutoScalerDown           `json:"down,omitempty"`
+	IsEnabled              *bool                     `json:"isEnabled,omitempty"`
+	IsAutoConfig           *bool                     `json:"isAutoConfig,omitempty"`
+	Cooldown               *int                      `json:"cooldown,omitempty"`
+	AutoHeadroomPercentage *int                      `json:"autoHeadroomPercentage,omitempty"`
+	Headroom               *AutoScalerHeadroom       `json:"headroom,omitempty"`
+	ResourceLimits         *AutoScalerResourceLimits `json:"resourceLimits,omitempty"`
+	Down                   *AutoScalerDown           `json:"down,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
 }
 
 type AutoScalerDown struct {
-	EvaluationPeriods      *int `json:"evaluationPeriods,omitempty"`
-	MaxScaleDownPercentage *int `json:"maxScaleDownPercentage,omitempty"`
+	EvaluationPeriods      *int     `json:"evaluationPeriods,omitempty"`
+	MaxScaleDownPercentage *float64 `json:"maxScaleDownPercentage,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -103,8 +114,35 @@ type Compute struct {
 	AvailabilityZones   []string             `json:"availabilityZones,omitempty"`
 	InstanceTypes       *InstanceTypes       `json:"instanceTypes,omitempty"`
 	LaunchSpecification *LaunchSpecification `json:"launchSpecification,omitempty"`
+	BackendServices     []*BackendService    `json:"backendServices,omitempty"`
 	NetworkInterfaces   []*NetworkInterface  `json:"networkInterfaces,omitempty"`
 	SubnetName          *string              `json:"subnetName,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type Scheduling struct {
+	ShutdownHours *ShutdownHours `json:"shutdownHours,omitempty"`
+	Tasks         []*Task        `json:"tasks,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ShutdownHours struct {
+	IsEnabled   *bool    `json:"isEnabled,omitempty"`
+	TimeWindows []string `json:"timeWindows,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type Task struct {
+	IsEnabled           *bool   `json:"isEnabled,omitempty"`
+	Type                *string `json:"taskType,omitempty"`
+	CronExpression      *string `json:"cronExpression,omitempty"`
+	BatchSizePercentage *int    `json:"batchSizePercentage,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -126,14 +164,13 @@ type InstanceTypes struct {
 }
 
 type LaunchSpecification struct {
-	BackendServices    []*BackendService `json:"backendServices,omitempty"`
-	Labels             []*Label          `json:"labels,omitempty"`
-	IPForwarding       *bool             `json:"ipForwarding,omitempty"`
-	Metadata           []*Metadata       `json:"metadata,omitempty"`
-	RootVolumeSizeInGB *int              `json:"rootVolumeSizeInGb,omitempty"`
-	ServiceAccount     *string           `json:"serviceAccount,omitempty"`
-	SourceImage        *string           `json:"sourceImage,omitempty"`
-	Tags               []string          `json:"tags,omitempty"`
+	Labels             []*Label    `json:"labels,omitempty"`
+	IPForwarding       *bool       `json:"ipForwarding,omitempty"`
+	Metadata           []*Metadata `json:"metadata,omitempty"`
+	RootVolumeSizeInGB *int        `json:"rootVolumeSizeInGb,omitempty"`
+	ServiceAccount     *string     `json:"serviceAccount,omitempty"`
+	SourceImage        *string     `json:"sourceImage,omitempty"`
+	Tags               []string    `json:"tags,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -159,6 +196,7 @@ type NetworkInterface struct {
 	AccessConfigs []*AccessConfig `json:"accessConfigs,omitempty"`
 	AliasIPRanges []*AliasIPRange `json:"aliasIpRanges,omitempty"`
 	Network       *string         `json:"network,omitempty"`
+	ProjectID     *string         `json:"projectId,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -249,6 +287,41 @@ func clustersFromHttpResponse(resp *http.Response) ([]*Cluster, error) {
 		return nil, err
 	}
 	return clustersFromJSON(body)
+}
+
+func clusterImportFromJSON(in []byte) (*ImportOceanGKEClusterOutput, error) {
+	b := new(ImportOceanGKEClusterOutput)
+	if err := json.Unmarshal(in, b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func clustersImportFromJSON(in []byte) ([]*ImportOceanGKEClusterOutput, error) {
+	var rw client.Response
+	if err := json.Unmarshal(in, &rw); err != nil {
+		return nil, err
+	}
+	out := make([]*ImportOceanGKEClusterOutput, len(rw.Response.Items))
+	if len(out) == 0 {
+		return out, nil
+	}
+	for i, rb := range rw.Response.Items {
+		b, err := clusterImportFromJSON(rb)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = b
+	}
+	return out, nil
+}
+
+func clustersImportFromHttpResponse(resp *http.Response) ([]*ImportOceanGKEClusterOutput, error) {
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return clustersImportFromJSON(body)
 }
 
 func (s *ServiceOp) ListClusters(ctx context.Context, input *ListClustersInput) (*ListClustersOutput, error) {
@@ -370,6 +443,35 @@ func (s *ServiceOp) DeleteCluster(ctx context.Context, input *DeleteClusterInput
 	return &DeleteClusterOutput{}, nil
 }
 
+// ImportOceanGKECluster imports an existing Ocean GKE cluster into Elastigroup.
+func (s *ServiceOp) ImportOceanGKECluster(ctx context.Context, input *ImportOceanGKEClusterInput) (*ImportOceanGKEClusterOutput, error) {
+	r := client.NewRequest(http.MethodPost, "/ocean/gcp/k8s/cluster/gke/import")
+
+	r.Params["location"] = []string{spotinst.StringValue(input.Location)}
+	r.Params["clusterName"] = []string{spotinst.StringValue(input.ClusterName)}
+
+	body := &ImportOceanGKEClusterInput{Cluster: input.Cluster}
+	r.Obj = body
+
+	resp, err := client.RequireOK(s.Client.Do(ctx, r))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	gs, err := clustersImportFromHttpResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	output := new(ImportOceanGKEClusterOutput)
+	if len(gs) > 0 {
+		output = gs[0]
+	}
+
+	return output, nil
+}
+
 // region Cluster
 
 func (o Cluster) MarshalJSON() ([]byte, error) {
@@ -406,6 +508,13 @@ func (o *Cluster) SetCapacity(v *Capacity) *Cluster {
 	return o
 }
 
+func (o *Cluster) SetStrategy(v *Strategy) *Cluster {
+	if o.Strategy = v; o.Strategy == nil {
+		o.nullFields = append(o.nullFields, "Strategy")
+	}
+	return o
+}
+
 func (o *Cluster) SetCompute(v *Compute) *Cluster {
 	if o.Compute = v; o.Compute == nil {
 		o.nullFields = append(o.nullFields, "Compute")
@@ -423,6 +532,13 @@ func (o *Cluster) SetAutoScaler(v *AutoScaler) *Cluster {
 func (o *Cluster) SetGKE(v *GKE) *Cluster {
 	if o.GKE = v; o.GKE == nil {
 		o.nullFields = append(o.nullFields, "GKE")
+	}
+	return o
+}
+
+func (o *Cluster) SetScheduling(v *Scheduling) *Cluster {
+	if o.Scheduling = v; o.Scheduling == nil {
+		o.nullFields = append(o.nullFields, "Scheduling")
 	}
 	return o
 }
@@ -453,6 +569,30 @@ func (o *GKE) SetMasterLocation(v *string) *GKE {
 
 // endregion
 
+// region Import
+
+type ImportOceanGKECluster struct {
+	InstanceTypes   *InstanceTypes    `json:"instanceTypes,omitempty"`
+	BackendServices []*BackendService `json:"backendServices,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ImportOceanGKEClusterInput struct {
+	ClusterName        *string                `json:"clusterName,omitempty"`
+	Location           *string                `json:"location,omitempty"`
+	NodePoolName       *string                `json:"nodePoolName,omitempty"`
+	IncludeLaunchSpecs *string                `json:"includeLaunchSpecs,omitempty"`
+	Cluster            *ImportOceanGKECluster `json:"cluster,omitempty"`
+}
+
+type ImportOceanGKEClusterOutput struct {
+	Cluster *Cluster `json:"cluster,omitempty"`
+}
+
+// endregion
+
 // region Capacity
 
 func (o Capacity) MarshalJSON() ([]byte, error) {
@@ -478,6 +618,109 @@ func (o *Capacity) SetMaximum(v *int) *Capacity {
 func (o *Capacity) SetTarget(v *int) *Capacity {
 	if o.Target = v; o.Target == nil {
 		o.nullFields = append(o.nullFields, "Target")
+	}
+	return o
+}
+
+// endregion
+
+// region Scheduling
+
+func (o Scheduling) MarshalJSON() ([]byte, error) {
+	type noMethod Scheduling
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *Scheduling) SetShutdownHours(v *ShutdownHours) *Scheduling {
+	if o.ShutdownHours = v; o.ShutdownHours == nil {
+		o.nullFields = append(o.nullFields, "ShutdownHours")
+	}
+	return o
+}
+
+func (o *Scheduling) SetTasks(v []*Task) *Scheduling {
+	if o.Tasks = v; o.Tasks == nil {
+		o.nullFields = append(o.nullFields, "Tasks")
+	}
+	return o
+}
+
+// endregion
+
+// region Tasks
+
+func (o Task) MarshalJSON() ([]byte, error) {
+	type noMethod Task
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *Task) SetIsEnabled(v *bool) *Task {
+	if o.IsEnabled = v; o.IsEnabled == nil {
+		o.nullFields = append(o.nullFields, "IsEnabled")
+	}
+	return o
+}
+
+func (o *Task) SetType(v *string) *Task {
+	if o.Type = v; o.Type == nil {
+		o.nullFields = append(o.nullFields, "Type")
+	}
+	return o
+}
+
+func (o *Task) SetCronExpression(v *string) *Task {
+	if o.CronExpression = v; o.CronExpression == nil {
+		o.nullFields = append(o.nullFields, "CronExpression")
+	}
+	return o
+}
+
+func (o *Task) SetBatchSizePercentage(v *int) *Task {
+	if o.BatchSizePercentage = v; o.BatchSizePercentage == nil {
+		o.nullFields = append(o.nullFields, "BatchSizePercentage")
+	}
+	return o
+}
+
+// endregion
+
+// region ShutdownHours
+
+func (o ShutdownHours) MarshalJSON() ([]byte, error) {
+	type noMethod ShutdownHours
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ShutdownHours) SetIsEnabled(v *bool) *ShutdownHours {
+	if o.IsEnabled = v; o.IsEnabled == nil {
+		o.nullFields = append(o.nullFields, "IsEnabled")
+	}
+	return o
+}
+
+func (o *ShutdownHours) SetTimeWindows(v []string) *ShutdownHours {
+	if o.TimeWindows = v; o.TimeWindows == nil {
+		o.nullFields = append(o.nullFields, "TimeWindows")
+	}
+	return o
+}
+
+// endregion
+
+// region Strategy
+
+func (o Strategy) MarshalJSON() ([]byte, error) {
+	type noMethod Strategy
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *Strategy) SetDrainingTimeout(v *int) *Strategy {
+	if o.DrainingTimeout = v; o.DrainingTimeout == nil {
+		o.nullFields = append(o.nullFields, "DrainingTimeout")
 	}
 	return o
 }
@@ -554,11 +797,11 @@ func (o LaunchSpecification) MarshalJSON() ([]byte, error) {
 	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
 }
 
-func (o *LaunchSpecification) SetBackendServices(v []*BackendService) *LaunchSpecification {
-	if o.BackendServices = v; o.BackendServices == nil {
-		o.nullFields = append(o.nullFields, "BackendServices")
+func (c *Compute) SetBackendServices(v []*BackendService) *Compute {
+	if c.BackendServices = v; c.BackendServices == nil {
+		c.nullFields = append(c.nullFields, "BackendServices")
 	}
-	return o
+	return c
 }
 
 func (o *LaunchSpecification) SetLabels(v []*Label) *LaunchSpecification {
@@ -728,6 +971,13 @@ func (o *NetworkInterface) SetNetwork(v *string) *NetworkInterface {
 	return o
 }
 
+func (o *NetworkInterface) SetProjectId(v *string) *NetworkInterface {
+	if o.ProjectID = v; o.ProjectID == nil {
+		o.nullFields = append(o.nullFields, "ProjectID")
+	}
+	return o
+}
+
 // endregion
 
 // region AliasIPRange
@@ -803,6 +1053,13 @@ func (o *AutoScaler) SetIsAutoConfig(v *bool) *AutoScaler {
 func (o *AutoScaler) SetCooldown(v *int) *AutoScaler {
 	if o.Cooldown = v; o.Cooldown == nil {
 		o.nullFields = append(o.nullFields, "Cooldown")
+	}
+	return o
+}
+
+func (o *AutoScaler) SetAutoHeadroomPercentage(v *int) *AutoScaler {
+	if o.AutoHeadroomPercentage = v; o.AutoHeadroomPercentage == nil {
+		o.nullFields = append(o.nullFields, "AutoHeadroomPercentage")
 	}
 	return o
 }
@@ -904,6 +1161,13 @@ func (o AutoScalerDown) MarshalJSON() ([]byte, error) {
 func (o *AutoScalerDown) SetEvaluationPeriods(v *int) *AutoScalerDown {
 	if o.EvaluationPeriods = v; o.EvaluationPeriods == nil {
 		o.nullFields = append(o.nullFields, "EvaluationPeriods")
+	}
+	return o
+}
+
+func (o *AutoScalerDown) SetMaxScaleDownPercentage(v *float64) *AutoScalerDown {
+	if o.MaxScaleDownPercentage = v; o.MaxScaleDownPercentage == nil {
+		o.nullFields = append(o.nullFields, "MaxScaleDownPercentage")
 	}
 	return o
 }
