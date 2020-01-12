@@ -28,6 +28,7 @@ import (
 	"github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/aws"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/client"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/util/stringutil"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"k8s.io/kops/pkg/resources/spotinst"
@@ -80,6 +81,7 @@ type AutoScalerOpts struct {
 	Enabled   *bool
 	ClusterID *string
 	Labels    map[string]string
+	Taints    []corev1.Taint
 	Headroom  *AutoScalerHeadroomOpts
 	Down      *AutoScalerDownOpts
 }
@@ -274,7 +276,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 			// EBS optimization.
 			{
-				if lc.EBSOptimized != nil {
+				if fi.BoolValue(lc.EBSOptimized) {
 					if actual.RootVolumeOpts == nil {
 						actual.RootVolumeOpts = new(RootVolumeOpts)
 					}
@@ -286,18 +288,22 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 		// User data.
 		{
+			var userData []byte
+
 			if lc.UserData != nil {
-				userData, err := base64.StdEncoding.DecodeString(fi.StringValue(lc.UserData))
+				userData, err = base64.StdEncoding.DecodeString(fi.StringValue(lc.UserData))
 				if err != nil {
 					return nil, err
 				}
-				actual.UserData = fi.WrapResource(fi.NewStringResource(string(userData)))
 			}
+
+			actual.UserData = fi.WrapResource(fi.NewStringResource(string(userData)))
 		}
 
 		// Network interfaces.
 		{
 			associatePublicIP := false
+
 			if lc.NetworkInterfaces != nil && len(lc.NetworkInterfaces) > 0 {
 				for _, iface := range lc.NetworkInterfaces {
 					if fi.BoolValue(iface.AssociatePublicIPAddress) {
@@ -306,6 +312,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 					}
 				}
 			}
+
 			actual.AssociatePublicIP = fi.Bool(associatePublicIP)
 		}
 
@@ -367,11 +374,19 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 				// Headroom.
 				if headroom := integration.AutoScale.Headroom; headroom != nil {
-					actual.AutoScalerOpts.Headroom = &AutoScalerHeadroomOpts{
-						CPUPerUnit: headroom.CPUPerUnit,
-						GPUPerUnit: headroom.GPUPerUnit,
-						MemPerUnit: headroom.MemoryPerUnit,
-						NumOfUnits: headroom.NumOfUnits,
+					actual.AutoScalerOpts.Headroom = new(AutoScalerHeadroomOpts)
+
+					if v := fi.IntValue(headroom.CPUPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.CPUPerUnit = headroom.CPUPerUnit
+					}
+					if v := fi.IntValue(headroom.GPUPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.GPUPerUnit = headroom.GPUPerUnit
+					}
+					if v := fi.IntValue(headroom.MemoryPerUnit); v > 0 {
+						actual.AutoScalerOpts.Headroom.MemPerUnit = headroom.MemoryPerUnit
+					}
+					if v := fi.IntValue(headroom.NumOfUnits); v > 0 {
+						actual.AutoScalerOpts.Headroom.NumOfUnits = headroom.NumOfUnits
 					}
 				}
 
@@ -537,8 +552,11 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 					if err != nil {
 						return err
 					}
-					encoded := base64.StdEncoding.EncodeToString([]byte(userData))
-					group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+
+					if len(userData) > 0 {
+						encoded := base64.StdEncoding.EncodeToString([]byte(userData))
+						group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+					}
 				}
 			}
 
@@ -858,22 +876,25 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			// User data.
 			{
 				if changes.UserData != nil {
-					if group.Compute == nil {
-						group.Compute = new(aws.Compute)
-					}
-					if group.Compute.LaunchSpecification == nil {
-						group.Compute.LaunchSpecification = new(aws.LaunchSpecification)
-					}
-
 					userData, err := e.UserData.AsString()
 					if err != nil {
 						return err
 					}
-					encoded := base64.StdEncoding.EncodeToString([]byte(userData))
 
-					group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+					if len(userData) > 0 {
+						if group.Compute == nil {
+							group.Compute = new(aws.Compute)
+						}
+						if group.Compute.LaunchSpecification == nil {
+							group.Compute.LaunchSpecification = new(aws.LaunchSpecification)
+						}
+
+						encoded := base64.StdEncoding.EncodeToString([]byte(userData))
+						group.Compute.LaunchSpecification.SetUserData(fi.String(encoded))
+						changed = true
+					}
+
 					changes.UserData = nil
-					changed = true
 				}
 			}
 
@@ -1156,7 +1177,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 						MemoryPerUnit: e.AutoScalerOpts.Headroom.MemPerUnit,
 						NumOfUnits:    e.AutoScalerOpts.Headroom.NumOfUnits,
 					}
-				} else if a.AutoScalerOpts.Headroom != nil {
+				} else if a.AutoScalerOpts != nil && a.AutoScalerOpts.Headroom != nil {
 					autoScaler.IsAutoConfig = fi.Bool(true)
 					autoScaler.SetHeadroom(nil)
 				}
