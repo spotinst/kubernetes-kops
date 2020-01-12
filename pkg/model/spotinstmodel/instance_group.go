@@ -29,6 +29,7 @@ import (
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/cloudup/awstasks"
 	"k8s.io/kops/upup/pkg/fi/cloudup/spotinsttasks"
+	utiltaints "k8s.io/kubernetes/pkg/util/taints"
 )
 
 const (
@@ -270,9 +271,13 @@ func (b *InstanceGroupModelBuilder) buildElastigroup(c *fi.ModelBuilderContext, 
 	}
 
 	// Auto Scaler.
-	group.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
+	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
+	}
+	if autoScalerOpts != nil {
+		group.AutoScalerOpts = autoScalerOpts
+		group.AutoScalerOpts.Taints = nil // not supported in Elastigroup
 	}
 
 	klog.V(4).Infof("Adding task: Elastigroup/%s", fi.StringValue(group.Name))
@@ -380,11 +385,14 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 	}
 
 	// Root volume.
-	ocean.RootVolumeOpts, err = b.buildRootVolumeOpts(ig)
+	rootVolumeOpts, err := b.buildRootVolumeOpts(ig)
 	if err != nil {
 		return fmt.Errorf("error building root volume options: %v", err)
 	}
-	ocean.RootVolumeOpts.Type = nil // unsupported
+	if rootVolumeOpts != nil {
+		ocean.RootVolumeOpts = rootVolumeOpts
+		ocean.RootVolumeOpts.Type = nil // not supported in Ocean
+	}
 
 	// Security groups.
 	ocean.SecurityGroups, err = b.buildSecurityGroups(c, ig)
@@ -417,9 +425,14 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 	}
 
 	// Auto Scaler.
-	ocean.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
+	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
+	}
+	if autoScalerOpts != nil {
+		ocean.AutoScalerOpts = autoScalerOpts
+		ocean.AutoScalerOpts.Labels = nil // not supported in Ocean
+		ocean.AutoScalerOpts.Taints = nil // not supported in Ocean
 	}
 
 	// Create a Launch Spec for each instance group.
@@ -470,12 +483,19 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 		return fmt.Errorf("error building security groups: %v", err)
 	}
 
-	// Labels.
-	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
+	// Subnets.
+	launchSpec.Subnets, err = b.buildSubnets(ig)
+	if err != nil {
+		return fmt.Errorf("error building subnets: %v", err)
+	}
+
+	// Auto Scaler.
+	launchSpec.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
 	}
-	launchSpec.Labels = autoScalerOpts.Labels
+	launchSpec.AutoScalerOpts.ClusterID = nil // not supported in LaunchSpec
+	launchSpec.AutoScalerOpts.Enabled = nil   // not supported in LaunchSpec
 
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
 	c.AddTask(launchSpec)
@@ -564,8 +584,14 @@ func (b *InstanceGroupModelBuilder) buildPublicIpOpts(ig *kops.InstanceGroup) (*
 
 func (b *InstanceGroupModelBuilder) buildRootVolumeOpts(ig *kops.InstanceGroup) (*spotinsttasks.RootVolumeOpts, error) {
 	opts := &spotinsttasks.RootVolumeOpts{
-		IOPS:         ig.Spec.RootVolumeIops,
-		Optimization: ig.Spec.RootVolumeOptimization,
+		IOPS: ig.Spec.RootVolumeIops,
+	}
+
+	// Optimization.
+	{
+		if fi.BoolValue(ig.Spec.RootVolumeOptimization) {
+			opts.Optimization = ig.Spec.RootVolumeOptimization
+		}
 	}
 
 	// Size.
@@ -731,18 +757,25 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 		}
 	}
 
-	// Set the node labels.
-	if fi.BoolValue(opts.Enabled) {
-		labels := make(map[string]string)
-		for k, v := range ig.Spec.NodeLabels {
-			if strings.HasPrefix(k, kops.NodeLabelInstanceGroup) && !defaultNodeLabels {
-				continue
-			}
-			labels[k] = v
+	// Configure node labels.
+	labels := make(map[string]string)
+	for k, v := range ig.Spec.NodeLabels {
+		if strings.HasPrefix(k, kops.NodeLabelInstanceGroup) && !defaultNodeLabels {
+			continue
 		}
-		if len(labels) > 0 {
-			opts.Labels = labels
-		}
+		labels[k] = v
+	}
+	if len(labels) > 0 {
+		opts.Labels = labels
+	}
+
+	// Configure node taints.
+	taints, _, err := utiltaints.ParseTaints(ig.Spec.Taints)
+	if err != nil {
+		return nil, err
+	}
+	if len(taints) > 0 {
+		opts.Taints = taints
 	}
 
 	return opts, nil
