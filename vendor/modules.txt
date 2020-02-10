@@ -371,7 +371,7 @@ github.com/spf13/jwalterweatherman
 github.com/spf13/pflag
 # github.com/spf13/viper v0.0.0-20160820190039-7fb2782df3d8
 github.com/spf13/viper
-# github.com/spotinst/spotinst-sdk-go v1.39.1
+# github.com/spotinst/spotinst-sdk-go v1.41.0
 github.com/spotinst/spotinst-sdk-go/service/elastigroup
 github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/aws
 github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/azure
@@ -838,6 +838,8 @@ k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/util/proto/validation
 # k8s.io/kubernetes v1.15.3 => k8s.io/kubernetes v1.15.3
+k8s.io/kubernetes/pkg/apis/core
+k8s.io/kubernetes/pkg/apis/core/helper
 k8s.io/kubernetes/pkg/client/metrics/prometheus
 k8s.io/kubernetes/pkg/kubectl
 k8s.io/kubernetes/pkg/kubectl/apps
@@ -868,6 +870,7 @@ k8s.io/kubernetes/pkg/kubectl/util/term
 k8s.io/kubernetes/pkg/kubectl/validation
 k8s.io/kubernetes/pkg/kubectl/version
 k8s.io/kubernetes/pkg/util/mount
+k8s.io/kubernetes/pkg/util/taints
 k8s.io/kubernetes/pkg/volume/util/nsenter
 # k8s.io/legacy-cloud-providers v0.0.0 => k8s.io/legacy-cloud-providers v0.0.0-20190819145509-592c9a46fd00
 k8s.io/legacy-cloud-providers/aws
