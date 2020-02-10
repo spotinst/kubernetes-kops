@@ -1042,7 +1042,7 @@
   revision = "7fb2782df3d83e0036cc89f461ed0422628776f4"
 
 [[projects]]
-  digest = "1:9303b820685d46046d54aee860adabdbde9d88740fe11137df1e2d9cb49a7775"
+  digest = "1:806b65fec8270f6418e601ddfa3c19ff837884fcc52f3e34c0f82f1410ee31a5"
   name = "github.com/spotinst/spotinst-sdk-go"
   packages = [
     "service/elastigroup",
@@ -1063,8 +1063,8 @@
     "spotinst/util/useragent",
   ]
   pruneopts = "UT"
-  revision = "aaf5a05026fe73ec73d5c7b5d0a84db11f1d187a"
-  version = "v1.39.1"
+  revision = "fe93aabcb327593533f607957707670bc069cc52"
+  version = "v1.41.0"
 
 [[projects]]
   digest = "1:67ba0f5b63fa937e1e78273904a1fa0f7c2358c4dac967ac16e678f8e50e8aa5"
@@ -2230,6 +2230,7 @@
     "k8s.io/kubernetes/pkg/kubectl/util/templates",
     "k8s.io/kubernetes/pkg/util/mount",
     "k8s.io/kubernetes/pkg/util/nsenter",
+    "k8s.io/kubernetes/pkg/util/taints",
     "k8s.io/utils/exec",
   ]
   solver-name = "gps-cdcl"
