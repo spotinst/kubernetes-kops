@@ -19,10 +19,11 @@ package model
 import (
 	"bytes"
 	"fmt"
-	"k8s.io/kops/util/pkg/proxy"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"k8s.io/kops/util/pkg/proxy"
 
 	kopsbase "k8s.io/kops"
 	"k8s.io/kops/pkg/apis/kops"
