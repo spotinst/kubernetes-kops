@@ -1179,6 +1179,16 @@ func RunCreateCluster(f *util.Factory, out io.Writer, c *CreateClusterOptions) e
 		if cluster.Spec.Kubelet.AnonymousAuth == nil {
 			cluster.Spec.Kubelet.AnonymousAuth = fi.Bool(false)
 		}
+
+		// Set AuthenticationTokenWebhook and AuthorizationMode so that
+		// metrics-server and HPA are able to operate correctly.
+		if cluster.Spec.Kubelet.AuthenticationTokenWebhook == nil {
+			cluster.Spec.Kubelet.AuthenticationTokenWebhook = fi.Bool(true)
+		}
+
+		if cluster.Spec.Kubelet.AuthorizationMode == "" {
+			cluster.Spec.Kubelet.AuthorizationMode = "Webhook"
+		}
 	}
 
 	// Populate the API access, so that it can be discoverable
