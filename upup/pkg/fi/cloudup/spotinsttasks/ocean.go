@@ -47,7 +47,8 @@ type Ocean struct {
 	SpotPercentage           *float64
 	UtilizeReservedInstances *bool
 	FallbackToOnDemand       *bool
-	InstanceTypes            []string
+	InstanceTypesWhitelist   []string
+	InstanceTypesBlacklist   []string
 	Tags                     map[string]string
 	UserData                 *fi.ResourceHolder
 	ImageID                  *string
@@ -167,8 +168,14 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 		// Instance types.
 		{
 			if itypes := compute.InstanceTypes; itypes != nil {
-				if itypes.Whitelist != nil && len(itypes.Whitelist) > 0 {
-					actual.InstanceTypes = itypes.Whitelist
+				// Whitelist.
+				if len(itypes.Whitelist) > 0 {
+					actual.InstanceTypesWhitelist = itypes.Whitelist
+				}
+
+				// Blacklist.
+				if len(itypes.Blacklist) > 0 {
+					actual.InstanceTypesBlacklist = itypes.Blacklist
 				}
 			}
 		}
@@ -362,6 +369,25 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 					subnetIDs[i] = fi.StringValue(subnet.ID)
 				}
 				ocean.Compute.SetSubnetIDs(subnetIDs)
+			}
+		}
+
+		// Instance types.
+		{
+			itypes := new(aws.InstanceTypes)
+
+			// Whitelist.
+			if e.InstanceTypesWhitelist != nil {
+				itypes.SetWhitelist(e.InstanceTypesWhitelist)
+			}
+
+			// Blacklist.
+			if e.InstanceTypesBlacklist != nil {
+				itypes.SetBlacklist(e.InstanceTypesBlacklist)
+			}
+
+			if len(itypes.Whitelist) > 0 || len(itypes.Blacklist) > 0 {
+				ocean.Compute.SetInstanceTypes(itypes)
 			}
 		}
 
@@ -590,17 +616,36 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 
 		// Instance types.
 		{
-			if changes.InstanceTypes != nil {
-				if ocean.Compute == nil {
-					ocean.Compute = new(aws.Compute)
-				}
-				if ocean.Compute.InstanceTypes == nil {
-					ocean.Compute.InstanceTypes = new(aws.InstanceTypes)
-				}
+			// Whitelist.
+			{
+				if changes.InstanceTypesWhitelist != nil {
+					if ocean.Compute == nil {
+						ocean.Compute = new(aws.Compute)
+					}
+					if ocean.Compute.InstanceTypes == nil {
+						ocean.Compute.InstanceTypes = new(aws.InstanceTypes)
+					}
 
-				ocean.Compute.InstanceTypes.SetWhitelist(e.InstanceTypes)
-				changes.InstanceTypes = nil
-				changed = true
+					ocean.Compute.InstanceTypes.SetWhitelist(e.InstanceTypesWhitelist)
+					changes.InstanceTypesWhitelist = nil
+					changed = true
+				}
+			}
+
+			// Blacklist.
+			{
+				if changes.InstanceTypesBlacklist != nil {
+					if ocean.Compute == nil {
+						ocean.Compute = new(aws.Compute)
+					}
+					if ocean.Compute.InstanceTypes == nil {
+						ocean.Compute.InstanceTypes = new(aws.InstanceTypes)
+					}
+
+					ocean.Compute.InstanceTypes.SetBlacklist(e.InstanceTypesBlacklist)
+					changes.InstanceTypesBlacklist = nil
+					changed = true
+				}
 			}
 		}
 
@@ -878,13 +923,15 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 }
 
 type terraformOcean struct {
-	Name                *string              `json:"name,omitempty"`
-	ControllerClusterID *string              `json:"controller_id,omitempty"`
-	Region              *string              `json:"region,omitempty"`
-	SubnetIDs           []*terraform.Literal `json:"subnet_ids,omitempty"`
-	AutoScaler          *terraformAutoScaler `json:"autoscaler,omitempty"`
-	Tags                []*terraformKV       `json:"tags,omitempty"`
-	Lifecycle           *terraformLifecycle  `json:"lifecycle,omitempty"`
+	Name                   *string              `json:"name,omitempty"`
+	ControllerClusterID    *string              `json:"controller_id,omitempty"`
+	Region                 *string              `json:"region,omitempty"`
+	InstanceTypesWhitelist []string             `json:"whitelist,omitempty"`
+	InstanceTypesBlacklist []string             `json:"blacklist,omitempty"`
+	SubnetIDs              []*terraform.Literal `json:"subnet_ids,omitempty"`
+	AutoScaler             *terraformAutoScaler `json:"autoscaler,omitempty"`
+	Tags                   []*terraformKV       `json:"tags,omitempty"`
+	Lifecycle              *terraformLifecycle  `json:"lifecycle,omitempty"`
 
 	*terraformOceanCapacity
 	*terraformOceanStrategy
@@ -1023,6 +1070,19 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 					return err
 				}
 			}
+		}
+	}
+
+	// Instance types.
+	{
+		// Whitelist.
+		if e.InstanceTypesWhitelist != nil {
+			tf.InstanceTypesWhitelist = e.InstanceTypesWhitelist
+		}
+
+		// Blacklist.
+		if e.InstanceTypesBlacklist != nil {
+			tf.InstanceTypesBlacklist = e.InstanceTypesBlacklist
 		}
 	}
 
