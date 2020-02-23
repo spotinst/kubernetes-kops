@@ -963,6 +963,7 @@ type terraformOceanLaunchSpec struct {
 	SecurityGroups           []*terraform.Literal           `json:"security_groups,omitempty"`
 	Taints                   []corev1.Taint                 `json:"taints,omitempty"`
 	Labels                   []*terraformKV                 `json:"labels,omitempty"`
+	Tags                     []*terraformKV                 `json:"tags,omitempty"`
 	Headrooms                []*terraformAutoScalerHeadroom `json:"autoscale_headrooms,omitempty"`
 }
 
