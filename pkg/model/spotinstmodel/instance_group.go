@@ -507,6 +507,12 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 		return fmt.Errorf("error building subnets: %v", err)
 	}
 
+	// Tags.
+	launchSpec.Tags, err = b.buildTags(ig)
+	if err != nil {
+		return fmt.Errorf("error building cloud tags: %v", err)
+	}
+
 	// Auto Scaler.
 	launchSpec.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
