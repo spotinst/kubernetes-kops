@@ -23,6 +23,8 @@ type LaunchSpec struct {
 	IAMInstanceProfile *IAMInstanceProfile `json:"iamInstanceProfile,omitempty"`
 	Labels             []*Label            `json:"labels,omitempty"`
 	Taints             []*Taint            `json:"taints,omitempty"`
+	AutoScale          *AutoScale          `json:"autoScale,omitempty"`
+	Tags               []*Tag              `json:"tags,omitempty"`
 
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -383,6 +385,68 @@ func (o *Taint) SetValue(v *string) *Taint {
 func (o *Taint) SetEffect(v *string) *Taint {
 	if o.Effect = v; o.Effect == nil {
 		o.nullFields = append(o.nullFields, "Effect")
+	}
+	return o
+}
+
+// endregion
+
+//region AutoScale
+
+func (o AutoScale) MarshalJSON() ([]byte, error) {
+	type noMethod AutoScale
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *AutoScale) SetHeadrooms(v []*AutoScaleHeadroom) *AutoScale {
+	if o.Headrooms = v; o.Headrooms == nil {
+		o.nullFields = append(o.nullFields, "Headrooms")
+	}
+	return o
+}
+
+//endregion
+
+// region AutoScaleHeadroom
+
+func (o AutoScaleHeadroom) MarshalJSON() ([]byte, error) {
+	type noMethod AutoScaleHeadroom
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *AutoScaleHeadroom) SetCPUPerUnit(v *int) *AutoScaleHeadroom {
+	if o.CPUPerUnit = v; o.CPUPerUnit == nil {
+		o.nullFields = append(o.nullFields, "CPUPerUnit")
+	}
+	return o
+}
+
+func (o *AutoScaleHeadroom) SetGPUPerUnit(v *int) *AutoScaleHeadroom {
+	if o.GPUPerUnit = v; o.GPUPerUnit == nil {
+		o.nullFields = append(o.nullFields, "GPUPerUnit")
+	}
+	return o
+}
+
+func (o *AutoScaleHeadroom) SetMemoryPerUnit(v *int) *AutoScaleHeadroom {
+	if o.MemoryPerUnit = v; o.MemoryPerUnit == nil {
+		o.nullFields = append(o.nullFields, "MemoryPerUnit")
+	}
+	return o
+}
+
+func (o *AutoScaleHeadroom) SetNumOfUnits(v *int) *AutoScaleHeadroom {
+	if o.NumOfUnits = v; o.NumOfUnits == nil {
+		o.nullFields = append(o.nullFields, "NumOfUnits")
+	}
+	return o
+}
+
+func (o *LaunchSpec) SetTags(v []*Tag) *LaunchSpec {
+	if o.Tags = v; o.Tags == nil {
+		o.nullFields = append(o.nullFields, "Tags")
 	}
 	return o
 }

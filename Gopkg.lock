@@ -1074,7 +1074,7 @@
   revision = "7fb2782df3d83e0036cc89f461ed0422628776f4"
 
 [[projects]]
-  digest = "1:5b1d6f72a493af6d6b50f621f3858f37ee98ae3806c1ee1854c9fc2d6165d22f"
+  digest = "1:3ceffa84b9f1094dedd641d487cfb27893b148aea762e22f80becb978f38729d"
   name = "github.com/spotinst/spotinst-sdk-go"
   packages = [
     "service/elastigroup",
@@ -1094,7 +1094,8 @@
     "spotinst/util/uritemplates",
   ]
   pruneopts = "UT"
-  revision = "eb52d7ac273ca0ed2737561911e9eedd55f8fdaa"
+  revision = "e4c64a1bae600c505c48fd31e88cbe9a21e4ddc3"
+  version = "v1.43.0"
 
 [[projects]]
   digest = "1:67ba0f5b63fa937e1e78273904a1fa0f7c2358c4dac967ac16e678f8e50e8aa5"

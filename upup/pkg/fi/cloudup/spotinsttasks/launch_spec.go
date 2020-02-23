@@ -45,6 +45,7 @@ type LaunchSpec struct {
 	Subnets            []*awstasks.Subnet
 	IAMInstanceProfile *awstasks.IAMInstanceProfile
 	ImageID            *string
+	Tags               map[string]string
 	AutoScalerOpts     *AutoScalerOpts
 
 	Ocean *Ocean
@@ -189,6 +190,16 @@ func (o *LaunchSpec) Find(c *fi.Context) (*LaunchSpec, error) {
 			}
 			if subnetSlicesEqualIgnoreOrder(actual.Subnets, o.Subnets) {
 				actual.Subnets = o.Subnets
+			}
+		}
+	}
+
+	// Tags.
+	{
+		if len(spec.Tags) > 0 {
+			actual.Tags = make(map[string]string)
+			for _, tag := range spec.Tags {
+				actual.Tags[fi.StringValue(tag.Key)] = fi.StringValue(tag.Value)
 			}
 		}
 	}
@@ -347,6 +358,13 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 		}
 	}
 
+	// Tags.
+	{
+		if e.Tags != nil {
+			spec.SetTags(e.buildTags())
+		}
+	}
+
 	// Auto Scaler.
 	{
 		if opts := e.AutoScalerOpts; opts != nil {
@@ -491,6 +509,15 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 
 			spec.SetSubnetIDs(subnetIDs)
 			changes.Subnets = nil
+			changed = true
+		}
+	}
+
+	// Tags.
+	{
+		if changes.Tags != nil {
+			spec.SetTags(e.buildTags())
+			changes.Tags = nil
 			changed = true
 		}
 	}
@@ -660,6 +687,18 @@ func (_ *LaunchSpec) RenderTerraform(t *terraform.TerraformTarget, a, e, changes
 		}
 	}
 
+	// Tags.
+	{
+		if e.Tags != nil {
+			for _, tag := range e.buildTags() {
+				tf.Tags = append(tf.Tags, &terraformKV{
+					Key:   tag.Key,
+					Value: tag.Value,
+				})
+			}
+		}
+	}
+
 	// Auto Scaler.
 	{
 		if opts := e.AutoScalerOpts; opts != nil {
@@ -717,4 +756,17 @@ func (_ *LaunchSpec) RenderTerraform(t *terraform.TerraformTarget, a, e, changes
 
 func (o *LaunchSpec) TerraformLink() *terraform.Literal {
 	return terraform.LiteralProperty("spotinst_ocean_aws_launch_spec", *o.Name, "id")
+}
+
+func (o *LaunchSpec) buildTags() []*aws.Tag {
+	tags := make([]*aws.Tag, 0, len(o.Tags))
+
+	for key, value := range o.Tags {
+		tags = append(tags, &aws.Tag{
+			Key:   fi.String(key),
+			Value: fi.String(value),
+		})
+	}
+
+	return tags
 }
