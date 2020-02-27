@@ -88,9 +88,10 @@ require (
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20180422025557-ae226422660e
 	github.com/ghodss/yaml v0.0.0-20180820084758-c7ce16629ff4
-	github.com/go-ini/ini v1.25.4
-	github.com/gogo/protobuf v0.0.0-20171007142547-342cbe0a0415
-	github.com/golang/protobuf v1.2.0
+	github.com/go-ini/ini v1.51.0
+	github.com/go-logr/logr v0.1.0
+	github.com/gogo/protobuf v1.1.1
+	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190216224116-dcc6e84aef1b
 	github.com/gorilla/mux v1.7.0
@@ -107,9 +108,9 @@ require (
 	github.com/pkg/sftp v0.0.0-20160930220758-4d0e916071f6
 	github.com/prometheus/client_golang v0.9.2
 	github.com/sergi/go-diff v0.0.0-20161102184045-552b4e9bbdca
-	github.com/spf13/cobra v0.0.0-20180319062004-c439c4fa0937
-	github.com/spf13/pflag v1.0.1
-	github.com/spf13/viper v0.0.0-20160820190039-7fb2782df3d8
+	github.com/spf13/cobra v0.0.5
+	github.com/spf13/pflag v1.0.3
+	github.com/spf13/viper v1.3.2
 	github.com/spotinst/spotinst-sdk-go v1.43.0
 	github.com/stretchr/testify v1.4.0
 	github.com/urfave/cli v1.20.0
