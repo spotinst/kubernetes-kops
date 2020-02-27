@@ -440,6 +440,7 @@ type ScalingPolicy struct {
 	Action            *Action      `json:"action,omitempty"`
 	Target            *float64     `json:"target,omitempty"`
 	IsEnabled         *bool        `json:"isEnabled,omitempty"`
+	Predictive        *Predictive  `json:"predictive,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -461,6 +462,13 @@ type Action struct {
 type Dimension struct {
 	Name  *string `json:"name,omitempty"`
 	Value *string `json:"value,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type Predictive struct {
+	Mode *string `json:"mode,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -688,9 +696,21 @@ type Instance struct {
 }
 
 type RollStrategy struct {
-	Action                    *string `json:"action,omitempty"`
-	ShouldDrainInstances      *bool   `json:"shouldDrainInstances,omitempty"`
-	BatchMinHealthyPercentage *int    `json:"batchMinHealthyPercentage,omitempty"`
+	Action                    *string    `json:"action,omitempty"`
+	ShouldDrainInstances      *bool      `json:"shouldDrainInstances,omitempty"`
+	BatchMinHealthyPercentage *int       `json:"batchMinHealthyPercentage,omitempty"`
+	OnFailure                 *OnFailure `json:"onFailure,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type OnFailure struct {
+	ActionType                    *string `json:"actionType,omitempty"`
+	ShouldHandleAllBatches        *bool   `json:"shouldHandleAllBatches,omitempty"`
+	BatchNum                      *int    `json:"batchNum,omitempty"`
+	DrainingTimeout               *int    `json:"drainingTimeout,omitempty"`
+	ShouldDecrementTargetCapacity *bool   `json:"shouldDecrementTargetCapacity,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -839,12 +859,26 @@ type DeploymentStatusInput struct {
 	RollID  *string `json:"id,omitempty"`
 }
 
+type Roll struct {
+	Status *string `json:"status,omitempty"`
+}
+
 type RollGroupInput struct {
 	GroupID             *string       `json:"groupId,omitempty"`
 	BatchSizePercentage *int          `json:"batchSizePercentage,omitempty"`
 	GracePeriod         *int          `json:"gracePeriod,omitempty"`
 	HealthCheckType     *string       `json:"healthCheckType,omitempty"`
 	Strategy            *RollStrategy `json:"strategy,omitempty"`
+}
+
+type RollECSGroupInput struct {
+	GroupID *string         `json:"groupId,omitempty"`
+	Roll    *RollECSWrapper `json:"roll,omitempty"`
+}
+
+type RollECSWrapper struct {
+	BatchSizePercentage *int    `json:"batchSizePercentage,omitempty"`
+	Comment             *string `json:"comment,omitempty"`
 }
 
 type RollGroupOutput struct {
@@ -863,6 +897,14 @@ type Progress struct {
 	Unit  *string `json:"unit,omitempty"`
 	Value *int    `json:"value,omitempty"`
 }
+
+type StopDeploymentInput struct {
+	GroupID *string `json:"groupId,omitempty"`
+	RollID  *string `json:"id,omitempty"`
+	Roll    *Roll   `json:"roll,omitempty"`
+}
+
+type StopDeploymentOutput struct{}
 
 func deploymentStatusFromJSON(in []byte) (*RollGroupStatus, error) {
 	b := new(RollGroupStatus)
@@ -1222,6 +1264,59 @@ func (s *ServiceOp) DeploymentStatus(ctx context.Context, input *DeploymentStatu
 	return &RollGroupOutput{deployments}, nil
 }
 
+func (s *ServiceOp) DeploymentStatusECS(ctx context.Context, input *DeploymentStatusInput) (*RollGroupOutput, error) {
+	path, err := uritemplates.Expand("/aws/ec2/group/{groupId}/clusterRoll/{rollId}", uritemplates.Values{
+		"groupId": spotinst.StringValue(input.GroupID),
+		"rollId":  spotinst.StringValue(input.RollID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	r := client.NewRequest(http.MethodGet, path)
+
+	resp, err := client.RequireOK(s.Client.Do(ctx, r))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	deployments, err := deploymentStatusFromHttpResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RollGroupOutput{deployments}, nil
+}
+
+func (s *ServiceOp) StopDeployment(ctx context.Context, input *StopDeploymentInput) (*StopDeploymentOutput, error) {
+	path, err := uritemplates.Expand("/aws/ec2/group/{groupId}/roll/{rollId}", uritemplates.Values{
+		"groupId": spotinst.StringValue(input.GroupID),
+		"rollId":  spotinst.StringValue(input.RollID),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	input.GroupID = nil
+	input.RollID = nil
+
+	r := client.NewRequest(http.MethodPut, path)
+	input.Roll = &Roll{
+		Status: spotinst.String("STOPPED"),
+	}
+	r.Obj = input
+
+	resp, err := client.RequireOK(s.Client.Do(ctx, r))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return &StopDeploymentOutput{}, nil
+}
+
 func (s *ServiceOp) Detach(ctx context.Context, input *DetachGroupInput) (*DetachGroupOutput, error) {
 	path, err := uritemplates.Expand("/aws/ec2/group/{groupId}/detachInstances", uritemplates.Values{
 		"groupId": spotinst.StringValue(input.GroupID),
@@ -1257,6 +1352,34 @@ func (s *ServiceOp) Roll(ctx context.Context, input *RollGroupInput) (*RollGroup
 	input.GroupID = nil
 
 	r := client.NewRequest(http.MethodPut, path)
+	r.Obj = input
+
+	resp, err := client.RequireOK(s.Client.Do(ctx, r))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	deployments, err := deploymentStatusFromHttpResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RollGroupOutput{deployments}, nil
+}
+
+func (s *ServiceOp) RollECS(ctx context.Context, input *RollECSGroupInput) (*RollGroupOutput, error) {
+	path, err := uritemplates.Expand("/aws/ec2/group/{groupId}/clusterRoll", uritemplates.Values{
+		"groupId": spotinst.StringValue(input.GroupID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// We do not need the ID anymore so let's drop it.
+	input.GroupID = nil
+
+	r := client.NewRequest(http.MethodPost, path)
 	r.Obj = input
 
 	resp, err := client.RequireOK(s.Client.Do(ctx, r))
@@ -2641,6 +2764,13 @@ func (o *ScalingPolicy) SetDimensions(v []*Dimension) *ScalingPolicy {
 	return o
 }
 
+func (o *ScalingPolicy) SetPredictive(v *Predictive) *ScalingPolicy {
+	if o.Predictive = v; o.Predictive == nil {
+		o.nullFields = append(o.nullFields, "Predictive")
+	}
+	return o
+}
+
 func (o *ScalingPolicy) SetAction(v *Action) *ScalingPolicy {
 	if o.Action = v; o.Action == nil {
 		o.nullFields = append(o.nullFields, "Action")
@@ -2741,6 +2871,23 @@ func (o *Dimension) SetName(v *string) *Dimension {
 func (o *Dimension) SetValue(v *string) *Dimension {
 	if o.Value = v; o.Value == nil {
 		o.nullFields = append(o.nullFields, "Value")
+	}
+	return o
+}
+
+// endregion
+
+// region Predictive
+
+func (o *Predictive) MarshalJSON() ([]byte, error) {
+	type noMethod Predictive
+	raw := noMethod(*o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *Predictive) SetMode(v *string) *Predictive {
+	if o.Mode = v; o.Mode == nil {
+		o.nullFields = append(o.nullFields, "Mode")
 	}
 	return o
 }
@@ -3622,6 +3769,58 @@ func (o *RollStrategy) SetAction(v *string) *RollStrategy {
 func (o *RollStrategy) SetShouldDrainInstances(v *bool) *RollStrategy {
 	if o.ShouldDrainInstances = v; o.ShouldDrainInstances == nil {
 		o.nullFields = append(o.nullFields, "ShouldDrainInstances")
+	}
+	return o
+}
+
+func (o *RollStrategy) SetOnFailure(v *OnFailure) *RollStrategy {
+	if o.OnFailure = v; o.OnFailure == nil {
+		o.nullFields = append(o.nullFields, "OnFailure")
+	}
+	return o
+}
+
+// endregion
+
+// region RollStrategy
+
+func (o OnFailure) MarshalJSON() ([]byte, error) {
+	type noMethod OnFailure
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *OnFailure) SetActionType(v *string) *OnFailure {
+	if o.ActionType = v; o.ActionType == nil {
+		o.nullFields = append(o.nullFields, "ActionType")
+	}
+	return o
+}
+
+func (o *OnFailure) SetShouldHandleAllBatches(v *bool) *OnFailure {
+	if o.ShouldHandleAllBatches = v; o.ShouldHandleAllBatches == nil {
+		o.nullFields = append(o.nullFields, "ShouldHandleAllBatches")
+	}
+	return o
+}
+
+func (o *OnFailure) SetBatchNum(v *int) *OnFailure {
+	if o.BatchNum = v; o.BatchNum == nil {
+		o.nullFields = append(o.nullFields, "BatchNum")
+	}
+	return o
+}
+
+func (o *OnFailure) SetDrainingTimeout(v *int) *OnFailure {
+	if o.DrainingTimeout = v; o.DrainingTimeout == nil {
+		o.nullFields = append(o.nullFields, "DrainingTimeout")
+	}
+	return o
+}
+
+func (o *OnFailure) SetShouldDecrementTargetCapacity(v *bool) *OnFailure {
+	if o.ShouldDecrementTargetCapacity = v; o.ShouldDecrementTargetCapacity == nil {
+		o.nullFields = append(o.nullFields, "ShouldDecrementTargetCapacity")
 	}
 	return o
 }
