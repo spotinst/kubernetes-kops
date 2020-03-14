@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -240,18 +240,6 @@ func (o *LaunchSpec) Find(c *fi.Context) (*LaunchSpec, error) {
 					}
 				}
 			}
-		}
-	}
-
-	// Taints.
-	if spec.Taints != nil {
-		actual.Taints = make([]string, len(spec.Taints))
-
-		for i, taint := range spec.Taints {
-			actual.Taints[i] = fmt.Sprintf("%s=%s:%s",
-				fi.StringValue(taint.Key),
-				fi.StringValue(taint.Value),
-				fi.StringValue(taint.Effect))
 		}
 	}
 
@@ -728,25 +716,6 @@ func (_ *LaunchSpec) RenderTerraform(t *terraform.TerraformTarget, a, e, changes
 			// Taints.
 			if len(opts.Taints) > 0 {
 				tf.Taints = opts.Taints
-			}
-		}
-	}
-
-	// Taints.
-	{
-		if e.Taints != nil {
-			taints, err := buildOceanTaints(e.Taints)
-			if err != nil {
-				return err
-			}
-
-			tf.Taints = make([]*terraformOceanLaunchSpecTaint, 0, len(taints))
-			for _, taint := range taints {
-				tf.Taints = append(tf.Taints, &terraformOceanLaunchSpecTaint{
-					Key:    taint.Key,
-					Value:  taint.Value,
-					Effect: taint.Effect,
-				})
 			}
 		}
 	}

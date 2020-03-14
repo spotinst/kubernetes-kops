@@ -19,7 +19,9 @@ type LaunchSpec struct {
 	OceanID            *string             `json:"oceanId,omitempty"`
 	ImageID            *string             `json:"imageId,omitempty"`
 	UserData           *string             `json:"userData,omitempty"`
+	RootVolumeSize     *int                `json:"rootVolumeSize,omitempty"`
 	SecurityGroupIDs   []string            `json:"securityGroupIds,omitempty"`
+	SubnetIDs          []string            `json:"subnetIds,omitempty"`
 	IAMInstanceProfile *IAMInstanceProfile `json:"iamInstanceProfile,omitempty"`
 	Labels             []*Label            `json:"labels,omitempty"`
 	Taints             []*Taint            `json:"taints,omitempty"`
@@ -59,6 +61,23 @@ type Taint struct {
 	Key    *string `json:"key,omitempty"`
 	Value  *string `json:"value,omitempty"`
 	Effect *string `json:"effect,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type AutoScale struct {
+	Headrooms []*AutoScaleHeadroom `json:"headrooms,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type AutoScaleHeadroom struct {
+	CPUPerUnit    *int `json:"cpuPerUnit,omitempty"`
+	GPUPerUnit    *int `json:"gpuPerUnit,omitempty"`
+	MemoryPerUnit *int `json:"memoryPerUnit,omitempty"`
+	NumOfUnits    *int `json:"numOfUnits,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -313,6 +332,20 @@ func (o *LaunchSpec) SetSecurityGroupIDs(v []string) *LaunchSpec {
 	return o
 }
 
+func (o *LaunchSpec) SetSubnetIDs(v []string) *LaunchSpec {
+	if o.SubnetIDs = v; o.SubnetIDs == nil {
+		o.nullFields = append(o.nullFields, "SubnetIDs")
+	}
+	return o
+}
+
+func (o *LaunchSpec) SetRootVolumeSize(v *int) *LaunchSpec {
+	if o.RootVolumeSize = v; o.RootVolumeSize == nil {
+		o.nullFields = append(o.nullFields, "RootVolumeSize")
+	}
+	return o
+}
+
 func (o *LaunchSpec) SetIAMInstanceProfile(v *IAMInstanceProfile) *LaunchSpec {
 	if o.IAMInstanceProfile = v; o.IAMInstanceProfile == nil {
 		o.nullFields = append(o.nullFields, "IAMInstanceProfile")
@@ -330,6 +363,13 @@ func (o *LaunchSpec) SetLabels(v []*Label) *LaunchSpec {
 func (o *LaunchSpec) SetTaints(v []*Taint) *LaunchSpec {
 	if o.Taints = v; o.Taints == nil {
 		o.nullFields = append(o.nullFields, "Taints")
+	}
+	return o
+}
+
+func (o *LaunchSpec) SetAutoScale(v *AutoScale) *LaunchSpec {
+	if o.AutoScale = v; o.AutoScale == nil {
+		o.nullFields = append(o.nullFields, "AutoScale")
 	}
 	return o
 }
