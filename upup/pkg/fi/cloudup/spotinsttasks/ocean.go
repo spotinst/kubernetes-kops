@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -468,7 +468,7 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			// Tags.
 			{
 				if e.Tags != nil {
-					ocean.Compute.LaunchSpecification.SetTags(buildOceanTags(e.Tags))
+					ocean.Compute.LaunchSpecification.SetTags(e.buildTags())
 				}
 			}
 		}
@@ -731,7 +731,7 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 						ocean.Compute.LaunchSpecification = new(aws.LaunchSpecification)
 					}
 
-					ocean.Compute.LaunchSpecification.SetTags(buildOceanTags(e.Tags))
+					ocean.Compute.LaunchSpecification.SetTags(e.buildTags())
 					changes.Tags = nil
 					changed = true
 				}
@@ -1125,7 +1125,7 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 	// Tags.
 	{
 		if e.Tags != nil {
-			for _, tag := range buildOceanTags(e.Tags) {
+			for _, tag := range e.buildTags() {
 				tf.Tags = append(tf.Tags, &terraformKV{
 					Key:   tag.Key,
 					Value: tag.Value,
@@ -1139,6 +1139,19 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 
 func (o *Ocean) TerraformLink() *terraform.Literal {
 	return terraform.LiteralProperty("spotinst_ocean_aws", *o.Name, "id")
+}
+
+func (o *Ocean) buildTags() []*aws.Tag {
+	tags := make([]*aws.Tag, 0, len(o.Tags))
+
+	for key, value := range o.Tags {
+		tags = append(tags, &aws.Tag{
+			Key:   fi.String(key),
+			Value: fi.String(value),
+		})
+	}
+
+	return tags
 }
 
 func (o *Ocean) applyDefaults() {
