@@ -80,6 +80,7 @@ type RootVolumeOpts struct {
 type AutoScalerOpts struct {
 	Enabled   *bool
 	ClusterID *string
+	Cooldown  *int
 	Labels    map[string]string
 	Taints    []corev1.Taint
 	Headroom  *AutoScalerHeadroomOpts
@@ -371,6 +372,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 			if integration.AutoScale != nil {
 				actual.AutoScalerOpts.Enabled = integration.AutoScale.IsEnabled
+				actual.AutoScalerOpts.Cooldown = integration.AutoScale.Cooldown
 
 				// Headroom.
 				if headroom := integration.AutoScale.Headroom; headroom != nil {
@@ -641,6 +643,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 				autoScaler := new(aws.AutoScaleKubernetes)
 				autoScaler.IsEnabled = opts.Enabled
 				autoScaler.IsAutoConfig = fi.Bool(true)
+				autoScaler.Cooldown = opts.Cooldown
 
 				// Headroom.
 				if headroom := opts.Headroom; headroom != nil {
@@ -1167,6 +1170,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			if opts.Enabled != nil {
 				autoScaler := new(aws.AutoScaleKubernetes)
 				autoScaler.IsEnabled = e.AutoScalerOpts.Enabled
+				autoScaler.Cooldown = e.AutoScalerOpts.Cooldown
 
 				// Headroom.
 				if headroom := opts.Headroom; headroom != nil {
@@ -1314,6 +1318,7 @@ type terraformElastigroupIntegration struct {
 type terraformAutoScaler struct {
 	Enabled    *bool                        `json:"autoscale_is_enabled,omitempty"`
 	AutoConfig *bool                        `json:"autoscale_is_auto_config,omitempty"`
+	Cooldown   *int                         `json:"autoscale_cooldown,omitempty"`
 	Headroom   *terraformAutoScalerHeadroom `json:"autoscale_headroom,omitempty"`
 	Down       *terraformAutoScalerDown     `json:"autoscale_down,omitempty"`
 	Labels     []*terraformKV               `json:"autoscale_labels,omitempty"`
@@ -1520,6 +1525,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 				tf.Integration.terraformAutoScaler = &terraformAutoScaler{
 					Enabled:    opts.Enabled,
 					AutoConfig: fi.Bool(true),
+					Cooldown:   opts.Cooldown,
 				}
 
 				// Headroom.
