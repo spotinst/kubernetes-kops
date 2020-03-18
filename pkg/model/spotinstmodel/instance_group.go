@@ -88,6 +88,10 @@ const (
 	InstanceGroupLabelAutoScalerHeadroomMemPerUnit = "spotinst.io/autoscaler-headroom-mem-per-unit"
 	InstanceGroupLabelAutoScalerHeadroomNumOfUnits = "spotinst.io/autoscaler-headroom-num-of-units"
 
+	// InstanceGroupLabelAutoScalerCooldown is the metadata label used on the
+	// instance group to specify the cooldown period (in seconds) for scaling actions.
+	InstanceGroupLabelAutoScalerCooldown = "spotinst.io/autoscaler-cooldown"
+
 	// InstanceGroupLabelAutoScalerScaleDown* are the metadata labels used on the
 	// instance group to specify the scale down configuration used by the auto scaler.
 	InstanceGroupLabelAutoScalerScaleDownMaxPercentage     = "spotinst.io/autoscaler-scale-down-max-percentage"
@@ -277,13 +281,12 @@ func (b *InstanceGroupModelBuilder) buildElastigroup(c *fi.ModelBuilderContext, 
 	}
 
 	// Auto Scaler.
-	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
+	group.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
 	}
-	if autoScalerOpts != nil {
-		group.AutoScalerOpts = autoScalerOpts
-		group.AutoScalerOpts.Taints = nil // not supported in Elastigroup
+	if group.AutoScalerOpts != nil { // remove unsupported options
+		group.AutoScalerOpts.Taints = nil
 	}
 
 	klog.V(4).Infof("Adding task: Elastigroup/%s", fi.StringValue(group.Name))
@@ -384,7 +387,7 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 	}
 
 	// Capacity.
-	ocean.MinSize, _ = b.buildCapacity(ig)
+	ocean.MinSize = fi.Int64(0)
 	ocean.MaxSize = fi.Int64(0)
 
 	// Monitoring.
@@ -443,14 +446,13 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 	}
 
 	// Auto Scaler.
-	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
+	ocean.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
 	}
-	if autoScalerOpts != nil {
-		ocean.AutoScalerOpts = autoScalerOpts
-		ocean.AutoScalerOpts.Labels = nil // not supported in Ocean
-		ocean.AutoScalerOpts.Taints = nil // not supported in Ocean
+	if ocean.AutoScalerOpts != nil { // remove unsupported options
+		ocean.AutoScalerOpts.Labels = nil
+		ocean.AutoScalerOpts.Taints = nil
 	}
 
 	// Create a Launch Spec for each instance group.
@@ -478,9 +480,7 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 
 	// Capacity.
 	minSize, maxSize := b.buildCapacity(ig)
-	if fi.Int64Value(minSize) < fi.Int64Value(ocean.MinSize) {
-		ocean.MinSize = minSize
-	}
+	ocean.MinSize = fi.Int64(fi.Int64Value(ocean.MinSize) + fi.Int64Value(minSize))
 	ocean.MaxSize = fi.Int64(fi.Int64Value(ocean.MaxSize) + fi.Int64Value(maxSize))
 
 	// User data.
@@ -514,12 +514,15 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	}
 
 	// Auto Scaler.
-	launchSpec.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
+	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
 	}
-	launchSpec.AutoScalerOpts.ClusterID = nil // not supported in LaunchSpec
-	launchSpec.AutoScalerOpts.Enabled = nil   // not supported in LaunchSpec
+	if autoScalerOpts != nil && autoScalerOpts.Headroom != nil { // remove unsupported options
+		launchSpec.AutoScalerOpts = &spotinsttasks.AutoScalerOpts{
+			Headroom: autoScalerOpts.Headroom,
+		}
+	}
 
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
 	c.AddTask(launchSpec)
@@ -707,6 +710,15 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 				defaultNodeLabels = fi.BoolValue(v)
 			}
 
+		case InstanceGroupLabelAutoScalerCooldown:
+			{
+				v, err := parseInt(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.Cooldown = fi.Int(int(fi.Int64Value(v)))
+			}
+
 		case InstanceGroupLabelAutoScalerHeadroomCPUPerUnit:
 			{
 				v, err := parseInt(v)
@@ -778,6 +790,16 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 				}
 				opts.Down.EvaluationPeriods = fi.Int(int(fi.Int64Value(v)))
 			}
+		}
+	}
+
+	// Configure Elastigroup defaults to avoid state drifts.
+	if !featureflag.SpotinstOcean.Enabled() {
+		if opts.Cooldown == nil {
+			opts.Cooldown = fi.Int(300)
+		}
+		if opts.Down != nil && opts.Down.EvaluationPeriods == nil {
+			opts.Down.EvaluationPeriods = fi.Int(5)
 		}
 	}
 
