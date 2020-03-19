@@ -514,14 +514,15 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	}
 
 	// Auto Scaler.
-	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
+	launchSpec.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
 	}
-	if autoScalerOpts != nil && autoScalerOpts.Headroom != nil { // remove unsupported options
-		launchSpec.AutoScalerOpts = &spotinsttasks.AutoScalerOpts{
-			Headroom: autoScalerOpts.Headroom,
-		}
+	if launchSpec.AutoScalerOpts != nil { // remove unsupported options
+		launchSpec.AutoScalerOpts.Enabled = nil
+		launchSpec.AutoScalerOpts.ClusterID = nil
+		launchSpec.AutoScalerOpts.Cooldown = nil
+		launchSpec.AutoScalerOpts.Down = nil
 	}
 
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
