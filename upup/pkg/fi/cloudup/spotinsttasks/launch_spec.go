@@ -218,27 +218,33 @@ func (o *LaunchSpec) Find(c *fi.Context) (*LaunchSpec, error) {
 					NumOfUnits: headrooms[0].NumOfUnits,
 				}
 			}
+		}
+	}
 
-			// Labels.
-			if labels := spec.Labels; labels != nil {
-				actual.AutoScalerOpts.Labels = make(map[string]string)
+	// Labels.
+	if labels := spec.Labels; labels != nil {
+		if actual.AutoScalerOpts == nil {
+			actual.AutoScalerOpts = new(AutoScalerOpts)
+		}
 
-				for _, label := range spec.Labels {
-					actual.AutoScalerOpts.Labels[fi.StringValue(label.Key)] = fi.StringValue(label.Value)
-				}
-			}
+		actual.AutoScalerOpts.Labels = make(map[string]string)
+		for _, label := range spec.Labels {
+			actual.AutoScalerOpts.Labels[fi.StringValue(label.Key)] = fi.StringValue(label.Value)
+		}
+	}
 
-			// Taints.
-			if spec.Taints != nil {
-				actual.AutoScalerOpts.Taints = make([]corev1.Taint, len(spec.Taints))
+	// Taints.
+	if spec.Taints != nil {
+		if actual.AutoScalerOpts == nil {
+			actual.AutoScalerOpts = new(AutoScalerOpts)
+		}
 
-				for i, taint := range spec.Taints {
-					actual.AutoScalerOpts.Taints[i] = corev1.Taint{
-						Key:    fi.StringValue(taint.Key),
-						Value:  fi.StringValue(taint.Value),
-						Effect: corev1.TaintEffect(fi.StringValue(taint.Effect)),
-					}
-				}
+		actual.AutoScalerOpts.Taints = make([]corev1.Taint, len(spec.Taints))
+		for i, taint := range spec.Taints {
+			actual.AutoScalerOpts.Taints[i] = corev1.Taint{
+				Key:    fi.StringValue(taint.Key),
+				Value:  fi.StringValue(taint.Value),
+				Effect: corev1.TaintEffect(fi.StringValue(taint.Effect)),
 			}
 		}
 	}
