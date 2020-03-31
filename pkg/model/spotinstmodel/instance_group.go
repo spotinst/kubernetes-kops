@@ -536,15 +536,19 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	}
 
 	// Auto Scaler.
-	launchSpec.AutoScalerOpts, err = b.buildAutoScalerOpts(b.ClusterName(), ig)
+	autoScalerOpts, err := b.buildAutoScalerOpts(b.ClusterName(), ig)
 	if err != nil {
 		return fmt.Errorf("error building auto scaler options: %v", err)
 	}
-	if launchSpec.AutoScalerOpts != nil { // remove unsupported options
-		launchSpec.AutoScalerOpts.Enabled = nil
-		launchSpec.AutoScalerOpts.ClusterID = nil
-		launchSpec.AutoScalerOpts.Cooldown = nil
-		launchSpec.AutoScalerOpts.Down = nil
+	if autoScalerOpts != nil { // remove unsupported options
+		autoScalerOpts.Enabled = nil
+		autoScalerOpts.ClusterID = nil
+		autoScalerOpts.Cooldown = nil
+		autoScalerOpts.Down = nil
+
+		if autoScalerOpts.Labels != nil || autoScalerOpts.Taints != nil || autoScalerOpts.Headroom != nil {
+			launchSpec.AutoScalerOpts = autoScalerOpts
+		}
 	}
 
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
