@@ -49,6 +49,7 @@ type Ocean struct {
 	FallbackToOnDemand       *bool
 	InstanceTypesWhitelist   []string
 	InstanceTypesBlacklist   []string
+	DrainingTimeout          *int64
 	Tags                     map[string]string
 	UserData                 *fi.ResourceHolder
 	ImageID                  *string
@@ -145,6 +146,10 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 			actual.SpotPercentage = strategy.SpotPercentage
 			actual.FallbackToOnDemand = strategy.FallbackToOnDemand
 			actual.UtilizeReservedInstances = strategy.UtilizeReservedInstances
+
+			if strategy.DrainingTimeout != nil {
+				actual.DrainingTimeout = fi.Int64(int64(fi.IntValue(strategy.DrainingTimeout)))
+			}
 		}
 	}
 
@@ -366,6 +371,10 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 		ocean.Strategy.SetSpotPercentage(e.SpotPercentage)
 		ocean.Strategy.SetFallbackToOnDemand(e.FallbackToOnDemand)
 		ocean.Strategy.SetUtilizeReservedInstances(e.UtilizeReservedInstances)
+
+		if e.DrainingTimeout != nil {
+			ocean.Strategy.SetDrainingTimeout(fi.Int(int(*e.DrainingTimeout)))
+		}
 	}
 
 	// Compute.
@@ -608,6 +617,17 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 
 			ocean.Strategy.SetUtilizeReservedInstances(e.UtilizeReservedInstances)
 			changes.UtilizeReservedInstances = nil
+			changed = true
+		}
+
+		// Draining timeout.
+		if changes.DrainingTimeout != nil {
+			if ocean.Strategy == nil {
+				ocean.Strategy = new(aws.Strategy)
+			}
+
+			ocean.Strategy.SetDrainingTimeout(fi.Int(int(*e.DrainingTimeout)))
+			changes.DrainingTimeout = nil
 			changed = true
 		}
 	}
@@ -977,6 +997,7 @@ type terraformOceanStrategy struct {
 	SpotPercentage           *float64 `json:"spot_percentage,omitempty"`
 	FallbackToOnDemand       *bool    `json:"fallback_to_ondemand,omitempty"`
 	UtilizeReservedInstances *bool    `json:"utilize_reserved_instances,omitempty"`
+	DrainingTimeout          *int64   `json:"draining_timeout,omitempty"`
 }
 
 type terraformOceanLaunchSpec struct {
@@ -1012,6 +1033,7 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 			SpotPercentage:           e.SpotPercentage,
 			FallbackToOnDemand:       e.FallbackToOnDemand,
 			UtilizeReservedInstances: e.UtilizeReservedInstances,
+			DrainingTimeout:          e.DrainingTimeout,
 		},
 		terraformOceanLaunchSpec: &terraformOceanLaunchSpec{},
 	}
@@ -1194,7 +1216,7 @@ func (o *Ocean) buildTags() []*aws.Tag {
 
 func (o *Ocean) applyDefaults() {
 	if o.SpotPercentage == nil {
-		f := float64(100.0)
+		f := 100.0
 		o.SpotPercentage = &f
 	}
 

@@ -52,6 +52,10 @@ const (
 	// utilized.
 	InstanceGroupLabelUtilizeReservedInstances = "spotinst.io/utilize-reserved-instances"
 
+	// InstanceGroupLabelDrainingTimeout is the metadata label used on the
+	// instance group to specify the draining timeout that should be used.
+	InstanceGroupLabelDrainingTimeout = "spotinst.io/draining-timeout"
+
 	// InstanceGroupLabelFallbackToOnDemand is the metadata label used on the
 	// instance group to specify whether fallback to on-demand instances should
 	// be enabled.
@@ -193,6 +197,12 @@ func (b *InstanceGroupModelBuilder) buildElastigroup(c *fi.ModelBuilderContext, 
 
 		case InstanceGroupLabelFallbackToOnDemand:
 			group.FallbackToOnDemand, err = parseBool(v)
+			if err != nil {
+				return err
+			}
+
+		case InstanceGroupLabelDrainingTimeout:
+			group.DrainingTimeout, err = parseInt(v)
 			if err != nil {
 				return err
 			}
@@ -375,6 +385,12 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 
 		case InstanceGroupLabelOceanInstanceTypesBlacklist:
 			ocean.InstanceTypesBlacklist, err = parseStringSlice(v)
+			if err != nil {
+				return err
+			}
+
+		case InstanceGroupLabelDrainingTimeout:
+			ocean.DrainingTimeout, err = parseInt(v)
 			if err != nil {
 				return err
 			}
