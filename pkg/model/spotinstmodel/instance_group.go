@@ -57,6 +57,11 @@ const (
 	// be enabled.
 	InstanceGroupLabelFallbackToOnDemand = "spotinst.io/fallback-to-ondemand"
 
+	// InstanceGroupLabelGracePeriod is the metadata label used on the
+	// instance group to specify a period of time, in seconds, that Ocean
+	// should wait before applying instance health checks.
+	InstanceGroupLabelGracePeriod = "spotinst.io/grace-period"
+
 	// InstanceGroupLabelHealthCheckType is the metadata label used on the
 	// instance group to specify the type of the health check that should be used.
 	InstanceGroupLabelHealthCheckType = "spotinst.io/health-check-type"
@@ -360,6 +365,12 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 
 		case InstanceGroupLabelFallbackToOnDemand:
 			ocean.FallbackToOnDemand, err = parseBool(v)
+			if err != nil {
+				return err
+			}
+
+		case InstanceGroupLabelGracePeriod:
+			ocean.GracePeriod, err = parseInt(v)
 			if err != nil {
 				return err
 			}
