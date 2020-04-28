@@ -109,9 +109,9 @@ require (
 	github.com/prometheus/client_golang v0.9.2
 	github.com/sergi/go-diff v0.0.0-20161102184045-552b4e9bbdca
 	github.com/spf13/cobra v0.0.5
-	github.com/spf13/pflag v1.0.3
-	github.com/spf13/viper v1.3.2
-	github.com/spotinst/spotinst-sdk-go v1.43.0
+	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.4.0
+	github.com/spotinst/spotinst-sdk-go v1.49.0
 	github.com/stretchr/testify v1.4.0
 	github.com/urfave/cli v1.20.0
 	github.com/vmware/govmomi v0.20.1
