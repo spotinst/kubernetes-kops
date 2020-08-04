@@ -376,10 +376,6 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 			if err != nil {
 				return err
 			}
-<<<<<<< HEAD
-||||||| parent of a861cda18b... feat(spot): cherry-picked changes
-			break
-=======
 
 		case InstanceGroupLabelOceanInstanceTypesWhitelist:
 			ocean.InstanceTypesWhitelist, err = parseStringSlice(v)
@@ -398,7 +394,6 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 			if err != nil {
 				return err
 			}
->>>>>>> a861cda18b... feat(spot): cherry-picked changes
 		}
 	}
 
@@ -808,14 +803,14 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 
 		case InstanceGroupLabelAutoScalerScaleDownMaxPercentage:
 			{
-				v, err := parseInt(v)
+				v, err := parseFloat(v)
 				if err != nil {
 					return nil, err
 				}
 				if opts.Down == nil {
 					opts.Down = new(spotinsttasks.AutoScalerDownOpts)
 				}
-				opts.Down.MaxPercentage = fi.Int(int(fi.Int64Value(v)))
+				opts.Down.MaxPercentage = v
 			}
 
 		case InstanceGroupLabelAutoScalerScaleDownEvaluationPeriods:

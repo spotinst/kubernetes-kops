@@ -57,11 +57,6 @@ func (b *AutoscalingGroupModelBuilder) Build(c *fi.ModelBuilderContext) error {
 	for _, ig := range b.InstanceGroups {
 		name := b.AutoscalingGroupName(ig)
 
-<<<<<<< HEAD
-		// @check if his instancegroup is backed by a fleet and override with a launch template
-||||||| parent of a861cda18b... feat(spot): cherry-picked changes
-		// @check if his instancegroup is backed by a fleet and overide with a launch template
-=======
 		if featureflag.SpotinstHybrid.Enabled() {
 			if spotinstmodel.HybridInstanceGroup(ig) {
 				klog.V(2).Infof("Skipping instance group: %q", name)
@@ -69,8 +64,6 @@ func (b *AutoscalingGroupModelBuilder) Build(c *fi.ModelBuilderContext) error {
 			}
 		}
 
-		// @check if his instancegroup is backed by a fleet and override with a launch template
->>>>>>> a861cda18b... feat(spot): cherry-picked changes
 		task, err := func() (fi.Task, error) {
 			switch UseLaunchTemplate(ig) {
 			case true:
