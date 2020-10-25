@@ -19329,6 +19329,12 @@ rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "patch", "update", "create", "delete"]
+  # ----------------------------------------------------------------------------
+  # Required by Spotinst Wave.
+  # ----------------------------------------------------------------------------
+- apiGroups: ["sparkoperator.k8s.io"]
+  resources: ["sparkapplications", "scheduledsparkapplications"]
+  verbs: ["get", "list"]
 ---
 # ------------------------------------------------------------------------------
 # Cluster Role Binding
@@ -19390,7 +19396,7 @@ spec:
       containers:
       - name: spotinst-kubernetes-cluster-controller
         imagePullPolicy: Always
-        image: spotinst/kubernetes-cluster-controller:1.0.58
+        image: spotinst/kubernetes-cluster-controller:1.0.68
         livenessProbe:
           httpGet:
             path: /healthcheck
