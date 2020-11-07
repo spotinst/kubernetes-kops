@@ -303,6 +303,14 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 					EvaluationPeriods: down.EvaluationPeriods,
 				}
 			}
+
+			// Resource limits.
+			if limits := ocean.AutoScaler.ResourceLimits; limits != nil {
+				actual.AutoScalerOpts.ResourceLimits = &AutoScalerResourceLimitsOpts{
+					MaxVCPU:   limits.MaxVCPU,
+					MaxMemory: limits.MaxMemoryGiB,
+				}
+			}
 		}
 	}
 
@@ -519,6 +527,14 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 					autoScaler.Down = &aws.AutoScalerDown{
 						MaxScaleDownPercentage: down.MaxPercentage,
 						EvaluationPeriods:      down.EvaluationPeriods,
+					}
+				}
+
+				// Resource limits.
+				if limits := opts.ResourceLimits; limits != nil {
+					autoScaler.ResourceLimits = &aws.AutoScalerResourceLimits{
+						MaxVCPU:      limits.MaxVCPU,
+						MaxMemoryGiB: limits.MaxMemory,
 					}
 				}
 
@@ -937,6 +953,16 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 					autoScaler.SetDown(nil)
 				}
 
+				// Resource limits.
+				if limits := opts.ResourceLimits; limits != nil {
+					autoScaler.ResourceLimits = &aws.AutoScalerResourceLimits{
+						MaxVCPU:      limits.MaxVCPU,
+						MaxMemoryGiB: limits.MaxMemory,
+					}
+				} else if a.AutoScalerOpts.ResourceLimits != nil {
+					autoScaler.SetResourceLimits(nil)
+				}
+
 				ocean.SetAutoScaler(autoScaler)
 				changed = true
 			}
@@ -1151,6 +1177,14 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 					tf.AutoScaler.Down = &terraformAutoScalerDown{
 						MaxPercentage:     down.MaxPercentage,
 						EvaluationPeriods: down.EvaluationPeriods,
+					}
+				}
+
+				// Resource limits.
+				if limits := opts.ResourceLimits; limits != nil {
+					tf.AutoScaler.ResourceLimits = &terraformAutoScalerResourceLimits{
+						MaxVCPU:   limits.MaxVCPU,
+						MaxMemory: limits.MaxVCPU,
 					}
 				}
 
