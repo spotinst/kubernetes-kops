@@ -19,7 +19,7 @@ The following experimental features are currently available:
 * `+KeepLaunchConfigurations` - Prevents garbage collection of old launch configurations
 * `+Spotinst` - Enables the use of the Spot integration
 * `+SpotinstOcean` - Enables the use of the Spot Ocean integration
-* `+SpotinstHybrid` - Toogles between hybrid and full instance group implementations
+* `+SpotinstHybrid` - Toggles between hybrid and full instance group implementations
 * `-SpotinstController` - Toggles the installation of the Spot controller addon off
 * `+SkipEtcdVersionCheck` - Bypasses the check that etcd-manager is using a supported etcd version
 * `+TerraformJSON` - Produce kubernetes.ts.json file instead of writing HCL v1 syntax. Can be consumed by terraform 0.12
