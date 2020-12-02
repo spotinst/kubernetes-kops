@@ -1190,6 +1190,98 @@ func (c *EC2) AssociateDhcpOptionsWithContext(ctx aws.Context, input *AssociateD
 	return out, req.Send()
 }
 
+const opAssociateEnclaveCertificateIamRole = "AssociateEnclaveCertificateIamRole"
+
+// AssociateEnclaveCertificateIamRoleRequest generates a "aws/request.Request" representing the
+// client's request for the AssociateEnclaveCertificateIamRole operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See AssociateEnclaveCertificateIamRole for more information on using the AssociateEnclaveCertificateIamRole
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the AssociateEnclaveCertificateIamRoleRequest method.
+//    req, resp := client.AssociateEnclaveCertificateIamRoleRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateEnclaveCertificateIamRole
+func (c *EC2) AssociateEnclaveCertificateIamRoleRequest(input *AssociateEnclaveCertificateIamRoleInput) (req *request.Request, output *AssociateEnclaveCertificateIamRoleOutput) {
+	op := &request.Operation{
+		Name:       opAssociateEnclaveCertificateIamRole,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &AssociateEnclaveCertificateIamRoleInput{}
+	}
+
+	output = &AssociateEnclaveCertificateIamRoleOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// AssociateEnclaveCertificateIamRole API operation for Amazon Elastic Compute Cloud.
+//
+// Associates an AWS Identity and Access Management (IAM) role with an AWS Certificate
+// Manager (ACM) certificate. This enables the certificate to be used by the
+// ACM for Nitro Enclaves application inside an enclave. For more information,
+// see AWS Certificate Manager for Nitro Enclaves (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave-refapp.html)
+// in the AWS Nitro Enclaves User Guide.
+//
+// When the IAM role is associated with the ACM certificate, places the certificate,
+// certificate chain, and encrypted private key in an Amazon S3 bucket that
+// only the associated IAM role can access. The private key of the certificate
+// is encrypted with an AWS-managed KMS customer master (CMK) that has an attached
+// attestation-based CMK policy.
+//
+// To enable the IAM role to access the Amazon S3 object, you must grant it
+// permission to call s3:GetObject on the Amazon S3 bucket returned by the command.
+// To enable the IAM role to access the AWS KMS CMK, you must grant it permission
+// to call kms:Decrypt on AWS KMS CMK returned by the command. For more information,
+// see Grant the role permission to access the certificate and encryption key
+// (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave-refapp.html#add-policy)
+// in the AWS Nitro Enclaves User Guide.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Elastic Compute Cloud's
+// API operation AssociateEnclaveCertificateIamRole for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/AssociateEnclaveCertificateIamRole
+func (c *EC2) AssociateEnclaveCertificateIamRole(input *AssociateEnclaveCertificateIamRoleInput) (*AssociateEnclaveCertificateIamRoleOutput, error) {
+	req, out := c.AssociateEnclaveCertificateIamRoleRequest(input)
+	return out, req.Send()
+}
+
+// AssociateEnclaveCertificateIamRoleWithContext is the same as AssociateEnclaveCertificateIamRole with the addition of
+// the ability to pass a context and additional request options.
+//
+// See AssociateEnclaveCertificateIamRole for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *EC2) AssociateEnclaveCertificateIamRoleWithContext(ctx aws.Context, input *AssociateEnclaveCertificateIamRoleInput, opts ...request.Option) (*AssociateEnclaveCertificateIamRoleOutput, error) {
+	req, out := c.AssociateEnclaveCertificateIamRoleRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opAssociateIamInstanceProfile = "AssociateIamInstanceProfile"
 
 // AssociateIamInstanceProfileRequest generates a "aws/request.Request" representing the
@@ -1947,7 +2039,7 @@ func (c *EC2) AttachVolumeRequest(input *AttachVolumeInput) (req *request.Reques
 // the instance with the specified device name.
 //
 // Encrypted EBS volumes must be attached to instances that support Amazon EBS
-// encryption. For more information, see Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// encryption. For more information, see Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // After you attach an EBS volume, you must make it available. For more information,
@@ -6016,7 +6108,7 @@ func (c *EC2) CreateSnapshotRequest(input *CreateSnapshotInput) (req *request.Re
 //
 // You can take a snapshot of an attached volume that is in use. However, snapshots
 // only capture data that has been written to your EBS volume at the time the
-// snapshot command is issued; this may exclude any data that has been cached
+// snapshot command is issued; this might exclude any data that has been cached
 // by any applications or the operating system. If you can pause any file systems
 // on the volume long enough to take a snapshot, your snapshot should be complete.
 // However, if you cannot pause all file writes to the volume, you should unmount
@@ -6037,7 +6129,7 @@ func (c *EC2) CreateSnapshotRequest(input *CreateSnapshotInput) (req *request.Re
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // For more information, see Amazon Elastic Block Store (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AmazonEBS.html)
-// and Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// and Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -7331,8 +7423,7 @@ func (c *EC2) CreateVolumeRequest(input *CreateVolumeInput) (req *request.Reques
 // CreateVolume API operation for Amazon Elastic Compute Cloud.
 //
 // Creates an EBS volume that can be attached to an instance in the same Availability
-// Zone. The volume is created in the regional endpoint that you send the HTTP
-// request to. For more information see Regions and Endpoints (https://docs.aws.amazon.com/general/latest/gr/rande.html).
+// Zone.
 //
 // You can create a new empty volume or restore a volume from an EBS snapshot.
 // Any AWS Marketplace product codes from the snapshot are propagated to the
@@ -7341,7 +7432,7 @@ func (c *EC2) CreateVolumeRequest(input *CreateVolumeInput) (req *request.Reques
 // You can create encrypted volumes. Encrypted volumes must be attached to instances
 // that support Amazon EBS encryption. Volumes that are created from encrypted
 // snapshots are also automatically encrypted. For more information, see Amazon
-// EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // You can tag your volumes during creation. For more information, see Tagging
@@ -7532,6 +7623,10 @@ func (c *EC2) CreateVpcEndpointRequest(input *CreateVpcEndpointInput) (req *requ
 // the subnets in which to create an endpoint, and the security groups to associate
 // with the endpoint network interface.
 //
+// A GatewayLoadBalancer endpoint is a network interface in your subnet that
+// serves an endpoint for communicating with a Gateway Load Balancer that you've
+// configured as a VPC endpoint service.
+//
 // Use DescribeVpcEndpointServices to get a list of supported services.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -7687,12 +7782,19 @@ func (c *EC2) CreateVpcEndpointServiceConfigurationRequest(input *CreateVpcEndpo
 // CreateVpcEndpointServiceConfiguration API operation for Amazon Elastic Compute Cloud.
 //
 // Creates a VPC endpoint service configuration to which service consumers (AWS
-// accounts, IAM users, and IAM roles) can connect. Service consumers can create
-// an interface VPC endpoint to connect to your service.
+// accounts, IAM users, and IAM roles) can connect.
 //
-// To create an endpoint service configuration, you must first create a Network
-// Load Balancer for your service. For more information, see VPC Endpoint Services
-// (https://docs.aws.amazon.com/vpc/latest/userguide/endpoint-service.html)
+// To create an endpoint service configuration, you must first create one of
+// the following for your service:
+//
+//    * A Network Load Balancer (https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html).
+//    Service consumers connect to your service using an interface endpoint.
+//
+//    * A Gateway Load Balancer (https://docs.aws.amazon.com/elasticloadbalancing/latest/gateway/introduction.html).
+//    Service consumers connect to your service using a Gateway Load Balancer
+//    endpoint.
+//
+// For more information, see VPC Endpoint Services (https://docs.aws.amazon.com/vpc/latest/userguide/endpoint-service.html)
 // in the Amazon Virtual Private Cloud User Guide.
 //
 // If you set the private DNS name, you must prove that you own the private
@@ -8574,11 +8676,29 @@ func (c *EC2) DeleteFleetsRequest(input *DeleteFleetsInput) (req *request.Reques
 //
 // Deletes the specified EC2 Fleet.
 //
-// After you delete an EC2 Fleet, it launches no new instances. You must specify
-// whether an EC2 Fleet should also terminate its instances. If you terminate
-// the instances, the EC2 Fleet enters the deleted_terminating state. Otherwise,
-// the EC2 Fleet enters the deleted_running state, and the instances continue
-// to run until they are interrupted or you terminate them manually.
+// After you delete an EC2 Fleet, it launches no new instances.
+//
+// You must specify whether a deleted EC2 Fleet should also terminate its instances.
+// If you choose to terminate the instances, the EC2 Fleet enters the deleted_terminating
+// state. Otherwise, the EC2 Fleet enters the deleted_running state, and the
+// instances continue to run until they are interrupted or you terminate them
+// manually.
+//
+// For instant fleets, EC2 Fleet must terminate the instances when the fleet
+// is deleted. A deleted instant fleet with running instances is not supported.
+//
+// Restrictions
+//
+//    * You can delete up to 25 instant fleets in a single request. If you exceed
+//    this number, no instant fleets are deleted and an error is returned. There
+//    is no restriction on the number of fleets of type maintain or request
+//    that can be deleted in a single request.
+//
+//    * Up to 1000 instances can be terminated in a single request to delete
+//    instant fleets.
+//
+// For more information, see Deleting an EC2 Fleet (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/manage-ec2-fleet.html#delete-fleet)
+// in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -11545,8 +11665,10 @@ func (c *EC2) DeleteVpcEndpointsRequest(input *DeleteVpcEndpointsInput) (req *re
 //
 // Deletes one or more specified VPC endpoints. Deleting a gateway endpoint
 // also deletes the endpoint routes in the route tables that were associated
-// with the endpoint. Deleting an interface endpoint deletes the endpoint network
-// interfaces.
+// with the endpoint. Deleting an interface endpoint or a Gateway Load Balancer
+// endpoint deletes the endpoint network interfaces. Gateway Load Balancer endpoints
+// can only be deleted if the routes that are associated with the endpoint are
+// deleted.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -21497,7 +21619,7 @@ func (c *EC2) DescribeSnapshotAttributeRequest(input *DescribeSnapshotAttributeI
 // Describes the specified attribute of the specified snapshot. You can specify
 // only one attribute at a time.
 //
-// For more information about EBS snapshots, see Amazon EBS Snapshots (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html)
+// For more information about EBS snapshots, see Amazon EBS snapshots (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -21626,7 +21748,7 @@ func (c *EC2) DescribeSnapshotsRequest(input *DescribeSnapshotsInput) (req *requ
 //
 // To get the state of fast snapshot restores for a snapshot, use DescribeFastSnapshotRestores.
 //
-// For more information about EBS snapshots, see Amazon EBS Snapshots (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html)
+// For more information about EBS snapshots, see Amazon EBS snapshots (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSSnapshots.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -24007,7 +24129,7 @@ func (c *EC2) DescribeVolumeAttributeRequest(input *DescribeVolumeAttributeInput
 // Describes the specified attribute of the specified volume. You can specify
 // only one attribute at a time.
 //
-// For more information about EBS volumes, see Amazon EBS Volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumes.html)
+// For more information about EBS volumes, see Amazon EBS volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumes.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -24103,19 +24225,19 @@ func (c *EC2) DescribeVolumeStatusRequest(input *DescribeVolumeStatusInput) (req
 // Status: Reflects the current status of the volume. The possible values are
 // ok, impaired , warning, or insufficient-data. If all checks pass, the overall
 // status of the volume is ok. If the check fails, the overall status is impaired.
-// If the status is insufficient-data, then the checks may still be taking place
-// on your volume at the time. We recommend that you retry the request. For
-// more information about volume status, see Monitoring the status of your volumes
-// (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-volume-status.html)
+// If the status is insufficient-data, then the checks might still be taking
+// place on your volume at the time. We recommend that you retry the request.
+// For more information about volume status, see Monitoring the status of your
+// volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-volume-status.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
-// Events: Reflect the cause of a volume status and may require you to take
+// Events: Reflect the cause of a volume status and might require you to take
 // action. For example, if your volume returns an impaired status, then the
 // volume event might be potential-data-inconsistency. This means that your
 // volume has been affected by an issue with the underlying host, has all I/O
-// operations disabled, and may have inconsistent data.
+// operations disabled, and might have inconsistent data.
 //
-// Actions: Reflect the actions you may have to take in response to an event.
+// Actions: Reflect the actions you might have to take in response to an event.
 // For example, if the status of the volume is impaired and the volume event
 // shows potential-data-inconsistency, then the action shows enable-volume-io.
 // This means that you may want to enable the I/O operations for the volume
@@ -24264,7 +24386,7 @@ func (c *EC2) DescribeVolumesRequest(input *DescribeVolumesInput) (req *request.
 // with a NextToken value that can be passed to a subsequent DescribeVolumes
 // request to retrieve the remaining results.
 //
-// For more information about EBS volumes, see Amazon EBS Volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumes.html)
+// For more information about EBS volumes, see Amazon EBS volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumes.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -25354,6 +25476,13 @@ func (c *EC2) DescribeVpcEndpointServicesRequest(input *DescribeVpcEndpointServi
 //
 // Describes available services to which you can create a VPC endpoint.
 //
+// When the service provider and the consumer have different accounts multiple
+// Availability Zones, and the consumer views the VPC endpoint service information,
+// the response only includes the common Availability Zones. For example, when
+// the service provider account uses us-east-1a and us-east-1c and the consumer
+// uses us-east-1a and us-east-1a and us-east-1b, the response includes the
+// VPC endpoint services in the common Availability Zone, us-east-1a.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -26381,7 +26510,7 @@ func (c *EC2) DisableEbsEncryptionByDefaultRequest(input *DisableEbsEncryptionBy
 // Disabling encryption by default does not change the encryption status of
 // your existing volumes.
 //
-// For more information, see Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// For more information, see Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -26960,6 +27089,86 @@ func (c *EC2) DisassociateClientVpnTargetNetworkWithContext(ctx aws.Context, inp
 	return out, req.Send()
 }
 
+const opDisassociateEnclaveCertificateIamRole = "DisassociateEnclaveCertificateIamRole"
+
+// DisassociateEnclaveCertificateIamRoleRequest generates a "aws/request.Request" representing the
+// client's request for the DisassociateEnclaveCertificateIamRole operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DisassociateEnclaveCertificateIamRole for more information on using the DisassociateEnclaveCertificateIamRole
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DisassociateEnclaveCertificateIamRoleRequest method.
+//    req, resp := client.DisassociateEnclaveCertificateIamRoleRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateEnclaveCertificateIamRole
+func (c *EC2) DisassociateEnclaveCertificateIamRoleRequest(input *DisassociateEnclaveCertificateIamRoleInput) (req *request.Request, output *DisassociateEnclaveCertificateIamRoleOutput) {
+	op := &request.Operation{
+		Name:       opDisassociateEnclaveCertificateIamRole,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DisassociateEnclaveCertificateIamRoleInput{}
+	}
+
+	output = &DisassociateEnclaveCertificateIamRoleOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DisassociateEnclaveCertificateIamRole API operation for Amazon Elastic Compute Cloud.
+//
+// Disassociates an IAM role from an AWS Certificate Manager (ACM) certificate.
+// Disassociating an IAM role from an ACM certificate removes the Amazon S3
+// object that contains the certificate, certificate chain, and encrypted private
+// key from the Amazon S3 bucket. It also revokes the IAM role's permission
+// to use the AWS Key Management Service (KMS) customer master key (CMK) used
+// to encrypt the private key. This effectively revokes the role's permission
+// to use the certificate.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Elastic Compute Cloud's
+// API operation DisassociateEnclaveCertificateIamRole for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/DisassociateEnclaveCertificateIamRole
+func (c *EC2) DisassociateEnclaveCertificateIamRole(input *DisassociateEnclaveCertificateIamRoleInput) (*DisassociateEnclaveCertificateIamRoleOutput, error) {
+	req, out := c.DisassociateEnclaveCertificateIamRoleRequest(input)
+	return out, req.Send()
+}
+
+// DisassociateEnclaveCertificateIamRoleWithContext is the same as DisassociateEnclaveCertificateIamRole with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DisassociateEnclaveCertificateIamRole for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *EC2) DisassociateEnclaveCertificateIamRoleWithContext(ctx aws.Context, input *DisassociateEnclaveCertificateIamRoleInput, opts ...request.Option) (*DisassociateEnclaveCertificateIamRoleOutput, error) {
+	req, out := c.DisassociateEnclaveCertificateIamRoleRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opDisassociateIamInstanceProfile = "DisassociateIamInstanceProfile"
 
 // DisassociateIamInstanceProfileRequest generates a "aws/request.Request" representing the
@@ -27468,7 +27677,7 @@ func (c *EC2) EnableEbsEncryptionByDefaultRequest(input *EnableEbsEncryptionByDe
 //
 // After you enable encryption by default, the EBS volumes that you create are
 // are always encrypted, either using the default CMK or the CMK that you specified
-// when you created each volume. For more information, see Amazon EBS Encryption
+// when you created each volume. For more information, see Amazon EBS encryption
 // (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
@@ -28289,6 +28498,85 @@ func (c *EC2) ExportTransitGatewayRoutesWithContext(ctx aws.Context, input *Expo
 	return out, req.Send()
 }
 
+const opGetAssociatedEnclaveCertificateIamRoles = "GetAssociatedEnclaveCertificateIamRoles"
+
+// GetAssociatedEnclaveCertificateIamRolesRequest generates a "aws/request.Request" representing the
+// client's request for the GetAssociatedEnclaveCertificateIamRoles operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetAssociatedEnclaveCertificateIamRoles for more information on using the GetAssociatedEnclaveCertificateIamRoles
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetAssociatedEnclaveCertificateIamRolesRequest method.
+//    req, resp := client.GetAssociatedEnclaveCertificateIamRolesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetAssociatedEnclaveCertificateIamRoles
+func (c *EC2) GetAssociatedEnclaveCertificateIamRolesRequest(input *GetAssociatedEnclaveCertificateIamRolesInput) (req *request.Request, output *GetAssociatedEnclaveCertificateIamRolesOutput) {
+	op := &request.Operation{
+		Name:       opGetAssociatedEnclaveCertificateIamRoles,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &GetAssociatedEnclaveCertificateIamRolesInput{}
+	}
+
+	output = &GetAssociatedEnclaveCertificateIamRolesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetAssociatedEnclaveCertificateIamRoles API operation for Amazon Elastic Compute Cloud.
+//
+// Returns the IAM roles that are associated with the specified AWS Certificate
+// Manager (ACM) certificate. It also returns the name of the Amazon S3 bucket
+// and the Amazon S3 object key where the certificate, certificate chain, and
+// encrypted private key bundle are stored, and the ARN of the AWS Key Management
+// Service (KMS) customer master key (CMK) that's used to encrypt the private
+// key.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Elastic Compute Cloud's
+// API operation GetAssociatedEnclaveCertificateIamRoles for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/GetAssociatedEnclaveCertificateIamRoles
+func (c *EC2) GetAssociatedEnclaveCertificateIamRoles(input *GetAssociatedEnclaveCertificateIamRolesInput) (*GetAssociatedEnclaveCertificateIamRolesOutput, error) {
+	req, out := c.GetAssociatedEnclaveCertificateIamRolesRequest(input)
+	return out, req.Send()
+}
+
+// GetAssociatedEnclaveCertificateIamRolesWithContext is the same as GetAssociatedEnclaveCertificateIamRoles with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetAssociatedEnclaveCertificateIamRoles for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *EC2) GetAssociatedEnclaveCertificateIamRolesWithContext(ctx aws.Context, input *GetAssociatedEnclaveCertificateIamRolesInput, opts ...request.Option) (*GetAssociatedEnclaveCertificateIamRolesOutput, error) {
+	req, out := c.GetAssociatedEnclaveCertificateIamRolesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opGetAssociatedIpv6PoolCidrs = "GetAssociatedIpv6PoolCidrs"
 
 // GetAssociatedIpv6PoolCidrsRequest generates a "aws/request.Request" representing the
@@ -28866,7 +29154,7 @@ func (c *EC2) GetEbsDefaultKmsKeyIdRequest(input *GetEbsDefaultKmsKeyIdInput) (r
 // for your account in this Region. You can change the default CMK for encryption
 // by default using ModifyEbsDefaultKmsKeyId or ResetEbsDefaultKmsKeyId.
 //
-// For more information, see Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// For more information, see Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -28944,7 +29232,7 @@ func (c *EC2) GetEbsEncryptionByDefaultRequest(input *GetEbsEncryptionByDefaultI
 // Describes whether EBS encryption by default is enabled for your account in
 // the current Region.
 //
-// For more information, see Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// For more information, see Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -31209,7 +31497,7 @@ func (c *EC2) ModifyEbsDefaultKmsKeyIdRequest(input *ModifyEbsDefaultKmsKeyIdInp
 // If you delete or disable the customer managed CMK that you specified for
 // use with encryption by default, your instances will fail to launch.
 //
-// For more information, see Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// For more information, see Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -33353,7 +33641,7 @@ func (c *EC2) ModifyVolumeRequest(input *ModifyVolumeInput) (req *request.Reques
 //
 // You can modify several parameters of an existing EBS volume, including volume
 // size, volume type, and IOPS capacity. If your EBS volume is attached to a
-// current-generation EC2 instance type, you may be able to apply these changes
+// current-generation EC2 instance type, you might be able to apply these changes
 // without stopping the instance or detaching the volume from it. For more information
 // about modifying an EBS volume running Linux, see Modifying the size, IOPS,
 // or type of an EBS volume on Linux (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-expand-volume.html).
@@ -33374,11 +33662,11 @@ func (c *EC2) ModifyVolumeRequest(input *ModifyVolumeInput) (req *request.Reques
 // For information about tracking status changes using either method, see Monitoring
 // volume modifications (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-expand-volume.html#monitoring_mods).
 //
-// With previous-generation instance types, resizing an EBS volume may require
+// With previous-generation instance types, resizing an EBS volume might require
 // detaching and reattaching the volume or stopping and restarting the instance.
-// For more information, see Modifying the size, IOPS, or type of an EBS volume
-// on Linux (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-expand-volume.html)
-// and Modifying the size, IOPS, or type of an EBS volume on Windows (https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/ebs-expand-volume.html).
+// For more information, see Amazon EBS Elastic Volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-modify-volume.html)
+// (Linux) or Amazon EBS Elastic Volumes (https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/ebs-modify-volume.html)
+// (Windows).
 //
 // If you reach the maximum volume modification rate per volume limit, you will
 // need to wait at least six hours before applying further modifications to
@@ -33616,8 +33904,8 @@ func (c *EC2) ModifyVpcEndpointRequest(input *ModifyVpcEndpointInput) (req *requ
 // ModifyVpcEndpoint API operation for Amazon Elastic Compute Cloud.
 //
 // Modifies attributes of a specified VPC endpoint. The attributes that you
-// can modify depend on the type of VPC endpoint (interface or gateway). For
-// more information, see VPC Endpoints (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-endpoints.html)
+// can modify depend on the type of VPC endpoint (interface, gateway, or Gateway
+// Load Balancer). For more information, see VPC Endpoints (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-endpoints.html)
 // in the Amazon Virtual Private Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -33769,9 +34057,9 @@ func (c *EC2) ModifyVpcEndpointServiceConfigurationRequest(input *ModifyVpcEndpo
 // ModifyVpcEndpointServiceConfiguration API operation for Amazon Elastic Compute Cloud.
 //
 // Modifies the attributes of your VPC endpoint service configuration. You can
-// change the Network Load Balancers for your service, and you can specify whether
-// acceptance is required for requests to connect to your endpoint service through
-// an interface VPC endpoint.
+// change the Network Load Balancers or Gateway Load Balancers for your service,
+// and you can specify whether acceptance is required for requests to connect
+// to your endpoint service through an interface VPC endpoint.
 //
 // If you set or modify the private DNS name, you must prove that you own the
 // private DNS domain name. For more information, see VPC Endpoint Service Private
@@ -34958,7 +35246,7 @@ func (c *EC2) RebootInstancesRequest(input *RebootInstancesInput) (req *request.
 // succeeds if the instances are valid and belong to you. Requests to reboot
 // terminated instances are ignored.
 //
-// If an instance does not cleanly shut down within four minutes, Amazon EC2
+// If an instance does not cleanly shut down within a few minutes, Amazon EC2
 // performs a hard reboot.
 //
 // For more information about troubleshooting, see Getting console output and
@@ -36608,7 +36896,7 @@ func (c *EC2) ResetEbsDefaultKmsKeyIdRequest(input *ResetEbsDefaultKmsKeyIdInput
 //
 // After resetting the default CMK to the AWS managed CMK, you can continue
 // to encrypt by a customer managed CMK by specifying it when you create the
-// volume. For more information, see Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+// volume. For more information, see Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -38230,7 +38518,7 @@ func (c *EC2) StartVpcEndpointServicePrivateDnsVerificationRequest(input *StartV
 //
 // Before the service provider runs this command, they must add a record to
 // the DNS server. For more information, see Adding a TXT Record to Your Domain's
-// DNS Server (https://docs.aws.amazon.com/vpc/latest/userguide/ndpoint-services-dns-validation.html#add-dns-txt-record)
+// DNS Server (https://docs.aws.amazon.com/vpc/latest/userguide/endpoint-services-dns-validation.html#add-dns-txt-record)
 // in the Amazon VPC User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -40779,6 +41067,109 @@ func (s AssociateDhcpOptionsOutput) GoString() string {
 	return s.String()
 }
 
+type AssociateEnclaveCertificateIamRoleInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the ACM certificate with which to associate the IAM role.
+	CertificateArn *string `min:"1" type:"string"`
+
+	// Checks whether you have the required permissions for the action, without
+	// actually making the request, and provides an error response. If you have
+	// the required permissions, the error response is DryRunOperation. Otherwise,
+	// it is UnauthorizedOperation.
+	DryRun *bool `type:"boolean"`
+
+	// The ARN of the IAM role to associate with the ACM certificate. You can associate
+	// up to 16 IAM roles with an ACM certificate.
+	RoleArn *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s AssociateEnclaveCertificateIamRoleInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AssociateEnclaveCertificateIamRoleInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *AssociateEnclaveCertificateIamRoleInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "AssociateEnclaveCertificateIamRoleInput"}
+	if s.CertificateArn != nil && len(*s.CertificateArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("CertificateArn", 1))
+	}
+	if s.RoleArn != nil && len(*s.RoleArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("RoleArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCertificateArn sets the CertificateArn field's value.
+func (s *AssociateEnclaveCertificateIamRoleInput) SetCertificateArn(v string) *AssociateEnclaveCertificateIamRoleInput {
+	s.CertificateArn = &v
+	return s
+}
+
+// SetDryRun sets the DryRun field's value.
+func (s *AssociateEnclaveCertificateIamRoleInput) SetDryRun(v bool) *AssociateEnclaveCertificateIamRoleInput {
+	s.DryRun = &v
+	return s
+}
+
+// SetRoleArn sets the RoleArn field's value.
+func (s *AssociateEnclaveCertificateIamRoleInput) SetRoleArn(v string) *AssociateEnclaveCertificateIamRoleInput {
+	s.RoleArn = &v
+	return s
+}
+
+type AssociateEnclaveCertificateIamRoleOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the Amazon S3 bucket to which the certificate was uploaded.
+	CertificateS3BucketName *string `locationName:"certificateS3BucketName" type:"string"`
+
+	// The Amazon S3 object key where the certificate, certificate chain, and encrypted
+	// private key bundle are stored. The object key is formatted as follows: certificate_arn/role_arn.
+	CertificateS3ObjectKey *string `locationName:"certificateS3ObjectKey" type:"string"`
+
+	// The ID of the AWS KMS CMK used to encrypt the private key of the certificate.
+	EncryptionKmsKeyId *string `locationName:"encryptionKmsKeyId" type:"string"`
+}
+
+// String returns the string representation
+func (s AssociateEnclaveCertificateIamRoleOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AssociateEnclaveCertificateIamRoleOutput) GoString() string {
+	return s.String()
+}
+
+// SetCertificateS3BucketName sets the CertificateS3BucketName field's value.
+func (s *AssociateEnclaveCertificateIamRoleOutput) SetCertificateS3BucketName(v string) *AssociateEnclaveCertificateIamRoleOutput {
+	s.CertificateS3BucketName = &v
+	return s
+}
+
+// SetCertificateS3ObjectKey sets the CertificateS3ObjectKey field's value.
+func (s *AssociateEnclaveCertificateIamRoleOutput) SetCertificateS3ObjectKey(v string) *AssociateEnclaveCertificateIamRoleOutput {
+	s.CertificateS3ObjectKey = &v
+	return s
+}
+
+// SetEncryptionKmsKeyId sets the EncryptionKmsKeyId field's value.
+func (s *AssociateEnclaveCertificateIamRoleOutput) SetEncryptionKmsKeyId(v string) *AssociateEnclaveCertificateIamRoleOutput {
+	s.EncryptionKmsKeyId = &v
+	return s
+}
+
 type AssociateIamInstanceProfileInput struct {
 	_ struct{} `type:"structure"`
 
@@ -41337,6 +41728,59 @@ func (s *AssociateVpcCidrBlockOutput) SetVpcId(v string) *AssociateVpcCidrBlockO
 	return s
 }
 
+// Information about the associated IAM roles.
+type AssociatedRole struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the associated IAM role.
+	AssociatedRoleArn *string `locationName:"associatedRoleArn" min:"1" type:"string"`
+
+	// The name of the Amazon S3 bucket in which the Amazon S3 object is stored.
+	CertificateS3BucketName *string `locationName:"certificateS3BucketName" type:"string"`
+
+	// The key of the Amazon S3 object ey where the certificate, certificate chain,
+	// and encrypted private key bundle is stored. The object key is formated as
+	// follows: certificate_arn/role_arn.
+	CertificateS3ObjectKey *string `locationName:"certificateS3ObjectKey" type:"string"`
+
+	// The ID of the KMS customer master key (CMK) used to encrypt the private key.
+	EncryptionKmsKeyId *string `locationName:"encryptionKmsKeyId" type:"string"`
+}
+
+// String returns the string representation
+func (s AssociatedRole) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s AssociatedRole) GoString() string {
+	return s.String()
+}
+
+// SetAssociatedRoleArn sets the AssociatedRoleArn field's value.
+func (s *AssociatedRole) SetAssociatedRoleArn(v string) *AssociatedRole {
+	s.AssociatedRoleArn = &v
+	return s
+}
+
+// SetCertificateS3BucketName sets the CertificateS3BucketName field's value.
+func (s *AssociatedRole) SetCertificateS3BucketName(v string) *AssociatedRole {
+	s.CertificateS3BucketName = &v
+	return s
+}
+
+// SetCertificateS3ObjectKey sets the CertificateS3ObjectKey field's value.
+func (s *AssociatedRole) SetCertificateS3ObjectKey(v string) *AssociatedRole {
+	s.CertificateS3ObjectKey = &v
+	return s
+}
+
+// SetEncryptionKmsKeyId sets the EncryptionKmsKeyId field's value.
+func (s *AssociatedRole) SetEncryptionKmsKeyId(v string) *AssociatedRole {
+	s.EncryptionKmsKeyId = &v
+	return s
+}
+
 // Describes a target network that is associated with a Client VPN endpoint.
 // A target network is a subnet in a VPC.
 type AssociatedTargetNetwork struct {
@@ -41604,6 +42048,11 @@ type AttachNetworkInterfaceInput struct {
 	// InstanceId is a required field
 	InstanceId *string `locationName:"instanceId" type:"string" required:"true"`
 
+	// The index of the network card. Some instance types support multiple network
+	// cards. The primary network interface must be assigned to network card index
+	// 0. The default is network card index 0.
+	NetworkCardIndex *int64 `type:"integer"`
+
 	// The ID of the network interface.
 	//
 	// NetworkInterfaceId is a required field
@@ -41657,6 +42106,12 @@ func (s *AttachNetworkInterfaceInput) SetInstanceId(v string) *AttachNetworkInte
 	return s
 }
 
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *AttachNetworkInterfaceInput) SetNetworkCardIndex(v int64) *AttachNetworkInterfaceInput {
+	s.NetworkCardIndex = &v
+	return s
+}
+
 // SetNetworkInterfaceId sets the NetworkInterfaceId field's value.
 func (s *AttachNetworkInterfaceInput) SetNetworkInterfaceId(v string) *AttachNetworkInterfaceInput {
 	s.NetworkInterfaceId = &v
@@ -41669,6 +42124,9 @@ type AttachNetworkInterfaceOutput struct {
 
 	// The ID of the network interface attachment.
 	AttachmentId *string `locationName:"attachmentId" type:"string"`
+
+	// The index of the network card.
+	NetworkCardIndex *int64 `locationName:"networkCardIndex" type:"integer"`
 }
 
 // String returns the string representation
@@ -41684,6 +42142,12 @@ func (s AttachNetworkInterfaceOutput) GoString() string {
 // SetAttachmentId sets the AttachmentId field's value.
 func (s *AttachNetworkInterfaceOutput) SetAttachmentId(v string) *AttachNetworkInterfaceOutput {
 	s.AttachmentId = &v
+	return s
+}
+
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *AttachNetworkInterfaceOutput) SetNetworkCardIndex(v int64) *AttachNetworkInterfaceOutput {
+	s.NetworkCardIndex = &v
 	return s
 }
 
@@ -43945,7 +44409,7 @@ func (s *CapacityReservationGroup) SetOwnerId(v string) *CapacityReservationGrou
 // For more information about Capacity Reservations, see On-Demand Capacity
 // Reservations (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-reservations.html)
 // in the Amazon Elastic Compute Cloud User Guide. For examples of using Capacity
-// Reservations in an EC2 Fleet, see EC2 Fleet Example Configurations (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-examples.html)
+// Reservations in an EC2 Fleet, see EC2 Fleet example configurations (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-examples.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 type CapacityReservationOptions struct {
 	_ struct{} `type:"structure"`
@@ -43990,7 +44454,7 @@ func (s *CapacityReservationOptions) SetUsageStrategy(v string) *CapacityReserva
 // For more information about Capacity Reservations, see On-Demand Capacity
 // Reservations (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-reservations.html)
 // in the Amazon Elastic Compute Cloud User Guide. For examples of using Capacity
-// Reservations in an EC2 Fleet, see EC2 Fleet Example Configurations (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-examples.html)
+// Reservations in an EC2 Fleet, see EC2 Fleet example configurations (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-examples.html)
 // in the Amazon Elastic Compute Cloud User Guide.
 type CapacityReservationOptionsRequest struct {
 	_ struct{} `type:"structure"`
@@ -44559,6 +45023,84 @@ func (s *ClientCertificateRevocationListStatus) SetMessage(v string) *ClientCert
 	return s
 }
 
+// The options for managing connection authorization for new client connections.
+type ClientConnectOptions struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether client connect options are enabled. The default is false
+	// (not enabled).
+	Enabled *bool `type:"boolean"`
+
+	// The Amazon Resource Name (ARN) of the AWS Lambda function used for connection
+	// authorization.
+	LambdaFunctionArn *string `type:"string"`
+}
+
+// String returns the string representation
+func (s ClientConnectOptions) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ClientConnectOptions) GoString() string {
+	return s.String()
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *ClientConnectOptions) SetEnabled(v bool) *ClientConnectOptions {
+	s.Enabled = &v
+	return s
+}
+
+// SetLambdaFunctionArn sets the LambdaFunctionArn field's value.
+func (s *ClientConnectOptions) SetLambdaFunctionArn(v string) *ClientConnectOptions {
+	s.LambdaFunctionArn = &v
+	return s
+}
+
+// The options for managing connection authorization for new client connections.
+type ClientConnectResponseOptions struct {
+	_ struct{} `type:"structure"`
+
+	// Indicates whether client connect options are enabled.
+	Enabled *bool `locationName:"enabled" type:"boolean"`
+
+	// The Amazon Resource Name (ARN) of the AWS Lambda function used for connection
+	// authorization.
+	LambdaFunctionArn *string `locationName:"lambdaFunctionArn" type:"string"`
+
+	// The status of any updates to the client connect options.
+	Status *ClientVpnEndpointAttributeStatus `locationName:"status" type:"structure"`
+}
+
+// String returns the string representation
+func (s ClientConnectResponseOptions) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ClientConnectResponseOptions) GoString() string {
+	return s.String()
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *ClientConnectResponseOptions) SetEnabled(v bool) *ClientConnectResponseOptions {
+	s.Enabled = &v
+	return s
+}
+
+// SetLambdaFunctionArn sets the LambdaFunctionArn field's value.
+func (s *ClientConnectResponseOptions) SetLambdaFunctionArn(v string) *ClientConnectResponseOptions {
+	s.LambdaFunctionArn = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *ClientConnectResponseOptions) SetStatus(v *ClientVpnEndpointAttributeStatus) *ClientConnectResponseOptions {
+	s.Status = v
+	return s
+}
+
 // Describes the client-specific data.
 type ClientData struct {
 	_ struct{} `type:"structure"`
@@ -44611,7 +45153,7 @@ func (s *ClientData) SetUploadStart(v time.Time) *ClientData {
 }
 
 // Describes the authentication methods used by a Client VPN endpoint. For more
-// information, see Authentication (https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/authentication-authrization.html#client-authentication)
+// information, see Authentication (https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/client-authentication.html)
 // in the AWS Client VPN Administrator Guide.
 type ClientVpnAuthentication struct {
 	_ struct{} `type:"structure"`
@@ -44787,6 +45329,10 @@ type ClientVpnConnection struct {
 	// The number of packets sent by the client.
 	IngressPackets *string `locationName:"ingressPackets" type:"string"`
 
+	// The statuses returned by the client connect handler for posture compliance,
+	// if applicable.
+	PostureComplianceStatuses []*string `locationName:"postureComplianceStatusSet" locationNameList:"item" type:"list"`
+
 	// The current state of the client connection.
 	Status *ClientVpnConnectionStatus `locationName:"status" type:"structure"`
 
@@ -44868,6 +45414,12 @@ func (s *ClientVpnConnection) SetIngressPackets(v string) *ClientVpnConnection {
 	return s
 }
 
+// SetPostureComplianceStatuses sets the PostureComplianceStatuses field's value.
+func (s *ClientVpnConnection) SetPostureComplianceStatuses(v []*string) *ClientVpnConnection {
+	s.PostureComplianceStatuses = v
+	return s
+}
+
 // SetStatus sets the Status field's value.
 func (s *ClientVpnConnection) SetStatus(v *ClientVpnConnectionStatus) *ClientVpnConnection {
 	s.Status = v
@@ -44936,6 +45488,9 @@ type ClientVpnEndpoint struct {
 	// are assigned.
 	ClientCidrBlock *string `locationName:"clientCidrBlock" type:"string"`
 
+	// The options for managing connection authorization for new client connections.
+	ClientConnectOptions *ClientConnectResponseOptions `locationName:"clientConnectOptions" type:"structure"`
+
 	// The ID of the Client VPN endpoint.
 	ClientVpnEndpointId *string `locationName:"clientVpnEndpointId" type:"string"`
 
@@ -44960,6 +45515,9 @@ type ClientVpnEndpoint struct {
 
 	// The IDs of the security groups for the target network.
 	SecurityGroupIds []*string `locationName:"securityGroupIdSet" locationNameList:"item" type:"list"`
+
+	// The URL of the self-service portal.
+	SelfServicePortalUrl *string `locationName:"selfServicePortalUrl" type:"string"`
 
 	// The ARN of the server certificate.
 	ServerCertificateArn *string `locationName:"serverCertificateArn" type:"string"`
@@ -45018,6 +45576,12 @@ func (s *ClientVpnEndpoint) SetClientCidrBlock(v string) *ClientVpnEndpoint {
 	return s
 }
 
+// SetClientConnectOptions sets the ClientConnectOptions field's value.
+func (s *ClientVpnEndpoint) SetClientConnectOptions(v *ClientConnectResponseOptions) *ClientVpnEndpoint {
+	s.ClientConnectOptions = v
+	return s
+}
+
 // SetClientVpnEndpointId sets the ClientVpnEndpointId field's value.
 func (s *ClientVpnEndpoint) SetClientVpnEndpointId(v string) *ClientVpnEndpoint {
 	s.ClientVpnEndpointId = &v
@@ -45066,6 +45630,12 @@ func (s *ClientVpnEndpoint) SetSecurityGroupIds(v []*string) *ClientVpnEndpoint 
 	return s
 }
 
+// SetSelfServicePortalUrl sets the SelfServicePortalUrl field's value.
+func (s *ClientVpnEndpoint) SetSelfServicePortalUrl(v string) *ClientVpnEndpoint {
+	s.SelfServicePortalUrl = &v
+	return s
+}
+
 // SetServerCertificateArn sets the ServerCertificateArn field's value.
 func (s *ClientVpnEndpoint) SetServerCertificateArn(v string) *ClientVpnEndpoint {
 	s.ServerCertificateArn = &v
@@ -45111,6 +45681,39 @@ func (s *ClientVpnEndpoint) SetVpnPort(v int64) *ClientVpnEndpoint {
 // SetVpnProtocol sets the VpnProtocol field's value.
 func (s *ClientVpnEndpoint) SetVpnProtocol(v string) *ClientVpnEndpoint {
 	s.VpnProtocol = &v
+	return s
+}
+
+// Describes the status of the Client VPN endpoint attribute.
+type ClientVpnEndpointAttributeStatus struct {
+	_ struct{} `type:"structure"`
+
+	// The status code.
+	Code *string `locationName:"code" type:"string" enum:"ClientVpnEndpointAttributeStatusCode"`
+
+	// The status message.
+	Message *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s ClientVpnEndpointAttributeStatus) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ClientVpnEndpointAttributeStatus) GoString() string {
+	return s.String()
+}
+
+// SetCode sets the Code field's value.
+func (s *ClientVpnEndpointAttributeStatus) SetCode(v string) *ClientVpnEndpointAttributeStatus {
+	s.Code = &v
+	return s
+}
+
+// SetMessage sets the Message field's value.
+func (s *ClientVpnEndpointAttributeStatus) SetMessage(v string) *ClientVpnEndpointAttributeStatus {
+	s.Message = &v
 	return s
 }
 
@@ -45875,29 +46478,25 @@ type CopyImageInput struct {
 	// in the Amazon Elastic Compute Cloud User Guide.
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// An identifier for the symmetric AWS Key Management Service (AWS KMS) customer
-	// master key (CMK) to use when creating the encrypted volume. This parameter
-	// is only required if you want to use a non-default CMK; if this parameter
-	// is not specified, the default CMK for EBS is used. If a KmsKeyId is specified,
-	// the Encrypted flag must also be set.
+	// The identifier of the symmetric AWS Key Management Service (AWS KMS) customer
+	// master key (CMK) to use when creating encrypted volumes. If this parameter
+	// is not specified, your AWS managed CMK for EBS is used. If you specify a
+	// CMK, you must also set the encrypted state to true.
 	//
-	// To specify a CMK, use its key ID, Amazon Resource Name (ARN), alias name,
-	// or alias ARN. When using an alias name, prefix it with "alias/". For example:
+	// You can specify a CMK using any of the following:
 	//
-	//    * Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab
+	//    * Key ID. For example, 1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
-	//    * Key ARN: arn:aws:kms:us-east-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
+	//    * Key alias. For example, alias/ExampleAlias.
 	//
-	//    * Alias name: alias/ExampleAlias
+	//    * Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
-	//    * Alias ARN: arn:aws:kms:us-east-2:111122223333:alias/ExampleAlias
+	//    * Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
 	//
-	// AWS parses KmsKeyId asynchronously, meaning that the action you call may
-	// appear to complete even though you provided an invalid identifier. This action
-	// will eventually report failure.
+	// AWS authenticates the CMK asynchronously. Therefore, if you specify an identifier
+	// that is not valid, the action can appear to complete, but eventually fails.
 	//
-	// The specified CMK must exist in the Region that the snapshot is being copied
-	// to.
+	// The specified CMK must exist in the destination Region.
 	//
 	// Amazon EBS does not support asymmetric CMKs.
 	KmsKeyId *string `locationName:"kmsKeyId" type:"string"`
@@ -46045,7 +46644,7 @@ type CopySnapshotInput struct {
 	// not enabled, enable encryption using this parameter. Otherwise, omit this
 	// parameter. Encrypted snapshots are encrypted, even if you omit this parameter
 	// and encryption by default is not enabled. You cannot set this parameter to
-	// false. For more information, see Amazon EBS Encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
+	// false. For more information, see Amazon EBS encryption (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html)
 	// in the Amazon Elastic Compute Cloud User Guide.
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
@@ -46056,11 +46655,11 @@ type CopySnapshotInput struct {
 	//
 	// You can specify the CMK using any of the following:
 	//
-	//    * Key ID. For example, key/1234abcd-12ab-34cd-56ef-1234567890ab.
+	//    * Key ID. For example, 1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
 	//    * Key alias. For example, alias/ExampleAlias.
 	//
-	//    * Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	//    * Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
 	//    * Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
 	//
@@ -46071,14 +46670,14 @@ type CopySnapshotInput struct {
 
 	// When you copy an encrypted source snapshot using the Amazon EC2 Query API,
 	// you must supply a pre-signed URL. This parameter is optional for unencrypted
-	// snapshots. For more information, see Query Requests (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html).
+	// snapshots. For more information, see Query requests (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Query-Requests.html).
 	//
 	// The PresignedUrl should use the snapshot source endpoint, the CopySnapshot
 	// action, and include the SourceRegion, SourceSnapshotId, and DestinationRegion
 	// parameters. The PresignedUrl must be signed using AWS Signature Version 4.
 	// Because EBS snapshots are stored in Amazon S3, the signing algorithm for
-	// this parameter uses the same logic that is described in Authenticating Requests
-	// by Using Query Parameters (AWS Signature Version 4) (https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html)
+	// this parameter uses the same logic that is described in Authenticating Requests:
+	// Using Query Parameters (AWS Signature Version 4) (https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html)
 	// in the Amazon Simple Storage Service API Reference. An invalid or improperly
 	// signed PresignedUrl will cause the copy operation to fail asynchronously,
 	// and the snapshot will move to an error state.
@@ -46625,6 +47224,9 @@ type CreateClientVpnEndpointInput struct {
 	// ClientCidrBlock is a required field
 	ClientCidrBlock *string `type:"string" required:"true"`
 
+	// The options for managing connection authorization for new client connections.
+	ClientConnectOptions *ClientConnectOptions `type:"structure"`
+
 	// Unique, case-sensitive identifier that you provide to ensure the idempotency
 	// of the request. For more information, see How to Ensure Idempotency (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Run_Instance_Idempotency.html).
 	ClientToken *string `type:"string" idempotencyToken:"true"`
@@ -46662,6 +47264,11 @@ type CreateClientVpnEndpointInput struct {
 	// The IDs of one or more security groups to apply to the target network. You
 	// must also specify the ID of the VPC that contains the security groups.
 	SecurityGroupIds []*string `locationName:"SecurityGroupId" locationNameList:"item" type:"list"`
+
+	// Specify whether to enable the self-service portal for the Client VPN endpoint.
+	//
+	// Default Value: enabled
+	SelfServicePortal *string `type:"string" enum:"SelfServicePortal"`
 
 	// The ARN of the server certificate. For more information, see the AWS Certificate
 	// Manager User Guide (https://docs.aws.amazon.com/acm/latest/userguide/).
@@ -46743,6 +47350,12 @@ func (s *CreateClientVpnEndpointInput) SetClientCidrBlock(v string) *CreateClien
 	return s
 }
 
+// SetClientConnectOptions sets the ClientConnectOptions field's value.
+func (s *CreateClientVpnEndpointInput) SetClientConnectOptions(v *ClientConnectOptions) *CreateClientVpnEndpointInput {
+	s.ClientConnectOptions = v
+	return s
+}
+
 // SetClientToken sets the ClientToken field's value.
 func (s *CreateClientVpnEndpointInput) SetClientToken(v string) *CreateClientVpnEndpointInput {
 	s.ClientToken = &v
@@ -46776,6 +47389,12 @@ func (s *CreateClientVpnEndpointInput) SetDryRun(v bool) *CreateClientVpnEndpoin
 // SetSecurityGroupIds sets the SecurityGroupIds field's value.
 func (s *CreateClientVpnEndpointInput) SetSecurityGroupIds(v []*string) *CreateClientVpnEndpointInput {
 	s.SecurityGroupIds = v
+	return s
+}
+
+// SetSelfServicePortal sets the SelfServicePortal field's value.
+func (s *CreateClientVpnEndpointInput) SetSelfServicePortal(v string) *CreateClientVpnEndpointInput {
+	s.SelfServicePortal = &v
 	return s
 }
 
@@ -47515,7 +48134,7 @@ type CreateFleetInput struct {
 	// The key-value pair for tagging the EC2 Fleet request on creation. The value
 	// for ResourceType must be fleet, otherwise the fleet request fails. To tag
 	// instances at launch, specify the tags in the launch template (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-launch-templates.html#create-launch-template).
-	// For information about tagging after launch, see Tagging Your Resources (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-resources).
+	// For information about tagging after launch, see Tagging your resources (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-resources).
 	TagSpecifications []*TagSpecification `locationName:"TagSpecification" locationNameList:"item" type:"list"`
 
 	// The number of units to request.
@@ -47527,13 +48146,22 @@ type CreateFleetInput struct {
 	// expires.
 	TerminateInstancesWithExpiration *bool `type:"boolean"`
 
-	// The type of the request. By default, the EC2 Fleet places an asynchronous
-	// request for your desired capacity, and maintains it by replenishing interrupted
-	// Spot Instances (maintain). A value of instant places a synchronous one-time
-	// request, and returns errors for any instances that could not be launched.
-	// A value of request places an asynchronous one-time request without maintaining
-	// capacity or submitting requests in alternative capacity pools if capacity
-	// is unavailable. For more information, see EC2 Fleet Request Types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-configuration-strategies.html#ec2-fleet-request-type)
+	// The type of request. The default value is maintain.
+	//
+	//    * maintain - The EC2 Fleet plaees an asynchronous request for your desired
+	//    capacity, and continues to maintain your desired Spot capacity by replenishing
+	//    interrupted Spot Instances.
+	//
+	//    * request - The EC2 Fleet places an asynchronous one-time request for
+	//    your desired capacity, but does submit Spot requests in alternative capacity
+	//    pools if Spot capacity is unavailable, and does not maintain Spot capacity
+	//    if Spot Instances are interrupted.
+	//
+	//    * instant - The EC2 Fleet places a synchronous one-time request for your
+	//    desired capacity, and returns errors for any instances that could not
+	//    be launched.
+	//
+	// For more information, see EC2 Fleet request types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-configuration-strategies.html#ec2-fleet-request-type)
 	// in the Amazon Elastic Compute Cloud User Guide.
 	Type *string `type:"string" enum:"FleetType"`
 
@@ -48275,7 +48903,9 @@ type CreateInstanceExportTaskInput struct {
 	Description *string `locationName:"description" type:"string"`
 
 	// The format and location for an instance export task.
-	ExportToS3Task *ExportToS3TaskSpecification `locationName:"exportToS3" type:"structure"`
+	//
+	// ExportToS3Task is a required field
+	ExportToS3Task *ExportToS3TaskSpecification `locationName:"exportToS3" type:"structure" required:"true"`
 
 	// The ID of the instance.
 	//
@@ -48286,7 +48916,9 @@ type CreateInstanceExportTaskInput struct {
 	TagSpecifications []*TagSpecification `locationName:"TagSpecification" locationNameList:"item" type:"list"`
 
 	// The target virtualization environment.
-	TargetEnvironment *string `locationName:"targetEnvironment" type:"string" enum:"ExportEnvironment"`
+	//
+	// TargetEnvironment is a required field
+	TargetEnvironment *string `locationName:"targetEnvironment" type:"string" required:"true" enum:"ExportEnvironment"`
 }
 
 // String returns the string representation
@@ -48302,8 +48934,14 @@ func (s CreateInstanceExportTaskInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *CreateInstanceExportTaskInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "CreateInstanceExportTaskInput"}
+	if s.ExportToS3Task == nil {
+		invalidParams.Add(request.NewErrParamRequired("ExportToS3Task"))
+	}
 	if s.InstanceId == nil {
 		invalidParams.Add(request.NewErrParamRequired("InstanceId"))
+	}
+	if s.TargetEnvironment == nil {
+		invalidParams.Add(request.NewErrParamRequired("TargetEnvironment"))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -50079,6 +50717,9 @@ type CreateRouteInput struct {
 	// The ID of a transit gateway.
 	TransitGatewayId *string `type:"string"`
 
+	// The ID of a VPC endpoint. Supported for Gateway Load Balancer endpoints only.
+	VpcEndpointId *string `type:"string"`
+
 	// The ID of a VPC peering connection.
 	VpcPeeringConnectionId *string `locationName:"vpcPeeringConnectionId" type:"string"`
 }
@@ -50181,6 +50822,12 @@ func (s *CreateRouteInput) SetRouteTableId(v string) *CreateRouteInput {
 // SetTransitGatewayId sets the TransitGatewayId field's value.
 func (s *CreateRouteInput) SetTransitGatewayId(v string) *CreateRouteInput {
 	s.TransitGatewayId = &v
+	return s
+}
+
+// SetVpcEndpointId sets the VpcEndpointId field's value.
+func (s *CreateRouteInput) SetVpcEndpointId(v string) *CreateRouteInput {
+	s.VpcEndpointId = &v
 	return s
 }
 
@@ -50593,7 +51240,10 @@ func (s *CreateSnapshotsOutput) SetSnapshots(v []*SnapshotInfo) *CreateSnapshots
 type CreateSpotDatafeedSubscriptionInput struct {
 	_ struct{} `type:"structure"`
 
-	// The Amazon S3 bucket in which to store the Spot Instance data feed.
+	// The name of the Amazon S3 bucket in which to store the Spot Instance data
+	// feed. For more information about bucket names, see Rules for bucket naming
+	// (https://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html#bucketnamingrules)
+	// in the Amazon S3 Developer Guide.
 	//
 	// Bucket is a required field
 	Bucket *string `locationName:"bucket" type:"string" required:"true"`
@@ -50604,7 +51254,7 @@ type CreateSpotDatafeedSubscriptionInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `locationName:"dryRun" type:"boolean"`
 
-	// A prefix for the data feed file names.
+	// The prefix for the data feed file names.
 	Prefix *string `locationName:"prefix" type:"string"`
 }
 
@@ -52186,10 +52836,15 @@ func (s *CreateTransitGatewayVpcAttachmentOutput) SetTransitGatewayVpcAttachment
 type CreateTransitGatewayVpcAttachmentRequestOptions struct {
 	_ struct{} `type:"structure"`
 
+	// Enable or disable support for appliance mode. If enabled, a traffic flow
+	// between a source and destination uses the same Availability Zone for the
+	// VPC attachment for the lifetime of that flow. The default is disable.
+	ApplianceModeSupport *string `type:"string" enum:"ApplianceModeSupportValue"`
+
 	// Enable or disable DNS support. The default is enable.
 	DnsSupport *string `type:"string" enum:"DnsSupportValue"`
 
-	// Enable or disable IPv6 support. The default is enable.
+	// Enable or disable IPv6 support.
 	Ipv6Support *string `type:"string" enum:"Ipv6SupportValue"`
 }
 
@@ -52201,6 +52856,12 @@ func (s CreateTransitGatewayVpcAttachmentRequestOptions) String() string {
 // GoString returns the string representation
 func (s CreateTransitGatewayVpcAttachmentRequestOptions) GoString() string {
 	return s.String()
+}
+
+// SetApplianceModeSupport sets the ApplianceModeSupport field's value.
+func (s *CreateTransitGatewayVpcAttachmentRequestOptions) SetApplianceModeSupport(v string) *CreateTransitGatewayVpcAttachmentRequestOptions {
+	s.ApplianceModeSupport = &v
+	return s
 }
 
 // SetDnsSupport sets the DnsSupport field's value.
@@ -52229,7 +52890,7 @@ type CreateVolumeInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `locationName:"dryRun" type:"boolean"`
 
-	// Specifies whether the volume should be encrypted. The effect of setting the
+	// Indicates whether the volume should be encrypted. The effect of setting the
 	// encryption state to true depends on the volume origin (new or from a snapshot),
 	// starting encryption state, ownership, and whether encryption by default is
 	// enabled. For more information, see Encryption by default (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html#encryption-by-default)
@@ -52239,15 +52900,26 @@ type CreateVolumeInput struct {
 	// EBS encryption. For more information, see Supported instance types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html#EBSEncryption_supported_instances).
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// The number of I/O operations per second (IOPS) to provision for an io1 or
-	// io2 volume, with a maximum ratio of 50 IOPS/GiB for io1, and 500 IOPS/GiB
-	// for io2. Range is 100 to 64,000 IOPS for volumes in most Regions. Maximum
-	// IOPS of 64,000 is guaranteed only on Nitro-based instances (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances).
-	// Other instance families guarantee performance up to 32,000 IOPS. For more
-	// information, see Amazon EBS volume types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
-	// in the Amazon Elastic Compute Cloud User Guide.
+	// The number of I/O operations per second (IOPS). For gp3, io1, and io2 volumes,
+	// this represents the number of IOPS that are provisioned for the volume. For
+	// gp2 volumes, this represents the baseline performance of the volume and the
+	// rate at which the volume accumulates I/O credits for bursting.
 	//
-	// This parameter is valid only for Provisioned IOPS SSD (io1 and io2) volumes.
+	// The following are the supported values for each volume type:
+	//
+	//    * gp3: 3,000-16,000 IOPS
+	//
+	//    * io1: 100-64,000 IOPS
+	//
+	//    * io2: 100-64,000 IOPS
+	//
+	// For io1 and io2 volumes, we guarantee 64,000 IOPS only for Instances built
+	// on the Nitro System (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances).
+	// Other instance families guarantee performance up to 32,000 IOPS.
+	//
+	// This parameter is required for io1 and io2 volumes. The default for gp3 volumes
+	// is 3,000 IOPS. This parameter is not supported for gp2, st1, sc1, or standard
+	// volumes.
 	Iops *int64 `type:"integer"`
 
 	// The identifier of the AWS Key Management Service (AWS KMS) customer master
@@ -52257,11 +52929,11 @@ type CreateVolumeInput struct {
 	//
 	// You can specify the CMK using any of the following:
 	//
-	//    * Key ID. For example, key/1234abcd-12ab-34cd-56ef-1234567890ab.
+	//    * Key ID. For example, 1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
 	//    * Key alias. For example, alias/ExampleAlias.
 	//
-	//    * Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	//    * Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
 	//    * Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
 	//
@@ -52270,10 +52942,11 @@ type CreateVolumeInput struct {
 	// fails.
 	KmsKeyId *string `type:"string"`
 
-	// Specifies whether to enable Amazon EBS Multi-Attach. If you enable Multi-Attach,
-	// you can attach the volume to up to 16 Nitro-based instances (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances)
-	// in the same Availability Zone. For more information, see Amazon EBS Multi-Attach
-	// (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volumes-multi.html)
+	// Indicates whether to enable Amazon EBS Multi-Attach. If you enable Multi-Attach,
+	// you can attach the volume to up to 16 Instances built on the Nitro System
+	// (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances)
+	// in the same Availability Zone. This parameter is supported with io1 volumes
+	// only. For more information, see Amazon EBS Multi-Attach (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volumes-multi.html)
 	// in the Amazon Elastic Compute Cloud User Guide.
 	MultiAttachEnabled *bool `type:"boolean"`
 
@@ -52281,14 +52954,19 @@ type CreateVolumeInput struct {
 	OutpostArn *string `type:"string"`
 
 	// The size of the volume, in GiBs. You must specify either a snapshot ID or
-	// a volume size.
+	// a volume size. If you specify a snapshot, the default is the snapshot size.
+	// You can specify a volume size that is equal to or larger than the snapshot
+	// size.
 	//
-	// Constraints: 1-16,384 for gp2, 4-16,384 for io1 and io2, 500-16,384 for st1,
-	// 500-16,384 for sc1, and 1-1,024 for standard. If you specify a snapshot,
-	// the volume size must be equal to or larger than the snapshot size.
+	// The following are the supported volumes sizes for each volume type:
 	//
-	// Default: If you're creating the volume from a snapshot and don't specify
-	// a volume size, the default is the snapshot size.
+	//    * gp2 and gp3: 1-16,384
+	//
+	//    * io1 and io2: 4-16,384
+	//
+	//    * st1 and sc1: 125-16,384
+	//
+	//    * standard: 1-1,024
 	Size *int64 `type:"integer"`
 
 	// The snapshot from which to create the volume. You must specify either a snapshot
@@ -52298,9 +52976,27 @@ type CreateVolumeInput struct {
 	// The tags to apply to the volume during creation.
 	TagSpecifications []*TagSpecification `locationName:"TagSpecification" locationNameList:"item" type:"list"`
 
-	// The volume type. This can be gp2 for General Purpose SSD, io1 or io2 for
-	// Provisioned IOPS SSD, st1 for Throughput Optimized HDD, sc1 for Cold HDD,
-	// or standard for Magnetic volumes.
+	// The throughput to provision for a volume, with a maximum of 1,000 MiB/s.
+	//
+	// This parameter is valid only for gp3 volumes.
+	//
+	// Valid Range: Minimum value of 125. Maximum value of 1000.
+	Throughput *int64 `type:"integer"`
+
+	// The volume type. This parameter can be one of the following values:
+	//
+	//    * General Purpose SSD: gp2 | gp3
+	//
+	//    * Provisioned IOPS SSD: io1 | io2
+	//
+	//    * Throughput Optimized HDD: st1
+	//
+	//    * Cold HDD: sc1
+	//
+	//    * Magnetic: standard
+	//
+	// For more information, see Amazon EBS volume types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
+	// in the Amazon Elastic Compute Cloud User Guide.
 	//
 	// Default: gp2
 	VolumeType *string `type:"string" enum:"VolumeType"`
@@ -52386,6 +53082,12 @@ func (s *CreateVolumeInput) SetSnapshotId(v string) *CreateVolumeInput {
 // SetTagSpecifications sets the TagSpecifications field's value.
 func (s *CreateVolumeInput) SetTagSpecifications(v []*TagSpecification) *CreateVolumeInput {
 	s.TagSpecifications = v
+	return s
+}
+
+// SetThroughput sets the Throughput field's value.
+func (s *CreateVolumeInput) SetThroughput(v int64) *CreateVolumeInput {
+	s.Throughput = &v
 	return s
 }
 
@@ -52602,9 +53304,10 @@ type CreateVpcEndpointInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `type:"boolean"`
 
-	// A policy to attach to the endpoint that controls access to the service. The
-	// policy must be in valid JSON format. If this parameter is not specified,
-	// we attach a default policy that allows full access to the service.
+	// (Interface and gateway endpoints) A policy to attach to the endpoint that
+	// controls access to the service. The policy must be in valid JSON format.
+	// If this parameter is not specified, we attach a default policy that allows
+	// full access to the service.
 	PolicyDocument *string `type:"string"`
 
 	// (Interface endpoint) Indicates whether to associate a private hosted zone
@@ -52635,8 +53338,9 @@ type CreateVpcEndpointInput struct {
 	// ServiceName is a required field
 	ServiceName *string `type:"string" required:"true"`
 
-	// (Interface endpoint) The ID of one or more subnets in which to create an
-	// endpoint network interface.
+	// (Interface and Gateway Load Balancer endpoints) The ID of one or more subnets
+	// in which to create an endpoint network interface. For a Gateway Load Balancer
+	// endpoint, you can specify one subnet only.
 	SubnetIds []*string `locationName:"SubnetId" locationNameList:"item" type:"list"`
 
 	// The tags to associate with the endpoint.
@@ -52796,13 +53500,15 @@ type CreateVpcEndpointServiceConfigurationInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `type:"boolean"`
 
+	// The Amazon Resource Names (ARNs) of one or more Gateway Load Balancers.
+	GatewayLoadBalancerArns []*string `locationName:"GatewayLoadBalancerArn" locationNameList:"item" type:"list"`
+
 	// The Amazon Resource Names (ARNs) of one or more Network Load Balancers for
 	// your service.
-	//
-	// NetworkLoadBalancerArns is a required field
-	NetworkLoadBalancerArns []*string `locationName:"NetworkLoadBalancerArn" locationNameList:"item" type:"list" required:"true"`
+	NetworkLoadBalancerArns []*string `locationName:"NetworkLoadBalancerArn" locationNameList:"item" type:"list"`
 
-	// The private DNS name to assign to the VPC endpoint service.
+	// (Interface endpoint configuration) The private DNS name to assign to the
+	// VPC endpoint service.
 	PrivateDnsName *string `type:"string"`
 
 	// The tags to associate with the service.
@@ -52817,19 +53523,6 @@ func (s CreateVpcEndpointServiceConfigurationInput) String() string {
 // GoString returns the string representation
 func (s CreateVpcEndpointServiceConfigurationInput) GoString() string {
 	return s.String()
-}
-
-// Validate inspects the fields of the type to determine if they are valid.
-func (s *CreateVpcEndpointServiceConfigurationInput) Validate() error {
-	invalidParams := request.ErrInvalidParams{Context: "CreateVpcEndpointServiceConfigurationInput"}
-	if s.NetworkLoadBalancerArns == nil {
-		invalidParams.Add(request.NewErrParamRequired("NetworkLoadBalancerArns"))
-	}
-
-	if invalidParams.Len() > 0 {
-		return invalidParams
-	}
-	return nil
 }
 
 // SetAcceptanceRequired sets the AcceptanceRequired field's value.
@@ -52847,6 +53540,12 @@ func (s *CreateVpcEndpointServiceConfigurationInput) SetClientToken(v string) *C
 // SetDryRun sets the DryRun field's value.
 func (s *CreateVpcEndpointServiceConfigurationInput) SetDryRun(v bool) *CreateVpcEndpointServiceConfigurationInput {
 	s.DryRun = &v
+	return s
+}
+
+// SetGatewayLoadBalancerArns sets the GatewayLoadBalancerArns field's value.
+func (s *CreateVpcEndpointServiceConfigurationInput) SetGatewayLoadBalancerArns(v []*string) *CreateVpcEndpointServiceConfigurationInput {
+	s.GatewayLoadBalancerArns = v
 	return s
 }
 
@@ -54167,8 +54866,14 @@ type DeleteFleetsInput struct {
 	// FleetIds is a required field
 	FleetIds []*string `locationName:"FleetId" type:"list" required:"true"`
 
-	// Indicates whether to terminate instances for an EC2 Fleet if it is deleted
-	// successfully.
+	// Indicates whether to terminate the instances when the EC2 Fleet is deleted.
+	// The default is to terminate the instances.
+	//
+	// To let the instances continue to run after the EC2 Fleet is deleted, specify
+	// NoTerminateInstances. Supported only for fleets of type maintain and request.
+	//
+	// For instant fleets, you cannot specify NoTerminateInstances. A deleted instant
+	// fleet with running instances is not supported.
 	//
 	// TerminateInstances is a required field
 	TerminateInstances *bool `type:"boolean" required:"true"`
@@ -61018,7 +61723,7 @@ type DescribeFlowLogsInput struct {
 	//
 	//    * log-destination-type - The type of destination to which the flow log
 	//    publishes data. Possible destination types include cloud-watch-logs and
-	//    S3.
+	//    s3.
 	//
 	//    * flow-log-id - The ID of the flow log.
 	//
@@ -62537,6 +63242,10 @@ type DescribeInstanceAttributeOutput struct {
 	// Indicates whether enhanced networking with ENA is enabled.
 	EnaSupport *AttributeBooleanValue `locationName:"enaSupport" type:"structure"`
 
+	// To enable the instance for AWS Nitro Enclaves, set this parameter to true;
+	// otherwise, set it to false.
+	EnclaveOptions *EnclaveOptions `locationName:"enclaveOptions" type:"structure"`
+
 	// The security groups associated with the instance.
 	Groups []*GroupIdentifier `locationName:"groupSet" locationNameList:"item" type:"list"`
 
@@ -62606,6 +63315,12 @@ func (s *DescribeInstanceAttributeOutput) SetEbsOptimized(v *AttributeBooleanVal
 // SetEnaSupport sets the EnaSupport field's value.
 func (s *DescribeInstanceAttributeOutput) SetEnaSupport(v *AttributeBooleanValue) *DescribeInstanceAttributeOutput {
 	s.EnaSupport = v
+	return s
+}
+
+// SetEnclaveOptions sets the EnclaveOptions field's value.
+func (s *DescribeInstanceAttributeOutput) SetEnclaveOptions(v *EnclaveOptions) *DescribeInstanceAttributeOutput {
+	s.EnclaveOptions = v
 	return s
 }
 
@@ -63010,7 +63725,7 @@ type DescribeInstanceTypeOfferingsInput struct {
 	//    type is region (default), the location is the Region code (for example,
 	//    us-east-2.)
 	//
-	//    * instance-type - The instance type.
+	//    * instance-type - The instance type. For example, c5.2xlarge.
 	Filters []*Filter `locationName:"Filter" locationNameList:"Filter" type:"list"`
 
 	// The location type.
@@ -63122,52 +63837,52 @@ type DescribeInstanceTypesInput struct {
 
 	// One or more filters. Filter names and values are case-sensitive.
 	//
-	//    * auto-recovery-supported - Indicates whether auto recovery is supported.
-	//    (true | false)
+	//    * auto-recovery-supported - Indicates whether auto recovery is supported
+	//    (true | false).
 	//
-	//    * bare-metal - Indicates whether it is a bare metal instance type. (true
-	//    | false)
+	//    * bare-metal - Indicates whether it is a bare metal instance type (true
+	//    | false).
 	//
 	//    * burstable-performance-supported - Indicates whether it is a burstable
-	//    performance instance type. (true | false)
+	//    performance instance type (true | false).
 	//
 	//    * current-generation - Indicates whether this instance type is the latest
-	//    generation instance type of an instance family. (true | false)
+	//    generation instance type of an instance family (true | false).
 	//
 	//    * ebs-info.ebs-optimized-info.baseline-bandwidth-in-mbps - The baseline
 	//    bandwidth performance for an EBS-optimized instance type, in Mbps.
 	//
-	//    * ebs-info.ebs-optimized-info.baseline-throughput-in-mbps - The baseline
-	//    throughput performance for an EBS-optimized instance type, in MBps.
-	//
 	//    * ebs-info.ebs-optimized-info.baseline-iops - The baseline input/output
 	//    storage operations per second for an EBS-optimized instance type.
+	//
+	//    * ebs-info.ebs-optimized-info.baseline-throughput-in-mbps - The baseline
+	//    throughput performance for an EBS-optimized instance type, in MB/s.
 	//
 	//    * ebs-info.ebs-optimized-info.maximum-bandwidth-in-mbps - The maximum
 	//    bandwidth performance for an EBS-optimized instance type, in Mbps.
 	//
-	//    * ebs-info.ebs-optimized-info.maximum-throughput-in-mbps - The maximum
-	//    throughput performance for an EBS-optimized instance type, in MBps.
-	//
 	//    * ebs-info.ebs-optimized-info.maximum-iops - The maximum input/output
 	//    storage operations per second for an EBS-optimized instance type.
 	//
-	//    * ebs-info.ebs-optimized-support - Indicates whether the instance type
-	//    is EBS-optimized. (supported | unsupported | default)
+	//    * ebs-info.ebs-optimized-info.maximum-throughput-in-mbps - The maximum
+	//    throughput performance for an EBS-optimized instance type, in MB/s.
 	//
-	//    * ebs-info.encryption-support - Indicates whether EBS encryption is supported.
-	//    (supported | unsupported)
+	//    * ebs-info.ebs-optimized-support - Indicates whether the instance type
+	//    is EBS-optimized (supported | unsupported | default).
+	//
+	//    * ebs-info.encryption-support - Indicates whether EBS encryption is supported
+	//    (supported | unsupported).
 	//
 	//    * ebs-info.nvme-support - Indicates whether non-volatile memory express
-	//    (NVMe) is supported or required. (required | supported | unsupported)
+	//    (NVMe) is supported for EBS volumes (required | supported | unsupported).
 	//
 	//    * free-tier-eligible - Indicates whether the instance type is eligible
-	//    to use in the free tier. (true | false)
+	//    to use in the free tier (true | false).
 	//
-	//    * hibernation-supported - Indicates whether On-Demand hibernation is supported.
-	//    (true | false)
+	//    * hibernation-supported - Indicates whether On-Demand hibernation is supported
+	//    (true | false).
 	//
-	//    * hypervisor - The hypervisor used. (nitro | xen)
+	//    * hypervisor - The hypervisor (nitro | xen).
 	//
 	//    * instance-storage-info.disk.count - The number of local disks.
 	//
@@ -63175,21 +63890,27 @@ type DescribeInstanceTypesInput struct {
 	//    storage disk, in GB.
 	//
 	//    * instance-storage-info.disk.type - The storage technology for the local
-	//    instance storage disks. (hdd | ssd)
+	//    instance storage disks (hdd | ssd).
+	//
+	//    * instance-storage-info.nvme-support - Indicates whether non-volatile
+	//    memory express (NVMe) is supported for instance store (required | supported)
+	//    | unsupported).
 	//
 	//    * instance-storage-info.total-size-in-gb - The total amount of storage
 	//    available from all local instance storage, in GB.
 	//
 	//    * instance-storage-supported - Indicates whether the instance type has
-	//    local instance storage. (true | false)
+	//    local instance storage (true | false).
+	//
+	//    * instance-type - The instance type (for example c5.2xlarge or c5*).
 	//
 	//    * memory-info.size-in-mib - The memory size.
 	//
-	//    * network-info.ena-support - Indicates whether Elastic Network Adapter
-	//    (ENA) is supported or required. (required | supported | unsupported)
-	//
 	//    * network-info.efa-supported - Indicates whether the instance type supports
-	//    Elastic Fabric Adapter (EFA). (true | false)
+	//    Elastic Fabric Adapter (EFA) (true | false).
+	//
+	//    * network-info.ena-support - Indicates whether Elastic Network Adapter
+	//    (ENA) is supported or required (required | supported | unsupported).
 	//
 	//    * network-info.ipv4-addresses-per-interface - The maximum number of private
 	//    IPv4 addresses per network interface.
@@ -63198,15 +63919,25 @@ type DescribeInstanceTypesInput struct {
 	//    IPv6 addresses per network interface.
 	//
 	//    * network-info.ipv6-supported - Indicates whether the instance type supports
-	//    IPv6. (true | false)
+	//    IPv6 (true | false).
 	//
 	//    * network-info.maximum-network-interfaces - The maximum number of network
 	//    interfaces per instance.
 	//
-	//    * network-info.network-performance - Describes the network performance.
+	//    * network-info.network-performance - The network performance (for example,
+	//    "25 Gigabit").
+	//
+	//    * processor-info.supported-architecture - The CPU architecture (arm64
+	//    | i386 | x86_64).
 	//
 	//    * processor-info.sustained-clock-speed-in-ghz - The CPU clock speed, in
 	//    GHz.
+	//
+	//    * supported-root-device-type - The root device type (ebs | instance-store).
+	//
+	//    * supported-usage-class - The usage class (on-demand | spot).
+	//
+	//    * supported-virtualization-type - The virtualization type (hvm | paravirtual).
 	//
 	//    * vcpu-info.default-cores - The default number of cores for the instance
 	//    type.
@@ -63216,6 +63947,12 @@ type DescribeInstanceTypesInput struct {
 	//
 	//    * vcpu-info.default-vcpus - The default number of vCPUs for the instance
 	//    type.
+	//
+	//    * vcpu-info.valid-cores - The number of cores that can be configured for
+	//    the instance type.
+	//
+	//    * vcpu-info.valid-threads-per-core - The number of threads per core that
+	//    can be configured for the instance type. For example, "1" or "1,2".
 	Filters []*Filter `locationName:"Filter" locationNameList:"Filter" type:"list"`
 
 	// The instance types. For more information, see Instance Types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html)
@@ -67939,7 +68676,7 @@ type DescribeSnapshotsInput struct {
 	// results in a single page along with a NextToken response element. The remaining
 	// results of the initial request can be seen by sending another DescribeSnapshots
 	// request with the returned NextToken value. This value can be between 5 and
-	// 1000; if MaxResults is given a value larger than 1000, only 1000 results
+	// 1,000; if MaxResults is given a value larger than 1,000, only 1,000 results
 	// are returned. If this parameter is not used, then DescribeSnapshots returns
 	// all results. You cannot specify this parameter and the snapshot IDs parameter
 	// in the same request.
@@ -68702,8 +69439,9 @@ type DescribeSpotPriceHistoryInput struct {
 	//    * instance-type - The type of instance (for example, m3.medium).
 	//
 	//    * product-description - The product description for the Spot price (Linux/UNIX
-	//    | SUSE Linux | Windows | Linux/UNIX (Amazon VPC) | SUSE Linux (Amazon
-	//    VPC) | Windows (Amazon VPC)).
+	//    | Red Hat Enterprise Linux | SUSE Linux | Windows | Linux/UNIX (Amazon
+	//    VPC) | Red Hat Enterprise Linux (Amazon VPC) | SUSE Linux (Amazon VPC)
+	//    | Windows (Amazon VPC)).
 	//
 	//    * spot-price - The Spot price. The value must match exactly (or use wildcards;
 	//    greater than or less than comparison is not supported).
@@ -69835,6 +70573,16 @@ type DescribeTransitGatewayPeeringAttachmentsInput struct {
 	//    | deleted | deleting | failed | failing | initiatingRequest | modifying
 	//    | pendingAcceptance | pending | rollingBack | rejected | rejecting).
 	//
+	//    * tag:<key> - The key/value combination of a tag assigned to the resource.
+	//    Use the tag key in the filter name and the tag value as the filter value.
+	//    For example, to find all resources that have a tag with the key Owner
+	//    and the value TeamA, specify tag:Owner for the filter name and TeamA for
+	//    the filter value.
+	//
+	//    * tag-key - The key of a tag assigned to the resource. Use this filter
+	//    to find all resources that have a tag with a specific key, regardless
+	//    of the tag value.
+	//
 	//    * transit-gateway-id - The ID of the transit gateway.
 	Filters []*Filter `locationName:"Filter" locationNameList:"Filter" type:"list"`
 
@@ -70470,8 +71218,8 @@ type DescribeVolumeStatusInput struct {
 	// paginated output. When this parameter is used, the request only returns MaxResults
 	// results in a single page along with a NextToken response element. The remaining
 	// results of the initial request can be seen by sending another request with
-	// the returned NextToken value. This value can be between 5 and 1000; if MaxResults
-	// is given a value larger than 1000, only 1000 results are returned. If this
+	// the returned NextToken value. This value can be between 5 and 1,000; if MaxResults
+	// is given a value larger than 1,000, only 1,000 results are returned. If this
 	// parameter is not used, then DescribeVolumeStatus returns all results. You
 	// cannot specify this parameter and the volume IDs parameter in the same request.
 	MaxResults *int64 `type:"integer"`
@@ -70616,9 +71364,8 @@ type DescribeVolumesInput struct {
 	//
 	//    * volume-id - The volume ID.
 	//
-	//    * volume-type - The Amazon EBS volume type. This can be gp2 for General
-	//    Purpose SSD, io1 or io2 for Provisioned IOPS SSD, st1 for Throughput Optimized
-	//    HDD, sc1 for Cold HDD, or standard for Magnetic volumes.
+	//    * volume-type - The Amazon EBS volume type (gp2 | gp3 | io1 | io2 | st1
+	//    | sc1| standard)
 	Filters []*Filter `locationName:"Filter" locationNameList:"Filter" type:"list"`
 
 	// The maximum number of volume results returned by DescribeVolumes in paginated
@@ -71705,6 +72452,9 @@ type DescribeVpcEndpointsInput struct {
 	//
 	//    * vpc-endpoint-state - The state of the endpoint (pendingAcceptance |
 	//    pending | available | deleting | deleted | rejected | failed).
+	//
+	//    * vpc-endpoint-type - The type of VPC endpoint (Interface | Gateway |
+	//    GatewayLoadBalancer).
 	//
 	//    * tag:<key> - The key/value combination of a tag assigned to the resource.
 	//    Use the tag key in the filter name and the tag value as the filter value.
@@ -73675,6 +74425,89 @@ func (s *DisassociateClientVpnTargetNetworkOutput) SetStatus(v *AssociationStatu
 	return s
 }
 
+type DisassociateEnclaveCertificateIamRoleInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the ACM certificate from which to disassociate the IAM role.
+	CertificateArn *string `min:"1" type:"string"`
+
+	// Checks whether you have the required permissions for the action, without
+	// actually making the request, and provides an error response. If you have
+	// the required permissions, the error response is DryRunOperation. Otherwise,
+	// it is UnauthorizedOperation.
+	DryRun *bool `type:"boolean"`
+
+	// The ARN of the IAM role to disassociate.
+	RoleArn *string `min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s DisassociateEnclaveCertificateIamRoleInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DisassociateEnclaveCertificateIamRoleInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DisassociateEnclaveCertificateIamRoleInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DisassociateEnclaveCertificateIamRoleInput"}
+	if s.CertificateArn != nil && len(*s.CertificateArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("CertificateArn", 1))
+	}
+	if s.RoleArn != nil && len(*s.RoleArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("RoleArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCertificateArn sets the CertificateArn field's value.
+func (s *DisassociateEnclaveCertificateIamRoleInput) SetCertificateArn(v string) *DisassociateEnclaveCertificateIamRoleInput {
+	s.CertificateArn = &v
+	return s
+}
+
+// SetDryRun sets the DryRun field's value.
+func (s *DisassociateEnclaveCertificateIamRoleInput) SetDryRun(v bool) *DisassociateEnclaveCertificateIamRoleInput {
+	s.DryRun = &v
+	return s
+}
+
+// SetRoleArn sets the RoleArn field's value.
+func (s *DisassociateEnclaveCertificateIamRoleInput) SetRoleArn(v string) *DisassociateEnclaveCertificateIamRoleInput {
+	s.RoleArn = &v
+	return s
+}
+
+type DisassociateEnclaveCertificateIamRoleOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Returns true if the request succeeds; otherwise, it returns an error.
+	Return *bool `locationName:"return" type:"boolean"`
+}
+
+// String returns the string representation
+func (s DisassociateEnclaveCertificateIamRoleOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DisassociateEnclaveCertificateIamRoleOutput) GoString() string {
+	return s.String()
+}
+
+// SetReturn sets the Return field's value.
+func (s *DisassociateEnclaveCertificateIamRoleOutput) SetReturn(v bool) *DisassociateEnclaveCertificateIamRoleOutput {
+	s.Return = &v
+	return s
+}
+
 type DisassociateIamInstanceProfileInput struct {
 	_ struct{} `type:"structure"`
 
@@ -74476,22 +75309,25 @@ type EbsBlockDevice struct {
 	// This parameter is not returned by .
 	Encrypted *bool `locationName:"encrypted" type:"boolean"`
 
-	// The number of I/O operations per second (IOPS) that the volume supports.
-	// For io1 and io2 volumes, this represents the number of IOPS that are provisioned
-	// for the volume. For gp2 volumes, this represents the baseline performance
-	// of the volume and the rate at which the volume accumulates I/O credits for
-	// bursting. For more information, see Amazon EBS volume types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
-	// in the Amazon Elastic Compute Cloud User Guide.
+	// The number of I/O operations per second (IOPS). For gp3, io1, and io2 volumes,
+	// this represents the number of IOPS that are provisioned for the volume. For
+	// gp2 volumes, this represents the baseline performance of the volume and the
+	// rate at which the volume accumulates I/O credits for bursting.
 	//
-	// Constraints: Range is 100-16,000 IOPS for gp2 volumes and 100 to 64,000 IOPS
-	// for io1 and io2 volumes in most Regions. Maximum io1 and io2 IOPS of 64,000
-	// is guaranteed only on Nitro-based instances (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances).
-	// Other instance families guarantee performance up to 32,000 IOPS. For more
-	// information, see Amazon EBS Volume Types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
-	// in the Amazon Elastic Compute Cloud User Guide.
+	// The following are the supported values for each volume type:
 	//
-	// Condition: This parameter is required for requests to create io1 and io2
-	// volumes; it is not used in requests to create gp2, st1, sc1, or standard
+	//    * gp3: 3,000-16,000 IOPS
+	//
+	//    * io1: 100-64,000 IOPS
+	//
+	//    * io2: 100-64,000 IOPS
+	//
+	// For io1 and io2 volumes, we guarantee 64,000 IOPS only for Instances built
+	// on the Nitro System (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances).
+	// Other instance families guarantee performance up to 32,000 IOPS.
+	//
+	// This parameter is required for io1 and io2 volumes. The default for gp3 volumes
+	// is 3,000 IOPS. This parameter is not supported for gp2, st1, sc1, or standard
 	// volumes.
 	Iops *int64 `locationName:"iops" type:"integer"`
 
@@ -74507,23 +75343,34 @@ type EbsBlockDevice struct {
 	// The ID of the snapshot.
 	SnapshotId *string `locationName:"snapshotId" type:"string"`
 
-	// The size of the volume, in GiB.
+	// The throughput that the volume supports, in MiB/s.
 	//
-	// Default: If you're creating the volume from a snapshot and don't specify
-	// a volume size, the default is the snapshot size.
+	// This parameter is valid only for gp3 volumes.
 	//
-	// Constraints: 1-16384 for General Purpose SSD (gp2), 4-16384 for Provisioned
-	// IOPS SSD (io1 and io2), 500-16384 for Throughput Optimized HDD (st1), 500-16384
-	// for Cold HDD (sc1), and 1-1024 for Magnetic (standard) volumes. If you specify
-	// a snapshot, the volume size must be equal to or larger than the snapshot
+	// Valid Range: Minimum value of 125. Maximum value of 1000.
+	Throughput *int64 `locationName:"throughput" type:"integer"`
+
+	// The size of the volume, in GiBs. You must specify either a snapshot ID or
+	// a volume size. If you specify a snapshot, the default is the snapshot size.
+	// You can specify a volume size that is equal to or larger than the snapshot
 	// size.
+	//
+	// The following are the supported volumes sizes for each volume type:
+	//
+	//    * gp2 and gp3:1-16,384
+	//
+	//    * io1 and io2: 4-16,384
+	//
+	//    * st1: 500-16,384
+	//
+	//    * sc1: 500-16,384
+	//
+	//    * standard: 1-1,024
 	VolumeSize *int64 `locationName:"volumeSize" type:"integer"`
 
-	// The volume type. If you set the type to io1 or io2, you must also specify
-	// the Iops parameter. If you set the type to gp2, st1, sc1, or standard, you
-	// must omit the Iops parameter.
-	//
-	// Default: gp2
+	// The volume type. For more information, see Amazon EBS volume types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
+	// in the Amazon Elastic Compute Cloud User Guide. If the volume type is io1
+	// or io2, you must specify the IOPS that the volume supports.
 	VolumeType *string `locationName:"volumeType" type:"string" enum:"VolumeType"`
 }
 
@@ -74567,6 +75414,12 @@ func (s *EbsBlockDevice) SetSnapshotId(v string) *EbsBlockDevice {
 	return s
 }
 
+// SetThroughput sets the Throughput field's value.
+func (s *EbsBlockDevice) SetThroughput(v int64) *EbsBlockDevice {
+	s.Throughput = &v
+	return s
+}
+
 // SetVolumeSize sets the VolumeSize field's value.
 func (s *EbsBlockDevice) SetVolumeSize(v int64) *EbsBlockDevice {
 	s.VolumeSize = &v
@@ -74586,7 +75439,7 @@ type EbsInfo struct {
 	// Describes the optimized EBS performance for the instance type.
 	EbsOptimizedInfo *EbsOptimizedInfo `locationName:"ebsOptimizedInfo" type:"structure"`
 
-	// Indicates that the instance type is Amazon EBS-optimized. For more information,
+	// Indicates whether the instance type is Amazon EBS-optimized. For more information,
 	// see Amazon EBS-Optimized Instances (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSOptimized.html)
 	// in Amazon EC2 User Guide for Linux Instances.
 	EbsOptimizedSupport *string `locationName:"ebsOptimizedSupport" type:"string" enum:"EbsOptimizedSupport"`
@@ -74730,7 +75583,7 @@ type EbsOptimizedInfo struct {
 	BaselineIops *int64 `locationName:"baselineIops" type:"integer"`
 
 	// The baseline throughput performance for an EBS-optimized instance type, in
-	// MBps.
+	// MB/s.
 	BaselineThroughputInMBps *float64 `locationName:"baselineThroughputInMBps" type:"double"`
 
 	// The maximum bandwidth performance for an EBS-optimized instance type, in
@@ -74742,7 +75595,7 @@ type EbsOptimizedInfo struct {
 	MaximumIops *int64 `locationName:"maximumIops" type:"integer"`
 
 	// The maximum throughput performance for an EBS-optimized instance type, in
-	// MBps.
+	// MB/s.
 	MaximumThroughputInMBps *float64 `locationName:"maximumThroughputInMBps" type:"double"`
 }
 
@@ -75882,6 +76735,57 @@ func (s *EnableVpcClassicLinkOutput) SetReturn(v bool) *EnableVpcClassicLinkOutp
 	return s
 }
 
+// Indicates whether the instance is enabled for AWS Nitro Enclaves.
+type EnclaveOptions struct {
+	_ struct{} `type:"structure"`
+
+	// If this parameter is set to true, the instance is enabled for AWS Nitro Enclaves;
+	// otherwise, it is not enabled for AWS Nitro Enclaves.
+	Enabled *bool `locationName:"enabled" type:"boolean"`
+}
+
+// String returns the string representation
+func (s EnclaveOptions) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EnclaveOptions) GoString() string {
+	return s.String()
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *EnclaveOptions) SetEnabled(v bool) *EnclaveOptions {
+	s.Enabled = &v
+	return s
+}
+
+// Indicates whether the instance is enabled for AWS Nitro Enclaves. For more
+// information, see What is AWS Nitro Enclaves? (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html)
+// in the AWS Nitro Enclaves User Guide.
+type EnclaveOptionsRequest struct {
+	_ struct{} `type:"structure"`
+
+	// To enable the instance for AWS Nitro Enclaves, set this parameter to true.
+	Enabled *bool `type:"boolean"`
+}
+
+// String returns the string representation
+func (s EnclaveOptionsRequest) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EnclaveOptionsRequest) GoString() string {
+	return s.String()
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *EnclaveOptionsRequest) SetEnabled(v bool) *EnclaveOptionsRequest {
+	s.Enabled = &v
+	return s
+}
+
 // Describes an EC2 Fleet or Spot Fleet event.
 type EventInformation struct {
 	_ struct{} `type:"structure"`
@@ -76877,12 +77781,16 @@ func (s *FailedQueuedPurchaseDeletion) SetReservedInstancesId(v string) *FailedQ
 	return s
 }
 
-// Describes the IAM SAML identity provider used for federated authentication.
+// Describes the IAM SAML identity providers used for federated authentication.
 type FederatedAuthentication struct {
 	_ struct{} `type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the IAM SAML identity provider.
 	SamlProviderArn *string `locationName:"samlProviderArn" type:"string"`
+
+	// The Amazon Resource Name (ARN) of the IAM SAML identity provider for the
+	// self-service portal.
+	SelfServiceSamlProviderArn *string `locationName:"selfServiceSamlProviderArn" type:"string"`
 }
 
 // String returns the string representation
@@ -76901,12 +77809,22 @@ func (s *FederatedAuthentication) SetSamlProviderArn(v string) *FederatedAuthent
 	return s
 }
 
+// SetSelfServiceSamlProviderArn sets the SelfServiceSamlProviderArn field's value.
+func (s *FederatedAuthentication) SetSelfServiceSamlProviderArn(v string) *FederatedAuthentication {
+	s.SelfServiceSamlProviderArn = &v
+	return s
+}
+
 // The IAM SAML identity provider used for federated authentication.
 type FederatedAuthenticationRequest struct {
 	_ struct{} `type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the IAM SAML identity provider.
 	SAMLProviderArn *string `type:"string"`
+
+	// The Amazon Resource Name (ARN) of the IAM SAML identity provider for the
+	// self-service portal.
+	SelfServiceSAMLProviderArn *string `type:"string"`
 }
 
 // String returns the string representation
@@ -76922,6 +77840,12 @@ func (s FederatedAuthenticationRequest) GoString() string {
 // SetSAMLProviderArn sets the SAMLProviderArn field's value.
 func (s *FederatedAuthenticationRequest) SetSAMLProviderArn(v string) *FederatedAuthenticationRequest {
 	s.SAMLProviderArn = &v
+	return s
+}
+
+// SetSelfServiceSAMLProviderArn sets the SelfServiceSAMLProviderArn field's value.
+func (s *FederatedAuthenticationRequest) SetSelfServiceSAMLProviderArn(v string) *FederatedAuthenticationRequest {
+	s.SelfServiceSAMLProviderArn = &v
 	return s
 }
 
@@ -77592,6 +78516,124 @@ func (s *FleetLaunchTemplateSpecificationRequest) SetVersion(v string) *FleetLau
 	return s
 }
 
+// The strategy to use when Amazon EC2 emits a signal that your Spot Instance
+// is at an elevated risk of being interrupted.
+type FleetSpotCapacityRebalance struct {
+	_ struct{} `type:"structure"`
+
+	// To allow EC2 Fleet to launch a replacement Spot Instance when an instance
+	// rebalance notification is emitted for an existing Spot Instance in the fleet,
+	// specify launch. Only available for fleets of type maintain.
+	//
+	// When a replacement instance is launched, the instance marked for rebalance
+	// is not automatically terminated. You can terminate it, or you can leave it
+	// running. You are charged for both instances while they are running.
+	ReplacementStrategy *string `locationName:"replacementStrategy" type:"string" enum:"FleetReplacementStrategy"`
+}
+
+// String returns the string representation
+func (s FleetSpotCapacityRebalance) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s FleetSpotCapacityRebalance) GoString() string {
+	return s.String()
+}
+
+// SetReplacementStrategy sets the ReplacementStrategy field's value.
+func (s *FleetSpotCapacityRebalance) SetReplacementStrategy(v string) *FleetSpotCapacityRebalance {
+	s.ReplacementStrategy = &v
+	return s
+}
+
+// The Spot Instance replacement strategy to use when Amazon EC2 emits a signal
+// that your Spot Instance is at an elevated risk of being interrupted. For
+// more information, see Capacity rebalancing (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-configuration-strategies.html#ec2-fleet-capacity-rebalance)
+// in the Amazon Elastic Compute Cloud User Guide.
+type FleetSpotCapacityRebalanceRequest struct {
+	_ struct{} `type:"structure"`
+
+	// The replacement strategy to use. Only available for fleets of type maintain.
+	//
+	// To allow EC2 Fleet to launch a replacement Spot Instance when an instance
+	// rebalance notification is emitted for an existing Spot Instance in the fleet,
+	// specify launch. You must specify a value, otherwise you get an error.
+	//
+	// When a replacement instance is launched, the instance marked for rebalance
+	// is not automatically terminated. You can terminate it, or you can leave it
+	// running. You are charged for all instances while they are running.
+	ReplacementStrategy *string `type:"string" enum:"FleetReplacementStrategy"`
+}
+
+// String returns the string representation
+func (s FleetSpotCapacityRebalanceRequest) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s FleetSpotCapacityRebalanceRequest) GoString() string {
+	return s.String()
+}
+
+// SetReplacementStrategy sets the ReplacementStrategy field's value.
+func (s *FleetSpotCapacityRebalanceRequest) SetReplacementStrategy(v string) *FleetSpotCapacityRebalanceRequest {
+	s.ReplacementStrategy = &v
+	return s
+}
+
+// The strategies for managing your Spot Instances that are at an elevated risk
+// of being interrupted.
+type FleetSpotMaintenanceStrategies struct {
+	_ struct{} `type:"structure"`
+
+	// The strategy to use when Amazon EC2 emits a signal that your Spot Instance
+	// is at an elevated risk of being interrupted.
+	CapacityRebalance *FleetSpotCapacityRebalance `locationName:"capacityRebalance" type:"structure"`
+}
+
+// String returns the string representation
+func (s FleetSpotMaintenanceStrategies) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s FleetSpotMaintenanceStrategies) GoString() string {
+	return s.String()
+}
+
+// SetCapacityRebalance sets the CapacityRebalance field's value.
+func (s *FleetSpotMaintenanceStrategies) SetCapacityRebalance(v *FleetSpotCapacityRebalance) *FleetSpotMaintenanceStrategies {
+	s.CapacityRebalance = v
+	return s
+}
+
+// The strategies for managing your Spot Instances that are at an elevated risk
+// of being interrupted.
+type FleetSpotMaintenanceStrategiesRequest struct {
+	_ struct{} `type:"structure"`
+
+	// The strategy to use when Amazon EC2 emits a signal that your Spot Instance
+	// is at an elevated risk of being interrupted.
+	CapacityRebalance *FleetSpotCapacityRebalanceRequest `type:"structure"`
+}
+
+// String returns the string representation
+func (s FleetSpotMaintenanceStrategiesRequest) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s FleetSpotMaintenanceStrategiesRequest) GoString() string {
+	return s.String()
+}
+
+// SetCapacityRebalance sets the CapacityRebalance field's value.
+func (s *FleetSpotMaintenanceStrategiesRequest) SetCapacityRebalance(v *FleetSpotCapacityRebalanceRequest) *FleetSpotMaintenanceStrategiesRequest {
+	s.CapacityRebalance = v
+	return s
+}
+
 // Describes a flow log.
 type FlowLog struct {
 	_ struct{} `type:"structure"`
@@ -77806,7 +78848,7 @@ func (s *FpgaDeviceInfo) SetName(v string) *FpgaDeviceInfo {
 type FpgaDeviceMemoryInfo struct {
 	_ struct{} `type:"structure"`
 
-	// The size (in MiB) for the memory available to the FPGA accelerator.
+	// The size of the memory available to the FPGA accelerator, in MiB.
 	SizeInMiB *int64 `locationName:"sizeInMiB" type:"integer"`
 }
 
@@ -78108,6 +79150,78 @@ func (s *FpgaInfo) SetFpgas(v []*FpgaDeviceInfo) *FpgaInfo {
 // SetTotalFpgaMemoryInMiB sets the TotalFpgaMemoryInMiB field's value.
 func (s *FpgaInfo) SetTotalFpgaMemoryInMiB(v int64) *FpgaInfo {
 	s.TotalFpgaMemoryInMiB = &v
+	return s
+}
+
+type GetAssociatedEnclaveCertificateIamRolesInput struct {
+	_ struct{} `type:"structure"`
+
+	// The ARN of the ACM certificate for which to view the associated IAM roles,
+	// encryption keys, and Amazon S3 object information.
+	CertificateArn *string `min:"1" type:"string"`
+
+	// Checks whether you have the required permissions for the action, without
+	// actually making the request, and provides an error response. If you have
+	// the required permissions, the error response is DryRunOperation. Otherwise,
+	// it is UnauthorizedOperation.
+	DryRun *bool `type:"boolean"`
+}
+
+// String returns the string representation
+func (s GetAssociatedEnclaveCertificateIamRolesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetAssociatedEnclaveCertificateIamRolesInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GetAssociatedEnclaveCertificateIamRolesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GetAssociatedEnclaveCertificateIamRolesInput"}
+	if s.CertificateArn != nil && len(*s.CertificateArn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("CertificateArn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCertificateArn sets the CertificateArn field's value.
+func (s *GetAssociatedEnclaveCertificateIamRolesInput) SetCertificateArn(v string) *GetAssociatedEnclaveCertificateIamRolesInput {
+	s.CertificateArn = &v
+	return s
+}
+
+// SetDryRun sets the DryRun field's value.
+func (s *GetAssociatedEnclaveCertificateIamRolesInput) SetDryRun(v bool) *GetAssociatedEnclaveCertificateIamRolesInput {
+	s.DryRun = &v
+	return s
+}
+
+type GetAssociatedEnclaveCertificateIamRolesOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Information about the associated IAM roles.
+	AssociatedRoles []*AssociatedRole `locationName:"associatedRoleSet" locationNameList:"item" type:"list"`
+}
+
+// String returns the string representation
+func (s GetAssociatedEnclaveCertificateIamRolesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetAssociatedEnclaveCertificateIamRolesOutput) GoString() string {
+	return s.String()
+}
+
+// SetAssociatedRoles sets the AssociatedRoles field's value.
+func (s *GetAssociatedEnclaveCertificateIamRolesOutput) SetAssociatedRoles(v []*AssociatedRole) *GetAssociatedEnclaveCertificateIamRolesOutput {
+	s.AssociatedRoles = v
 	return s
 }
 
@@ -80314,7 +81428,7 @@ func (s *GpuDeviceInfo) SetName(v string) *GpuDeviceInfo {
 type GpuDeviceMemoryInfo struct {
 	_ struct{} `type:"structure"`
 
-	// The size (in MiB) for the memory available to the GPU accelerator.
+	// The size of the memory available to the GPU accelerator, in MiB.
 	SizeInMiB *int64 `locationName:"sizeInMiB" type:"integer"`
 }
 
@@ -80341,7 +81455,8 @@ type GpuInfo struct {
 	// Describes the GPU accelerators for the instance type.
 	Gpus []*GpuDeviceInfo `locationName:"gpus" locationNameList:"item" type:"list"`
 
-	// The total size of the memory for the GPU accelerators for the instance type.
+	// The total size of the memory for the GPU accelerators for the instance type,
+	// in MiB.
 	TotalGpuMemoryInMiB *int64 `locationName:"totalGpuMemoryInMiB" type:"integer"`
 }
 
@@ -83277,6 +84392,9 @@ type Instance struct {
 	// Specifies whether enhanced networking with ENA is enabled.
 	EnaSupport *bool `locationName:"enaSupport" type:"boolean"`
 
+	// Indicates whether the instance is enabled for AWS Nitro Enclaves.
+	EnclaveOptions *EnclaveOptions `locationName:"enclaveOptions" type:"structure"`
+
 	// Indicates whether the instance is enabled for hibernation.
 	HibernationOptions *HibernationOptions `locationName:"hibernationOptions" type:"structure"`
 
@@ -83481,6 +84599,12 @@ func (s *Instance) SetElasticInferenceAcceleratorAssociations(v []*ElasticInfere
 // SetEnaSupport sets the EnaSupport field's value.
 func (s *Instance) SetEnaSupport(v bool) *Instance {
 	s.EnaSupport = &v
+	return s
+}
+
+// SetEnclaveOptions sets the EnclaveOptions field's value.
+func (s *Instance) SetEnclaveOptions(v *EnclaveOptions) *Instance {
+	s.EnclaveOptions = v
 	return s
 }
 
@@ -84483,6 +85607,9 @@ type InstanceNetworkInterfaceAttachment struct {
 	// The index of the device on the instance for the network interface attachment.
 	DeviceIndex *int64 `locationName:"deviceIndex" type:"integer"`
 
+	// The index of the network card.
+	NetworkCardIndex *int64 `locationName:"networkCardIndex" type:"integer"`
+
 	// The attachment state.
 	Status *string `locationName:"status" type:"string" enum:"AttachmentStatus"`
 }
@@ -84518,6 +85645,12 @@ func (s *InstanceNetworkInterfaceAttachment) SetDeleteOnTermination(v bool) *Ins
 // SetDeviceIndex sets the DeviceIndex field's value.
 func (s *InstanceNetworkInterfaceAttachment) SetDeviceIndex(v int64) *InstanceNetworkInterfaceAttachment {
 	s.DeviceIndex = &v
+	return s
+}
+
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *InstanceNetworkInterfaceAttachment) SetNetworkCardIndex(v int64) *InstanceNetworkInterfaceAttachment {
+	s.NetworkCardIndex = &v
 	return s
 }
 
@@ -84565,8 +85698,10 @@ type InstanceNetworkInterfaceSpecification struct {
 	// creating a network interface when launching an instance.
 	Groups []*string `locationName:"SecurityGroupId" locationNameList:"SecurityGroupId" type:"list"`
 
-	// The type of network interface. To create an Elastic Fabric Adapter (EFA),
-	// specify efa. For more information, see Elastic Fabric Adapter (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html)
+	// The type of network interface.
+	//
+	// To create an Elastic Fabric Adapter (EFA), specify efa. For more information,
+	// see Elastic Fabric Adapter (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html)
 	// in the Amazon Elastic Compute Cloud User Guide.
 	//
 	// If you are not creating an EFA, specify interface or omit this parameter.
@@ -84586,6 +85721,11 @@ type InstanceNetworkInterfaceSpecification struct {
 	// the same request. You cannot specify this option if you've specified a minimum
 	// number of instances to launch.
 	Ipv6Addresses []*InstanceIpv6Address `locationName:"ipv6AddressesSet" queryName:"Ipv6Addresses" locationNameList:"item" type:"list"`
+
+	// The index of the network card. Some instance types support multiple network
+	// cards. The primary network interface must be assigned to network card index
+	// 0. The default is network card index 0.
+	NetworkCardIndex *int64 `type:"integer"`
 
 	// The ID of the network interface.
 	//
@@ -84679,6 +85819,12 @@ func (s *InstanceNetworkInterfaceSpecification) SetIpv6AddressCount(v int64) *In
 // SetIpv6Addresses sets the Ipv6Addresses field's value.
 func (s *InstanceNetworkInterfaceSpecification) SetIpv6Addresses(v []*InstanceIpv6Address) *InstanceNetworkInterfaceSpecification {
 	s.Ipv6Addresses = v
+	return s
+}
+
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *InstanceNetworkInterfaceSpecification) SetNetworkCardIndex(v int64) *InstanceNetworkInterfaceSpecification {
+	s.NetworkCardIndex = &v
 	return s
 }
 
@@ -85132,8 +86278,12 @@ func (s *InstanceStatusSummary) SetStatus(v string) *InstanceStatusSummary {
 type InstanceStorageInfo struct {
 	_ struct{} `type:"structure"`
 
-	// Array describing the disks that are available for the instance type.
+	// Describes the disks that are available for the instance type.
 	Disks []*DiskInfo `locationName:"disks" locationNameList:"item" type:"list"`
+
+	// Indicates whether non-volatile memory express (NVMe) is supported for instance
+	// store.
+	NvmeSupport *string `locationName:"nvmeSupport" type:"string" enum:"EphemeralNvmeSupport"`
 
 	// The total size of the disks, in GB.
 	TotalSizeInGB *int64 `locationName:"totalSizeInGB" type:"long"`
@@ -85152,6 +86302,12 @@ func (s InstanceStorageInfo) GoString() string {
 // SetDisks sets the Disks field's value.
 func (s *InstanceStorageInfo) SetDisks(v []*DiskInfo) *InstanceStorageInfo {
 	s.Disks = v
+	return s
+}
+
+// SetNvmeSupport sets the NvmeSupport field's value.
+func (s *InstanceStorageInfo) SetNvmeSupport(v string) *InstanceStorageInfo {
+	s.NvmeSupport = &v
 	return s
 }
 
@@ -85203,13 +86359,13 @@ type InstanceTypeInfo struct {
 	// Indicates whether auto recovery is supported.
 	AutoRecoverySupported *bool `locationName:"autoRecoverySupported" type:"boolean"`
 
-	// Indicates whether the instance is bare metal.
+	// Indicates whether the instance is a bare metal instance type.
 	BareMetal *bool `locationName:"bareMetal" type:"boolean"`
 
 	// Indicates whether the instance type is a burstable performance instance type.
 	BurstablePerformanceSupported *bool `locationName:"burstablePerformanceSupported" type:"boolean"`
 
-	// Indicates whether the instance type is a current generation.
+	// Indicates whether the instance type is current generation.
 	CurrentGeneration *bool `locationName:"currentGeneration" type:"boolean"`
 
 	// Indicates whether Dedicated Hosts are supported on the instance type.
@@ -85230,13 +86386,13 @@ type InstanceTypeInfo struct {
 	// Indicates whether On-Demand hibernation is supported.
 	HibernationSupported *bool `locationName:"hibernationSupported" type:"boolean"`
 
-	// Indicates the hypervisor used for the instance type.
+	// The hypervisor for the instance type.
 	Hypervisor *string `locationName:"hypervisor" type:"string" enum:"InstanceTypeHypervisor"`
 
 	// Describes the Inference accelerator settings for the instance type.
 	InferenceAcceleratorInfo *InferenceAcceleratorInfo `locationName:"inferenceAcceleratorInfo" type:"structure"`
 
-	// Describes the disks for the instance type.
+	// Describes the instance storage for the instance type.
 	InstanceStorageInfo *InstanceStorageInfo `locationName:"instanceStorageInfo" type:"structure"`
 
 	// Indicates whether instance storage is supported.
@@ -85258,7 +86414,7 @@ type InstanceTypeInfo struct {
 	// Describes the processor.
 	ProcessorInfo *ProcessorInfo `locationName:"processorInfo" type:"structure"`
 
-	// Indicates the supported root device types.
+	// The supported root device types.
 	SupportedRootDeviceTypes []*string `locationName:"supportedRootDeviceTypes" locationNameList:"item" type:"list"`
 
 	// Indicates whether the instance type is offered for spot or On-Demand.
@@ -86614,6 +87770,9 @@ type LaunchTemplateEbsBlockDevice struct {
 	// The ID of the snapshot.
 	SnapshotId *string `locationName:"snapshotId" type:"string"`
 
+	// The throughput that the volume supports, in MiB/s.
+	Throughput *int64 `locationName:"throughput" type:"integer"`
+
 	// The size of the volume, in GiB.
 	VolumeSize *int64 `locationName:"volumeSize" type:"integer"`
 
@@ -86661,6 +87820,12 @@ func (s *LaunchTemplateEbsBlockDevice) SetSnapshotId(v string) *LaunchTemplateEb
 	return s
 }
 
+// SetThroughput sets the Throughput field's value.
+func (s *LaunchTemplateEbsBlockDevice) SetThroughput(v int64) *LaunchTemplateEbsBlockDevice {
+	s.Throughput = &v
+	return s
+}
+
 // SetVolumeSize sets the VolumeSize field's value.
 func (s *LaunchTemplateEbsBlockDevice) SetVolumeSize(v int64) *LaunchTemplateEbsBlockDevice {
 	s.VolumeSize = &v
@@ -86685,15 +87850,26 @@ type LaunchTemplateEbsBlockDeviceRequest struct {
 	// a volume from a snapshot, you can't specify an encryption value.
 	Encrypted *bool `type:"boolean"`
 
-	// The number of I/O operations per second (IOPS) to provision for an io1 or
-	// io2 volume, with a maximum ratio of 50 IOPS/GiB for io1, and 500 IOPS/GiB
-	// for io2. Range is 100 to 64,000 IOPS for volumes in most Regions. Maximum
-	// IOPS of 64,000 is guaranteed only on Nitro-based instances (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances).
-	// Other instance families guarantee performance up to 32,000 IOPS. For more
-	// information, see Amazon EBS Volume Types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
-	// in the Amazon Elastic Compute Cloud User Guide.
+	// The number of I/O operations per second (IOPS). For gp3, io1, and io2 volumes,
+	// this represents the number of IOPS that are provisioned for the volume. For
+	// gp2 volumes, this represents the baseline performance of the volume and the
+	// rate at which the volume accumulates I/O credits for bursting.
 	//
-	// This parameter is valid only for Provisioned IOPS SSD (io1 and io2) volumes.
+	// The following are the supported values for each volume type:
+	//
+	//    * gp3: 3,000-16,000 IOPS
+	//
+	//    * io1: 100-64,000 IOPS
+	//
+	//    * io2: 100-64,000 IOPS
+	//
+	// For io1 and io2 volumes, we guarantee 64,000 IOPS only for Instances built
+	// on the Nitro System (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances).
+	// Other instance families guarantee performance up to 32,000 IOPS.
+	//
+	// This parameter is required for io1 and io2 volumes. The default for gp3 volumes
+	// is 3,000 IOPS. This parameter is not supported for gp2, st1, sc1, or standard
+	// volumes.
 	Iops *int64 `type:"integer"`
 
 	// The ARN of the symmetric AWS Key Management Service (AWS KMS) CMK used for
@@ -86703,13 +87879,30 @@ type LaunchTemplateEbsBlockDeviceRequest struct {
 	// The ID of the snapshot.
 	SnapshotId *string `type:"string"`
 
-	// The size of the volume, in GiB.
+	// The throughput to provision for a gp3 volume, with a maximum of 1,000 MiB/s.
 	//
-	// Default: If you're creating the volume from a snapshot and don't specify
-	// a volume size, the default is the snapshot size.
+	// Valid Range: Minimum value of 125. Maximum value of 1000.
+	Throughput *int64 `type:"integer"`
+
+	// The size of the volume, in GiBs. You must specify either a snapshot ID or
+	// a volume size. If you specify a snapshot, the default is the snapshot size.
+	// You can specify a volume size that is equal to or larger than the snapshot
+	// size.
+	//
+	// The following are the supported volumes sizes for each volume type:
+	//
+	//    * gp2 and gp3: 1-16,384
+	//
+	//    * io1 and io2: 4-16,384
+	//
+	//    * st1 and sc1: 125-16,384
+	//
+	//    * standard: 1-1,024
 	VolumeSize *int64 `type:"integer"`
 
-	// The volume type.
+	// The volume type. The default is gp2. For more information, see Amazon EBS
+	// volume types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
+	// in the Amazon Elastic Compute Cloud User Guide.
 	VolumeType *string `type:"string" enum:"VolumeType"`
 }
 
@@ -86750,6 +87943,12 @@ func (s *LaunchTemplateEbsBlockDeviceRequest) SetKmsKeyId(v string) *LaunchTempl
 // SetSnapshotId sets the SnapshotId field's value.
 func (s *LaunchTemplateEbsBlockDeviceRequest) SetSnapshotId(v string) *LaunchTemplateEbsBlockDeviceRequest {
 	s.SnapshotId = &v
+	return s
+}
+
+// SetThroughput sets the Throughput field's value.
+func (s *LaunchTemplateEbsBlockDeviceRequest) SetThroughput(v int64) *LaunchTemplateEbsBlockDeviceRequest {
+	s.Throughput = &v
 	return s
 }
 
@@ -86852,6 +88051,57 @@ func (s *LaunchTemplateElasticInferenceAcceleratorResponse) SetCount(v int64) *L
 // SetType sets the Type field's value.
 func (s *LaunchTemplateElasticInferenceAcceleratorResponse) SetType(v string) *LaunchTemplateElasticInferenceAcceleratorResponse {
 	s.Type = &v
+	return s
+}
+
+// Indicates whether the instance is enabled for AWS Nitro Enclaves.
+type LaunchTemplateEnclaveOptions struct {
+	_ struct{} `type:"structure"`
+
+	// If this parameter is set to true, the instance is enabled for AWS Nitro Enclaves;
+	// otherwise, it is not enabled for AWS Nitro Enclaves.
+	Enabled *bool `locationName:"enabled" type:"boolean"`
+}
+
+// String returns the string representation
+func (s LaunchTemplateEnclaveOptions) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LaunchTemplateEnclaveOptions) GoString() string {
+	return s.String()
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *LaunchTemplateEnclaveOptions) SetEnabled(v bool) *LaunchTemplateEnclaveOptions {
+	s.Enabled = &v
+	return s
+}
+
+// Indicates whether the instance is enabled for AWS Nitro Enclaves. For more
+// information, see What is AWS Nitro Enclaves? (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html)
+// in the AWS Nitro Enclaves User Guide.
+type LaunchTemplateEnclaveOptionsRequest struct {
+	_ struct{} `type:"structure"`
+
+	// To enable the instance for AWS Nitro Enclaves, set this parameter to true.
+	Enabled *bool `type:"boolean"`
+}
+
+// String returns the string representation
+func (s LaunchTemplateEnclaveOptionsRequest) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LaunchTemplateEnclaveOptionsRequest) GoString() string {
+	return s.String()
+}
+
+// SetEnabled sets the Enabled field's value.
+func (s *LaunchTemplateEnclaveOptionsRequest) SetEnabled(v bool) *LaunchTemplateEnclaveOptionsRequest {
+	s.Enabled = &v
 	return s
 }
 
@@ -87221,6 +88471,9 @@ type LaunchTemplateInstanceNetworkInterfaceSpecification struct {
 	// The IPv6 addresses for the network interface.
 	Ipv6Addresses []*InstanceIpv6Address `locationName:"ipv6AddressesSet" locationNameList:"item" type:"list"`
 
+	// The index of the network card.
+	NetworkCardIndex *int64 `locationName:"networkCardIndex" type:"integer"`
+
 	// The ID of the network interface.
 	NetworkInterfaceId *string `locationName:"networkInterfaceId" type:"string"`
 
@@ -87301,6 +88554,12 @@ func (s *LaunchTemplateInstanceNetworkInterfaceSpecification) SetIpv6Addresses(v
 	return s
 }
 
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *LaunchTemplateInstanceNetworkInterfaceSpecification) SetNetworkCardIndex(v int64) *LaunchTemplateInstanceNetworkInterfaceSpecification {
+	s.NetworkCardIndex = &v
+	return s
+}
+
 // SetNetworkInterfaceId sets the NetworkInterfaceId field's value.
 func (s *LaunchTemplateInstanceNetworkInterfaceSpecification) SetNetworkInterfaceId(v string) *LaunchTemplateInstanceNetworkInterfaceSpecification {
 	s.NetworkInterfaceId = &v
@@ -87375,6 +88634,11 @@ type LaunchTemplateInstanceNetworkInterfaceSpecificationRequest struct {
 	// One or more specific IPv6 addresses from the IPv6 CIDR block range of your
 	// subnet. You can't use this option if you're specifying a number of IPv6 addresses.
 	Ipv6Addresses []*InstanceIpv6AddressRequest `locationNameList:"InstanceIpv6Address" type:"list"`
+
+	// The index of the network card. Some instance types support multiple network
+	// cards. The primary network interface must be assigned to network card index
+	// 0. The default is network card index 0.
+	NetworkCardIndex *int64 `type:"integer"`
 
 	// The ID of the network interface.
 	NetworkInterfaceId *string `type:"string"`
@@ -87453,6 +88717,12 @@ func (s *LaunchTemplateInstanceNetworkInterfaceSpecificationRequest) SetIpv6Addr
 // SetIpv6Addresses sets the Ipv6Addresses field's value.
 func (s *LaunchTemplateInstanceNetworkInterfaceSpecificationRequest) SetIpv6Addresses(v []*InstanceIpv6AddressRequest) *LaunchTemplateInstanceNetworkInterfaceSpecificationRequest {
 	s.Ipv6Addresses = v
+	return s
+}
+
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *LaunchTemplateInstanceNetworkInterfaceSpecificationRequest) SetNetworkCardIndex(v int64) *LaunchTemplateInstanceNetworkInterfaceSpecificationRequest {
+	s.NetworkCardIndex = &v
 	return s
 }
 
@@ -89028,7 +90298,7 @@ func (s *ManagedPrefixList) SetVersion(v int64) *ManagedPrefixList {
 type MemoryInfo struct {
 	_ struct{} `type:"structure"`
 
-	// Size of the memory, in MiB.
+	// The size of the memory, in MiB.
 	SizeInMiB *int64 `locationName:"sizeInMiB" type:"long"`
 }
 
@@ -89259,6 +90529,9 @@ func (s *ModifyCapacityReservationOutput) SetReturn(v bool) *ModifyCapacityReser
 type ModifyClientVpnEndpointInput struct {
 	_ struct{} `type:"structure"`
 
+	// The options for managing connection authorization for new client connections.
+	ClientConnectOptions *ClientConnectOptions `type:"structure"`
+
 	// The ID of the Client VPN endpoint to modify.
 	//
 	// ClientVpnEndpointId is a required field
@@ -89293,6 +90566,9 @@ type ModifyClientVpnEndpointInput struct {
 
 	// The IDs of one or more security groups to apply to the target network.
 	SecurityGroupIds []*string `locationName:"SecurityGroupId" locationNameList:"item" type:"list"`
+
+	// Specify whether to enable the self-service portal for the Client VPN endpoint.
+	SelfServicePortal *string `type:"string" enum:"SelfServicePortal"`
 
 	// The ARN of the server certificate to be used. The server certificate must
 	// be provisioned in AWS Certificate Manager (ACM).
@@ -89339,6 +90615,12 @@ func (s *ModifyClientVpnEndpointInput) Validate() error {
 	return nil
 }
 
+// SetClientConnectOptions sets the ClientConnectOptions field's value.
+func (s *ModifyClientVpnEndpointInput) SetClientConnectOptions(v *ClientConnectOptions) *ModifyClientVpnEndpointInput {
+	s.ClientConnectOptions = v
+	return s
+}
+
 // SetClientVpnEndpointId sets the ClientVpnEndpointId field's value.
 func (s *ModifyClientVpnEndpointInput) SetClientVpnEndpointId(v string) *ModifyClientVpnEndpointInput {
 	s.ClientVpnEndpointId = &v
@@ -89372,6 +90654,12 @@ func (s *ModifyClientVpnEndpointInput) SetDryRun(v bool) *ModifyClientVpnEndpoin
 // SetSecurityGroupIds sets the SecurityGroupIds field's value.
 func (s *ModifyClientVpnEndpointInput) SetSecurityGroupIds(v []*string) *ModifyClientVpnEndpointInput {
 	s.SecurityGroupIds = v
+	return s
+}
+
+// SetSelfServicePortal sets the SelfServicePortal field's value.
+func (s *ModifyClientVpnEndpointInput) SetSelfServicePortal(v string) *ModifyClientVpnEndpointInput {
+	s.SelfServicePortal = &v
 	return s
 }
 
@@ -89527,11 +90815,11 @@ type ModifyEbsDefaultKmsKeyIdInput struct {
 	//
 	// You can specify the CMK using any of the following:
 	//
-	//    * Key ID. For example, key/1234abcd-12ab-34cd-56ef-1234567890ab.
+	//    * Key ID. For example, 1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
 	//    * Key alias. For example, alias/ExampleAlias.
 	//
-	//    * Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.
+	//    * Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/1234abcd-12ab-34cd-56ef-1234567890ab.
 	//
 	//    * Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
 	//
@@ -89626,9 +90914,7 @@ type ModifyFleetInput struct {
 	LaunchTemplateConfigs []*FleetLaunchTemplateConfigRequest `locationName:"LaunchTemplateConfig" locationNameList:"item" type:"list"`
 
 	// The size of the EC2 Fleet.
-	//
-	// TargetCapacitySpecification is a required field
-	TargetCapacitySpecification *TargetCapacitySpecificationRequest `type:"structure" required:"true"`
+	TargetCapacitySpecification *TargetCapacitySpecificationRequest `type:"structure"`
 }
 
 // String returns the string representation
@@ -89646,9 +90932,6 @@ func (s *ModifyFleetInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ModifyFleetInput"}
 	if s.FleetId == nil {
 		invalidParams.Add(request.NewErrParamRequired("FleetId"))
-	}
-	if s.TargetCapacitySpecification == nil {
-		invalidParams.Add(request.NewErrParamRequired("TargetCapacitySpecification"))
 	}
 	if s.LaunchTemplateConfigs != nil {
 		for i, v := range s.LaunchTemplateConfigs {
@@ -92608,6 +93891,11 @@ func (s *ModifyTransitGatewayVpcAttachmentOutput) SetTransitGatewayVpcAttachment
 type ModifyTransitGatewayVpcAttachmentRequestOptions struct {
 	_ struct{} `type:"structure"`
 
+	// Enable or disable support for appliance mode. If enabled, a traffic flow
+	// between a source and destination uses the same Availability Zone for the
+	// VPC attachment for the lifetime of that flow. The default is disable.
+	ApplianceModeSupport *string `type:"string" enum:"ApplianceModeSupportValue"`
+
 	// Enable or disable DNS support. The default is enable.
 	DnsSupport *string `type:"string" enum:"DnsSupportValue"`
 
@@ -92623,6 +93911,12 @@ func (s ModifyTransitGatewayVpcAttachmentRequestOptions) String() string {
 // GoString returns the string representation
 func (s ModifyTransitGatewayVpcAttachmentRequestOptions) GoString() string {
 	return s.String()
+}
+
+// SetApplianceModeSupport sets the ApplianceModeSupport field's value.
+func (s *ModifyTransitGatewayVpcAttachmentRequestOptions) SetApplianceModeSupport(v string) *ModifyTransitGatewayVpcAttachmentRequestOptions {
+	s.ApplianceModeSupport = &v
+	return s
 }
 
 // SetDnsSupport sets the DnsSupport field's value.
@@ -92719,27 +94013,52 @@ type ModifyVolumeInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `type:"boolean"`
 
-	// The target IOPS rate of the volume.
+	// The target IOPS rate of the volume. This parameter is valid only for gp3,
+	// io1, and io2 volumes.
 	//
-	// This is only valid for Provisioned IOPS SSD (io1 and io2) volumes. For moreinformation,
-	// see Provisioned IOPS SSD (io1 and io2) volumes (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html#EBSVolumeTypes_piops).
+	// The following are the supported values for each volume type:
+	//
+	//    * gp3: 3,000-16,000 IOPS
+	//
+	//    * io1: 100-64,000 IOPS
+	//
+	//    * io2: 100-64,000 IOPS
 	//
 	// Default: If no IOPS value is specified, the existing value is retained.
 	Iops *int64 `type:"integer"`
 
 	// The target size of the volume, in GiB. The target volume size must be greater
-	// than or equal to than the existing size of the volume. For information about
-	// available EBS volume sizes, see Amazon EBS Volume Types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html).
+	// than or equal to the existing size of the volume.
+	//
+	// The following are the supported volumes sizes for each volume type:
+	//
+	//    * gp2 and gp3: 1-16,384
+	//
+	//    * io1 and io2: 4-16,384
+	//
+	//    * st1 and sc1: 125-16,384
+	//
+	//    * standard: 1-1,024
 	//
 	// Default: If no size is specified, the existing size is retained.
 	Size *int64 `type:"integer"`
+
+	// The target throughput of the volume, in MiB/s. This parameter is valid only
+	// for gp3 volumes. The maximum value is 1,000.
+	//
+	// Default: If no throughput value is specified, the existing value is retained.
+	//
+	// Valid Range: Minimum value of 125. Maximum value of 1000.
+	Throughput *int64 `type:"integer"`
 
 	// The ID of the volume.
 	//
 	// VolumeId is a required field
 	VolumeId *string `type:"string" required:"true"`
 
-	// The target EBS volume type of the volume.
+	// The target EBS volume type of the volume. For more information, see Amazon
+	// EBS volume types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
+	// in the Amazon Elastic Compute Cloud User Guide.
 	//
 	// Default: If no type is specified, the existing type is retained.
 	VolumeType *string `type:"string" enum:"VolumeType"`
@@ -92783,6 +94102,12 @@ func (s *ModifyVolumeInput) SetIops(v int64) *ModifyVolumeInput {
 // SetSize sets the Size field's value.
 func (s *ModifyVolumeInput) SetSize(v int64) *ModifyVolumeInput {
 	s.Size = &v
+	return s
+}
+
+// SetThroughput sets the Throughput field's value.
+func (s *ModifyVolumeInput) SetThroughput(v int64) *ModifyVolumeInput {
+	s.Throughput = &v
 	return s
 }
 
@@ -93006,7 +94331,9 @@ type ModifyVpcEndpointInput struct {
 	// network interface.
 	AddSecurityGroupIds []*string `locationName:"AddSecurityGroupId" locationNameList:"item" type:"list"`
 
-	// (Interface endpoint) One or more subnet IDs in which to serve the endpoint.
+	// (Interface and Gateway Load Balancer endpoints) One or more subnet IDs in
+	// which to serve the endpoint. For a Gateway Load Balancer endpoint, you can
+	// specify only one subnet.
 	AddSubnetIds []*string `locationName:"AddSubnetId" locationNameList:"item" type:"list"`
 
 	// Checks whether you have the required permissions for the action, without
@@ -93015,8 +94342,8 @@ type ModifyVpcEndpointInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `type:"boolean"`
 
-	// A policy to attach to the endpoint that controls access to the service. The
-	// policy must be in valid JSON format.
+	// (Interface and gateway endpoints) A policy to attach to the endpoint that
+	// controls access to the service. The policy must be in valid JSON format.
 	PolicyDocument *string `type:"string"`
 
 	// (Interface endpoint) Indicates whether a private hosted zone is associated
@@ -93162,6 +94489,10 @@ type ModifyVpcEndpointServiceConfigurationInput struct {
 	// accepted.
 	AcceptanceRequired *bool `type:"boolean"`
 
+	// The Amazon Resource Names (ARNs) of Gateway Load Balancers to add to your
+	// service configuration.
+	AddGatewayLoadBalancerArns []*string `locationName:"AddGatewayLoadBalancerArn" locationNameList:"item" type:"list"`
+
 	// The Amazon Resource Names (ARNs) of Network Load Balancers to add to your
 	// service configuration.
 	AddNetworkLoadBalancerArns []*string `locationName:"AddNetworkLoadBalancerArn" locationNameList:"item" type:"list"`
@@ -93172,14 +94503,20 @@ type ModifyVpcEndpointServiceConfigurationInput struct {
 	// it is UnauthorizedOperation.
 	DryRun *bool `type:"boolean"`
 
-	// The private DNS name to assign to the endpoint service.
+	// (Interface endpoint configuration) The private DNS name to assign to the
+	// endpoint service.
 	PrivateDnsName *string `type:"string"`
+
+	// The Amazon Resource Names (ARNs) of Gateway Load Balancers to remove from
+	// your service configuration.
+	RemoveGatewayLoadBalancerArns []*string `locationName:"RemoveGatewayLoadBalancerArn" locationNameList:"item" type:"list"`
 
 	// The Amazon Resource Names (ARNs) of Network Load Balancers to remove from
 	// your service configuration.
 	RemoveNetworkLoadBalancerArns []*string `locationName:"RemoveNetworkLoadBalancerArn" locationNameList:"item" type:"list"`
 
-	// Removes the private DNS name of the endpoint service.
+	// (Interface endpoint configuration) Removes the private DNS name of the endpoint
+	// service.
 	RemovePrivateDnsName *bool `type:"boolean"`
 
 	// The ID of the service.
@@ -93217,6 +94554,12 @@ func (s *ModifyVpcEndpointServiceConfigurationInput) SetAcceptanceRequired(v boo
 	return s
 }
 
+// SetAddGatewayLoadBalancerArns sets the AddGatewayLoadBalancerArns field's value.
+func (s *ModifyVpcEndpointServiceConfigurationInput) SetAddGatewayLoadBalancerArns(v []*string) *ModifyVpcEndpointServiceConfigurationInput {
+	s.AddGatewayLoadBalancerArns = v
+	return s
+}
+
 // SetAddNetworkLoadBalancerArns sets the AddNetworkLoadBalancerArns field's value.
 func (s *ModifyVpcEndpointServiceConfigurationInput) SetAddNetworkLoadBalancerArns(v []*string) *ModifyVpcEndpointServiceConfigurationInput {
 	s.AddNetworkLoadBalancerArns = v
@@ -93232,6 +94575,12 @@ func (s *ModifyVpcEndpointServiceConfigurationInput) SetDryRun(v bool) *ModifyVp
 // SetPrivateDnsName sets the PrivateDnsName field's value.
 func (s *ModifyVpcEndpointServiceConfigurationInput) SetPrivateDnsName(v string) *ModifyVpcEndpointServiceConfigurationInput {
 	s.PrivateDnsName = &v
+	return s
+}
+
+// SetRemoveGatewayLoadBalancerArns sets the RemoveGatewayLoadBalancerArns field's value.
+func (s *ModifyVpcEndpointServiceConfigurationInput) SetRemoveGatewayLoadBalancerArns(v []*string) *ModifyVpcEndpointServiceConfigurationInput {
+	s.RemoveGatewayLoadBalancerArns = v
 	return s
 }
 
@@ -94854,9 +96203,54 @@ func (s *NetworkAclEntry) SetRuleNumber(v int64) *NetworkAclEntry {
 	return s
 }
 
+// Describes the network card support of the instance type.
+type NetworkCardInfo struct {
+	_ struct{} `type:"structure"`
+
+	// The maximum number of network interfaces for the network card.
+	MaximumNetworkInterfaces *int64 `locationName:"maximumNetworkInterfaces" type:"integer"`
+
+	// The index of the network card.
+	NetworkCardIndex *int64 `locationName:"networkCardIndex" type:"integer"`
+
+	// The network performance of the network card.
+	NetworkPerformance *string `locationName:"networkPerformance" type:"string"`
+}
+
+// String returns the string representation
+func (s NetworkCardInfo) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NetworkCardInfo) GoString() string {
+	return s.String()
+}
+
+// SetMaximumNetworkInterfaces sets the MaximumNetworkInterfaces field's value.
+func (s *NetworkCardInfo) SetMaximumNetworkInterfaces(v int64) *NetworkCardInfo {
+	s.MaximumNetworkInterfaces = &v
+	return s
+}
+
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *NetworkCardInfo) SetNetworkCardIndex(v int64) *NetworkCardInfo {
+	s.NetworkCardIndex = &v
+	return s
+}
+
+// SetNetworkPerformance sets the NetworkPerformance field's value.
+func (s *NetworkCardInfo) SetNetworkPerformance(v string) *NetworkCardInfo {
+	s.NetworkPerformance = &v
+	return s
+}
+
 // Describes the networking features of the instance type.
 type NetworkInfo struct {
 	_ struct{} `type:"structure"`
+
+	// The index of the default network card, starting at 0.
+	DefaultNetworkCardIndex *int64 `locationName:"defaultNetworkCardIndex" type:"integer"`
 
 	// Indicates whether Elastic Fabric Adapter (EFA) is supported.
 	EfaSupported *bool `locationName:"efaSupported" type:"boolean"`
@@ -94873,10 +96267,17 @@ type NetworkInfo struct {
 	// Indicates whether IPv6 is supported.
 	Ipv6Supported *bool `locationName:"ipv6Supported" type:"boolean"`
 
+	// The maximum number of physical network cards that can be allocated to the
+	// instance.
+	MaximumNetworkCards *int64 `locationName:"maximumNetworkCards" type:"integer"`
+
 	// The maximum number of network interfaces for the instance type.
 	MaximumNetworkInterfaces *int64 `locationName:"maximumNetworkInterfaces" type:"integer"`
 
-	// Describes the network performance.
+	// Describes the network cards for the instance type.
+	NetworkCards []*NetworkCardInfo `locationName:"networkCards" locationNameList:"item" type:"list"`
+
+	// The network performance.
 	NetworkPerformance *string `locationName:"networkPerformance" type:"string"`
 }
 
@@ -94888,6 +96289,12 @@ func (s NetworkInfo) String() string {
 // GoString returns the string representation
 func (s NetworkInfo) GoString() string {
 	return s.String()
+}
+
+// SetDefaultNetworkCardIndex sets the DefaultNetworkCardIndex field's value.
+func (s *NetworkInfo) SetDefaultNetworkCardIndex(v int64) *NetworkInfo {
+	s.DefaultNetworkCardIndex = &v
+	return s
 }
 
 // SetEfaSupported sets the EfaSupported field's value.
@@ -94920,9 +96327,21 @@ func (s *NetworkInfo) SetIpv6Supported(v bool) *NetworkInfo {
 	return s
 }
 
+// SetMaximumNetworkCards sets the MaximumNetworkCards field's value.
+func (s *NetworkInfo) SetMaximumNetworkCards(v int64) *NetworkInfo {
+	s.MaximumNetworkCards = &v
+	return s
+}
+
 // SetMaximumNetworkInterfaces sets the MaximumNetworkInterfaces field's value.
 func (s *NetworkInfo) SetMaximumNetworkInterfaces(v int64) *NetworkInfo {
 	s.MaximumNetworkInterfaces = &v
+	return s
+}
+
+// SetNetworkCards sets the NetworkCards field's value.
+func (s *NetworkInfo) SetNetworkCards(v []*NetworkCardInfo) *NetworkInfo {
+	s.NetworkCards = v
 	return s
 }
 
@@ -95165,8 +96584,7 @@ type NetworkInterfaceAssociation struct {
 	// The public DNS name.
 	PublicDnsName *string `locationName:"publicDnsName" type:"string"`
 
-	// The address of the Elastic IP address or Carrier IP address bound to the
-	// network interface.
+	// The address of the Elastic IP address bound to the network interface.
 	PublicIp *string `locationName:"publicIp" type:"string"`
 }
 
@@ -95244,6 +96662,9 @@ type NetworkInterfaceAttachment struct {
 	// The AWS account ID of the owner of the instance.
 	InstanceOwnerId *string `locationName:"instanceOwnerId" type:"string"`
 
+	// The index of the network card.
+	NetworkCardIndex *int64 `locationName:"networkCardIndex" type:"integer"`
+
 	// The attachment state.
 	Status *string `locationName:"status" type:"string" enum:"AttachmentStatus"`
 }
@@ -95291,6 +96712,12 @@ func (s *NetworkInterfaceAttachment) SetInstanceId(v string) *NetworkInterfaceAt
 // SetInstanceOwnerId sets the InstanceOwnerId field's value.
 func (s *NetworkInterfaceAttachment) SetInstanceOwnerId(v string) *NetworkInterfaceAttachment {
 	s.InstanceOwnerId = &v
+	return s
+}
+
+// SetNetworkCardIndex sets the NetworkCardIndex field's value.
+func (s *NetworkInterfaceAttachment) SetNetworkCardIndex(v int64) *NetworkInterfaceAttachment {
+	s.NetworkCardIndex = &v
 	return s
 }
 
@@ -96394,7 +97821,7 @@ func (s *PlacementGroup) SetTags(v []*Tag) *PlacementGroup {
 type PlacementGroupInfo struct {
 	_ struct{} `type:"structure"`
 
-	// A list of supported placement groups types.
+	// The supported placement group types.
 	SupportedStrategies []*string `locationName:"supportedStrategies" locationNameList:"item" type:"list"`
 }
 
@@ -96812,6 +98239,30 @@ func (s *PrincipalIdFormat) SetStatuses(v []*IdFormat) *PrincipalIdFormat {
 	return s
 }
 
+// Information about the Private DNS name for interface endpoints.
+type PrivateDnsDetails struct {
+	_ struct{} `type:"structure"`
+
+	// The private DNS name assigned to the VPC endpoint service.
+	PrivateDnsName *string `locationName:"privateDnsName" type:"string"`
+}
+
+// String returns the string representation
+func (s PrivateDnsDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PrivateDnsDetails) GoString() string {
+	return s.String()
+}
+
+// SetPrivateDnsName sets the PrivateDnsName field's value.
+func (s *PrivateDnsDetails) SetPrivateDnsName(v string) *PrivateDnsDetails {
+	s.PrivateDnsName = &v
+	return s
+}
+
 // Information about the private DNS name for the service endpoint. For more
 // information about these parameters, see VPC Endpoint Service Private DNS
 // Name Verification (https://docs.aws.amazon.com/vpc/latest/userguide/ndpoint-services-dns-validation.html)
@@ -96909,7 +98360,7 @@ func (s *PrivateIpAddressSpecification) SetPrivateIpAddress(v string) *PrivateIp
 type ProcessorInfo struct {
 	_ struct{} `type:"structure"`
 
-	// A list of architectures supported by the instance type.
+	// The architectures supported by the instance type.
 	SupportedArchitectures []*string `locationName:"supportedArchitectures" locationNameList:"item" type:"list"`
 
 	// The speed of the processor, in GHz.
@@ -99285,6 +100736,9 @@ type ReplaceRouteInput struct {
 	// The ID of a transit gateway.
 	TransitGatewayId *string `type:"string"`
 
+	// The ID of a VPC endpoint. Supported for Gateway Load Balancer endpoints only.
+	VpcEndpointId *string `type:"string"`
+
 	// The ID of a VPC peering connection.
 	VpcPeeringConnectionId *string `locationName:"vpcPeeringConnectionId" type:"string"`
 }
@@ -99393,6 +100847,12 @@ func (s *ReplaceRouteInput) SetRouteTableId(v string) *ReplaceRouteInput {
 // SetTransitGatewayId sets the TransitGatewayId field's value.
 func (s *ReplaceRouteInput) SetTransitGatewayId(v string) *ReplaceRouteInput {
 	s.TransitGatewayId = &v
+	return s
+}
+
+// SetVpcEndpointId sets the VpcEndpointId field's value.
+func (s *ReplaceRouteInput) SetVpcEndpointId(v string) *ReplaceRouteInput {
+	s.VpcEndpointId = &v
 	return s
 }
 
@@ -99800,6 +101260,13 @@ type RequestLaunchTemplateData struct {
 	// The elastic inference accelerator for the instance.
 	ElasticInferenceAccelerators []*LaunchTemplateElasticInferenceAccelerator `locationName:"ElasticInferenceAccelerator" locationNameList:"item" type:"list"`
 
+	// Indicates whether the instance is enabled for AWS Nitro Enclaves. For more
+	// information, see What is AWS Nitro Enclaves? (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html)
+	// in the AWS Nitro Enclaves User Guide.
+	//
+	// You can't enable AWS Nitro Enclaves and hibernation on the same instance.
+	EnclaveOptions *LaunchTemplateEnclaveOptionsRequest `type:"structure"`
+
 	// Indicates whether an instance is enabled for hibernation. This parameter
 	// is valid only if the instance meets the hibernation prerequisites (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html#hibernating-prerequisites).
 	// For more information, see Hibernate Your Instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html)
@@ -99978,6 +101445,12 @@ func (s *RequestLaunchTemplateData) SetElasticGpuSpecifications(v []*ElasticGpuS
 // SetElasticInferenceAccelerators sets the ElasticInferenceAccelerators field's value.
 func (s *RequestLaunchTemplateData) SetElasticInferenceAccelerators(v []*LaunchTemplateElasticInferenceAccelerator) *RequestLaunchTemplateData {
 	s.ElasticInferenceAccelerators = v
+	return s
+}
+
+// SetEnclaveOptions sets the EnclaveOptions field's value.
+func (s *RequestLaunchTemplateData) SetEnclaveOptions(v *LaunchTemplateEnclaveOptionsRequest) *RequestLaunchTemplateData {
+	s.EnclaveOptions = v
 	return s
 }
 
@@ -100205,6 +101678,9 @@ type RequestSpotInstancesInput struct {
 	//
 	// You can't specify an Availability Zone group or a launch group if you specify
 	// a duration.
+	//
+	// New accounts or accounts with no previous billing history with AWS are not
+	// eligible for Spot Instances with a defined duration (also known as Spot blocks).
 	BlockDurationMinutes *int64 `locationName:"blockDurationMinutes" type:"integer"`
 
 	// Unique, case-sensitive identifier that you provide to ensure the idempotency
@@ -100261,11 +101737,16 @@ type RequestSpotInstancesInput struct {
 	// date and time.
 	ValidFrom *time.Time `locationName:"validFrom" type:"timestamp"`
 
-	// The end date of the request. If this is a one-time request, the request remains
-	// active until all instances launch, the request is canceled, or this date
-	// is reached. If the request is persistent, it remains active until it is canceled
-	// or this date is reached. The default end date is 7 days from the current
-	// date.
+	// The end date of the request, in UTC format (YYYY-MM-DDTHH:MM:SSZ).
+	//
+	//    * For a persistent request, the request remains active until the ValidUntil
+	//    date and time is reached. Otherwise, the request remains active until
+	//    you cancel it.
+	//
+	//    * For a one-time request, the request remains active until all instances
+	//    launch, the request is canceled, or the ValidUntil date and time is reached.
+	//    By default, the request is valid for 7 days from the date the request
+	//    was created.
 	ValidUntil *time.Time `locationName:"validUntil" type:"timestamp"`
 }
 
@@ -100587,7 +102068,9 @@ func (s *RequestSpotLaunchSpecification) SetUserData(v string) *RequestSpotLaunc
 	return s
 }
 
-// Describes a reservation.
+// Describes a launch request for one or more instances, and includes owner,
+// requester, and security group information that applies to all instances in
+// the launch request.
 type Reservation struct {
 	_ struct{} `type:"structure"`
 
@@ -101933,6 +103416,9 @@ type ResponseLaunchTemplateData struct {
 	// The elastic inference accelerator for the instance.
 	ElasticInferenceAccelerators []*LaunchTemplateElasticInferenceAcceleratorResponse `locationName:"elasticInferenceAcceleratorSet" locationNameList:"item" type:"list"`
 
+	// Indicates whether the instance is enabled for AWS Nitro Enclaves.
+	EnclaveOptions *LaunchTemplateEnclaveOptions `locationName:"enclaveOptions" type:"structure"`
+
 	// Indicates whether an instance is configured for hibernation. For more information,
 	// see Hibernate Your Instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html)
 	// in the Amazon Elastic Compute Cloud User Guide.
@@ -102048,6 +103534,12 @@ func (s *ResponseLaunchTemplateData) SetElasticGpuSpecifications(v []*ElasticGpu
 // SetElasticInferenceAccelerators sets the ElasticInferenceAccelerators field's value.
 func (s *ResponseLaunchTemplateData) SetElasticInferenceAccelerators(v []*LaunchTemplateElasticInferenceAcceleratorResponse) *ResponseLaunchTemplateData {
 	s.ElasticInferenceAccelerators = v
+	return s
+}
+
+// SetEnclaveOptions sets the EnclaveOptions field's value.
+func (s *ResponseLaunchTemplateData) SetEnclaveOptions(v *LaunchTemplateEnclaveOptions) *ResponseLaunchTemplateData {
+	s.EnclaveOptions = v
 	return s
 }
 
@@ -103171,9 +104663,18 @@ type RunInstancesInput struct {
 	// You cannot specify accelerators from different generations in the same request.
 	ElasticInferenceAccelerators []*ElasticInferenceAccelerator `locationName:"ElasticInferenceAccelerator" locationNameList:"item" type:"list"`
 
+	// Indicates whether the instance is enabled for AWS Nitro Enclaves. For more
+	// information, see What is AWS Nitro Enclaves? (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html)
+	// in the AWS Nitro Enclaves User Guide.
+	//
+	// You can't enable AWS Nitro Enclaves and hibernation on the same instance.
+	EnclaveOptions *EnclaveOptionsRequest `type:"structure"`
+
 	// Indicates whether an instance is enabled for hibernation. For more information,
 	// see Hibernate your instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html)
 	// in the Amazon Elastic Compute Cloud User Guide.
+	//
+	// You can't enable hibernation and AWS Nitro Enclaves on the same instance.
 	HibernationOptions *HibernationOptionsRequest `type:"structure"`
 
 	// The IAM instance profile.
@@ -103459,6 +104960,12 @@ func (s *RunInstancesInput) SetElasticGpuSpecification(v []*ElasticGpuSpecificat
 // SetElasticInferenceAccelerators sets the ElasticInferenceAccelerators field's value.
 func (s *RunInstancesInput) SetElasticInferenceAccelerators(v []*ElasticInferenceAccelerator) *RunInstancesInput {
 	s.ElasticInferenceAccelerators = v
+	return s
+}
+
+// SetEnclaveOptions sets the EnclaveOptions field's value.
+func (s *RunInstancesInput) SetEnclaveOptions(v *EnclaveOptionsRequest) *RunInstancesInput {
+	s.EnclaveOptions = v
 	return s
 }
 
@@ -105463,6 +106970,9 @@ type ServiceConfiguration struct {
 	// The DNS names for the service.
 	BaseEndpointDnsNames []*string `locationName:"baseEndpointDnsNameSet" locationNameList:"item" type:"list"`
 
+	// The Amazon Resource Names (ARNs) of the Gateway Load Balancers for the service.
+	GatewayLoadBalancerArns []*string `locationName:"gatewayLoadBalancerArnSet" locationNameList:"item" type:"list"`
+
 	// Indicates whether the service manages its VPC endpoints. Management of the
 	// service VPC endpoints using the VPC endpoint API is restricted.
 	ManagesVpcEndpoints *bool `locationName:"managesVpcEndpoints" type:"boolean"`
@@ -105517,6 +107027,12 @@ func (s *ServiceConfiguration) SetAvailabilityZones(v []*string) *ServiceConfigu
 // SetBaseEndpointDnsNames sets the BaseEndpointDnsNames field's value.
 func (s *ServiceConfiguration) SetBaseEndpointDnsNames(v []*string) *ServiceConfiguration {
 	s.BaseEndpointDnsNames = v
+	return s
+}
+
+// SetGatewayLoadBalancerArns sets the GatewayLoadBalancerArns field's value.
+func (s *ServiceConfiguration) SetGatewayLoadBalancerArns(v []*string) *ServiceConfiguration {
+	s.GatewayLoadBalancerArns = v
 	return s
 }
 
@@ -105604,6 +107120,9 @@ type ServiceDetail struct {
 	// is not verified.
 	PrivateDnsNameVerificationState *string `locationName:"privateDnsNameVerificationState" type:"string" enum:"DnsNameState"`
 
+	// The private DNS names assigned to the VPC endpoint service.
+	PrivateDnsNames []*PrivateDnsDetails `locationName:"privateDnsNameSet" locationNameList:"item" type:"list"`
+
 	// The ID of the endpoint service.
 	ServiceId *string `locationName:"serviceId" type:"string"`
 
@@ -105669,6 +107188,12 @@ func (s *ServiceDetail) SetPrivateDnsName(v string) *ServiceDetail {
 // SetPrivateDnsNameVerificationState sets the PrivateDnsNameVerificationState field's value.
 func (s *ServiceDetail) SetPrivateDnsNameVerificationState(v string) *ServiceDetail {
 	s.PrivateDnsNameVerificationState = &v
+	return s
+}
+
+// SetPrivateDnsNames sets the PrivateDnsNames field's value.
+func (s *ServiceDetail) SetPrivateDnsNames(v []*PrivateDnsDetails) *ServiceDetail {
+	s.PrivateDnsNames = v
 	return s
 }
 
@@ -105838,10 +107363,8 @@ type Snapshot struct {
 	// key for the parent volume.
 	KmsKeyId *string `locationName:"kmsKeyId" type:"string"`
 
-	// The AWS owner alias, as maintained by Amazon. The possible values are: amazon
-	// | self | all | aws-marketplace | microsoft. This AWS owner alias is not to
-	// be confused with the user-configured AWS account alias, which is set from
-	// the IAM console.
+	// The AWS owner alias, from an Amazon-maintained list (amazon). This is not
+	// the user-configured AWS account alias set using the IAM console.
 	OwnerAlias *string `locationName:"ownerAlias" type:"string"`
 
 	// The AWS account ID of the EBS snapshot owner.
@@ -106354,11 +107877,47 @@ func (s *SnapshotTaskDetail) SetUserBucket(v *UserBucketDetails) *SnapshotTaskDe
 	return s
 }
 
+// The Spot Instance replacement strategy to use when Amazon EC2 emits a signal
+// that your Spot Instance is at an elevated risk of being interrupted. For
+// more information, see Capacity rebalancing (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-configuration-strategies.html#spot-fleet-capacity-rebalance)
+// in the Amazon EC2 User Guide for Linux Instances.
+type SpotCapacityRebalance struct {
+	_ struct{} `type:"structure"`
+
+	// The replacement strategy to use. Only available for fleets of type maintain.
+	// You must specify a value, otherwise you get an error.
+	//
+	// To allow Spot Fleet to launch a replacement Spot Instance when an instance
+	// rebalance notification is emitted for a Spot Instance in the fleet, specify
+	// launch.
+	//
+	// When a replacement instance is launched, the instance marked for rebalance
+	// is not automatically terminated. You can terminate it, or you can leave it
+	// running. You are charged for all instances while they are running.
+	ReplacementStrategy *string `locationName:"replacementStrategy" type:"string" enum:"ReplacementStrategy"`
+}
+
+// String returns the string representation
+func (s SpotCapacityRebalance) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s SpotCapacityRebalance) GoString() string {
+	return s.String()
+}
+
+// SetReplacementStrategy sets the ReplacementStrategy field's value.
+func (s *SpotCapacityRebalance) SetReplacementStrategy(v string) *SpotCapacityRebalance {
+	s.ReplacementStrategy = &v
+	return s
+}
+
 // Describes the data feed for a Spot Instance.
 type SpotDatafeedSubscription struct {
 	_ struct{} `type:"structure"`
 
-	// The Amazon S3 bucket where the Spot Instance data feed is located.
+	// The name of the Amazon S3 bucket where the Spot Instance data feed is located.
 	Bucket *string `locationName:"bucket" type:"string"`
 
 	// The fault codes for the Spot Instance request, if any.
@@ -106367,7 +107926,7 @@ type SpotDatafeedSubscription struct {
 	// The AWS account ID of the account.
 	OwnerId *string `locationName:"ownerId" type:"string"`
 
-	// The prefix that is prepended to data feed files.
+	// The prefix for the data feed files.
 	Prefix *string `locationName:"prefix" type:"string"`
 
 	// The state of the Spot Instance data feed subscription.
@@ -106415,8 +107974,9 @@ func (s *SpotDatafeedSubscription) SetState(v string) *SpotDatafeedSubscription 
 }
 
 // Describes the launch specification for one or more Spot Instances. If you
-// include On-Demand capacity in your fleet request, you can't use SpotFleetLaunchSpecification;
-// you must use LaunchTemplateConfig (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_LaunchTemplateConfig.html).
+// include On-Demand capacity in your fleet request or want to specify an EFA
+// network device, you can't use SpotFleetLaunchSpecification; you must use
+// LaunchTemplateConfig (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_LaunchTemplateConfig.html).
 type SpotFleetLaunchSpecification struct {
 	_ struct{} `type:"structure"`
 
@@ -106459,6 +108019,9 @@ type SpotFleetLaunchSpecification struct {
 
 	// One or more network interfaces. If you specify a network interface, you must
 	// specify subnet IDs and security group IDs using the network interface.
+	//
+	// SpotFleetLaunchSpecification currently does not support Elastic Fabric Adapter
+	// (EFA). To specify an EFA, you must use LaunchTemplateConfig (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_LaunchTemplateConfig.html).
 	NetworkInterfaces []*InstanceNetworkInterfaceSpecification `locationName:"networkInterfaceSet" locationNameList:"item" type:"list"`
 
 	// The placement information.
@@ -106824,6 +108387,10 @@ type SpotFleetRequestConfigData struct {
 	// Indicates whether Spot Fleet should replace unhealthy instances.
 	ReplaceUnhealthyInstances *bool `locationName:"replaceUnhealthyInstances" type:"boolean"`
 
+	// The strategies for managing your Spot Instances that are at an elevated risk
+	// of being interrupted.
+	SpotMaintenanceStrategies *SpotMaintenanceStrategies `locationName:"spotMaintenanceStrategies" type:"structure"`
+
 	// The maximum amount per hour for Spot Instances that you're willing to pay.
 	// You can use the spotdMaxTotalPrice parameter, the onDemandMaxTotalPrice parameter,
 	// or both parameters to ensure that your fleet cost does not exceed your budget.
@@ -107013,6 +108580,12 @@ func (s *SpotFleetRequestConfigData) SetReplaceUnhealthyInstances(v bool) *SpotF
 	return s
 }
 
+// SetSpotMaintenanceStrategies sets the SpotMaintenanceStrategies field's value.
+func (s *SpotFleetRequestConfigData) SetSpotMaintenanceStrategies(v *SpotMaintenanceStrategies) *SpotFleetRequestConfigData {
+	s.SpotMaintenanceStrategies = v
+	return s
+}
+
 // SetSpotMaxTotalPrice sets the SpotMaxTotalPrice field's value.
 func (s *SpotFleetRequestConfigData) SetSpotMaxTotalPrice(v string) *SpotFleetRequestConfigData {
 	s.SpotMaxTotalPrice = &v
@@ -107163,11 +108736,16 @@ type SpotInstanceRequest struct {
 	// The request becomes active at this date and time.
 	ValidFrom *time.Time `locationName:"validFrom" type:"timestamp"`
 
-	// The end date of the request, in UTC format (for example, YYYY-MM-DDTHH:MM:SSZ).
-	// If this is a one-time request, it remains active until all instances launch,
-	// the request is canceled, or this date is reached. If the request is persistent,
-	// it remains active until it is canceled or this date is reached. The default
-	// end date is 7 days from the current date.
+	// The end date of the request, in UTC format (YYYY-MM-DDTHH:MM:SSZ).
+	//
+	//    * For a persistent request, the request remains active until the validUntil
+	//    date and time is reached. Otherwise, the request remains active until
+	//    you cancel it.
+	//
+	//    * For a one-time request, the request remains active until all instances
+	//    launch, the request is canceled, or the validUntil date and time is reached.
+	//    By default, the request is valid for 7 days from the date the request
+	//    was created.
 	ValidUntil *time.Time `locationName:"validUntil" type:"timestamp"`
 }
 
@@ -107372,6 +108950,32 @@ func (s *SpotInstanceStatus) SetUpdateTime(v time.Time) *SpotInstanceStatus {
 	return s
 }
 
+// The strategies for managing your Spot Instances that are at an elevated risk
+// of being interrupted.
+type SpotMaintenanceStrategies struct {
+	_ struct{} `type:"structure"`
+
+	// The strategy to use when Amazon EC2 emits a signal that your Spot Instance
+	// is at an elevated risk of being interrupted.
+	CapacityRebalance *SpotCapacityRebalance `locationName:"capacityRebalance" type:"structure"`
+}
+
+// String returns the string representation
+func (s SpotMaintenanceStrategies) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s SpotMaintenanceStrategies) GoString() string {
+	return s.String()
+}
+
+// SetCapacityRebalance sets the CapacityRebalance field's value.
+func (s *SpotMaintenanceStrategies) SetCapacityRebalance(v *SpotCapacityRebalance) *SpotMaintenanceStrategies {
+	s.CapacityRebalance = v
+	return s
+}
+
 // The options for Spot Instances.
 type SpotMarketOptions struct {
 	_ struct{} `type:"structure"`
@@ -107379,6 +108983,17 @@ type SpotMarketOptions struct {
 	// The required duration for the Spot Instances (also known as Spot blocks),
 	// in minutes. This value must be a multiple of 60 (60, 120, 180, 240, 300,
 	// or 360).
+	//
+	// The duration period starts as soon as your Spot Instance receives its instance
+	// ID. At the end of the duration period, Amazon EC2 marks the Spot Instance
+	// for termination and provides a Spot Instance termination notice, which gives
+	// the instance a two-minute warning before it terminates.
+	//
+	// You can't specify an Availability Zone group or a launch group if you specify
+	// a duration.
+	//
+	// New accounts or accounts with no previous billing history with AWS are not
+	// eligible for Spot Instances with a defined duration (also known as Spot blocks).
 	BlockDurationMinutes *int64 `type:"integer"`
 
 	// The behavior when a Spot Instance is interrupted. The default is terminate.
@@ -107393,11 +109008,15 @@ type SpotMarketOptions struct {
 	// is set to either hibernate or stop.
 	SpotInstanceType *string `type:"string" enum:"SpotInstanceType"`
 
-	// The end date of the request. For a one-time request, the request remains
-	// active until all instances launch, the request is canceled, or this date
-	// is reached. If the request is persistent, it remains active until it is canceled
-	// or this date and time is reached. The default end date is 7 days from the
-	// current date.
+	// The end date of the request, in UTC format (YYYY-MM-DDTHH:MM:SSZ). Supported
+	// only for persistent requests.
+	//
+	//    * For a persistent request, the request remains active until the ValidUntil
+	//    date and time is reached. Otherwise, the request remains active until
+	//    you cancel it.
+	//
+	//    * For a one-time request, ValidUntil is not supported. The request remains
+	//    active until all instances launch or you cancel the request.
 	ValidUntil *time.Time `type:"timestamp"`
 }
 
@@ -107469,6 +109088,10 @@ type SpotOptions struct {
 	// the number of Spot pools that you specify.
 	InstancePoolsToUseCount *int64 `locationName:"instancePoolsToUseCount" type:"integer"`
 
+	// The strategies for managing your workloads on your Spot Instances that will
+	// be interrupted. Currently only the capacity rebalance strategy is available.
+	MaintenanceStrategies *FleetSpotMaintenanceStrategies `locationName:"maintenanceStrategies" type:"structure"`
+
 	// The maximum amount per hour for Spot Instances that you're willing to pay.
 	MaxTotalPrice *string `locationName:"maxTotalPrice" type:"string"`
 
@@ -107510,6 +109133,12 @@ func (s *SpotOptions) SetInstanceInterruptionBehavior(v string) *SpotOptions {
 // SetInstancePoolsToUseCount sets the InstancePoolsToUseCount field's value.
 func (s *SpotOptions) SetInstancePoolsToUseCount(v int64) *SpotOptions {
 	s.InstancePoolsToUseCount = &v
+	return s
+}
+
+// SetMaintenanceStrategies sets the MaintenanceStrategies field's value.
+func (s *SpotOptions) SetMaintenanceStrategies(v *FleetSpotMaintenanceStrategies) *SpotOptions {
+	s.MaintenanceStrategies = v
 	return s
 }
 
@@ -107565,6 +109194,10 @@ type SpotOptionsRequest struct {
 	// across the number of Spot pools that you specify.
 	InstancePoolsToUseCount *int64 `type:"integer"`
 
+	// The strategies for managing your Spot Instances that are at an elevated risk
+	// of being interrupted.
+	MaintenanceStrategies *FleetSpotMaintenanceStrategiesRequest `type:"structure"`
+
 	// The maximum amount per hour for Spot Instances that you're willing to pay.
 	MaxTotalPrice *string `type:"string"`
 
@@ -107606,6 +109239,12 @@ func (s *SpotOptionsRequest) SetInstanceInterruptionBehavior(v string) *SpotOpti
 // SetInstancePoolsToUseCount sets the InstancePoolsToUseCount field's value.
 func (s *SpotOptionsRequest) SetInstancePoolsToUseCount(v int64) *SpotOptionsRequest {
 	s.InstancePoolsToUseCount = &v
+	return s
+}
+
+// SetMaintenanceStrategies sets the MaintenanceStrategies field's value.
+func (s *SpotOptionsRequest) SetMaintenanceStrategies(v *FleetSpotMaintenanceStrategiesRequest) *SpotOptionsRequest {
+	s.MaintenanceStrategies = v
 	return s
 }
 
@@ -108692,12 +110331,12 @@ type TagSpecification struct {
 	_ struct{} `type:"structure"`
 
 	// The type of resource to tag. Currently, the resource types that support tagging
-	// on creation are: capacity-reservation | client-vpn-endpoint | customer-gateway
-	// | dedicated-host | dhcp-options | export-image-task | export-instance-task
-	// | fleet | fpga-image | host-reservation | import-image-task | import-snapshot-task
-	// | instance | internet-gateway | ipv4pool-ec2 | ipv6pool-ec2 | key-pair |
-	// launch-template | placement-group | prefix-list | natgateway | network-acl
-	// | route-table | security-group | spot-fleet-request | spot-instances-request
+	// on creation are: capacity-reservation | carrier-gateway | client-vpn-endpoint
+	// | customer-gateway | dedicated-host | dhcp-options | export-image-task |
+	// export-instance-task | fleet | fpga-image | host-reservation | import-image-task
+	// | import-snapshot-task | instance | internet-gateway | ipv4pool-ec2 | ipv6pool-ec2
+	// | key-pair | launch-template | placement-group | prefix-list | natgateway
+	// | network-acl | route-table | security-group | spot-fleet-request | spot-instances-request
 	// | snapshot | subnet | traffic-mirror-filter | traffic-mirror-session | traffic-mirror-target
 	// | transit-gateway | transit-gateway-attachment | transit-gateway-route-table
 	// | volume |vpc | vpc-peering-connection | vpc-endpoint (for interface and
@@ -111387,6 +113026,9 @@ func (s *TransitGatewayVpcAttachment) SetVpcOwnerId(v string) *TransitGatewayVpc
 type TransitGatewayVpcAttachmentOptions struct {
 	_ struct{} `type:"structure"`
 
+	// Indicates whether appliance mode support is enabled.
+	ApplianceModeSupport *string `locationName:"applianceModeSupport" type:"string" enum:"ApplianceModeSupportValue"`
+
 	// Indicates whether DNS support is enabled.
 	DnsSupport *string `locationName:"dnsSupport" type:"string" enum:"DnsSupportValue"`
 
@@ -111402,6 +113044,12 @@ func (s TransitGatewayVpcAttachmentOptions) String() string {
 // GoString returns the string representation
 func (s TransitGatewayVpcAttachmentOptions) GoString() string {
 	return s.String()
+}
+
+// SetApplianceModeSupport sets the ApplianceModeSupport field's value.
+func (s *TransitGatewayVpcAttachmentOptions) SetApplianceModeSupport(v string) *TransitGatewayVpcAttachmentOptions {
+	s.ApplianceModeSupport = &v
+	return s
 }
 
 // SetDnsSupport sets the DnsSupport field's value.
@@ -112355,12 +114003,11 @@ type VCpuInfo struct {
 	// The default number of vCPUs for the instance type.
 	DefaultVCpus *int64 `locationName:"defaultVCpus" type:"integer"`
 
-	// List of the valid number of cores that can be configured for the instance
-	// type.
+	// The valid number of cores that can be configured for the instance type.
 	ValidCores []*int64 `locationName:"validCores" locationNameList:"item" type:"list"`
 
-	// List of the valid number of threads per core that can be configured for the
-	// instance type.
+	// The valid number of threads per core that can be configured for the instance
+	// type.
 	ValidThreadsPerCore []*int64 `locationName:"validThreadsPerCore" locationNameList:"item" type:"list"`
 }
 
@@ -112557,22 +114204,10 @@ type Volume struct {
 	// Indicates whether the volume was created using fast snapshot restore.
 	FastRestored *bool `locationName:"fastRestored" type:"boolean"`
 
-	// The number of I/O operations per second (IOPS) that the volume supports.
-	// For Provisioned IOPS SSD volumes, this represents the number of IOPS that
-	// are provisioned for the volume. For General Purpose SSD volumes, this represents
-	// the baseline performance of the volume and the rate at which the volume accumulates
-	// I/O credits for bursting. For more information, see Amazon EBS volume types
-	// (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html)
-	// in the Amazon Elastic Compute Cloud User Guide.
-	//
-	// Constraints: Range is 100-16,000 IOPS for gp2 volumes and 100 to 64,000 IOPS
-	// for io1 and io2 volumes, in most Regions. The maximum IOPS for io1 and io2
-	// of 64,000 is guaranteed only on Nitro-based instances (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances).
-	// Other instance families guarantee performance up to 32,000 IOPS.
-	//
-	// Condition: This parameter is required for requests to create io1 and io2
-	// volumes; it is not used in requests to create gp2, st1, sc1, or standard
-	// volumes.
+	// The number of I/O operations per second (IOPS). For gp3, io1, and io2 volumes,
+	// this represents the number of IOPS that are provisioned for the volume. For
+	// gp2 volumes, this represents the baseline performance of the volume and the
+	// rate at which the volume accumulates I/O credits for bursting.
 	Iops *int64 `locationName:"iops" type:"integer"`
 
 	// The Amazon Resource Name (ARN) of the AWS Key Management Service (AWS KMS)
@@ -112598,12 +114233,13 @@ type Volume struct {
 	// Any tags assigned to the volume.
 	Tags []*Tag `locationName:"tagSet" locationNameList:"item" type:"list"`
 
+	// The throughput that the volume supports, in MiB/s.
+	Throughput *int64 `locationName:"throughput" type:"integer"`
+
 	// The ID of the volume.
 	VolumeId *string `locationName:"volumeId" type:"string"`
 
-	// The volume type. This can be gp2 for General Purpose SSD, io1 or io2 for
-	// Provisioned IOPS SSD, st1 for Throughput Optimized HDD, sc1 for Cold HDD,
-	// or standard for Magnetic volumes.
+	// The volume type.
 	VolumeType *string `locationName:"volumeType" type:"string" enum:"VolumeType"`
 }
 
@@ -112692,6 +114328,12 @@ func (s *Volume) SetState(v string) *Volume {
 // SetTags sets the Tags field's value.
 func (s *Volume) SetTags(v []*Tag) *Volume {
 	s.Tags = v
+	return s
+}
+
+// SetThroughput sets the Throughput field's value.
+func (s *Volume) SetThroughput(v int64) *Volume {
+	s.Throughput = &v
 	return s
 }
 
@@ -112834,6 +114476,9 @@ type VolumeModification struct {
 	// The original size of the volume, in GiB.
 	OriginalSize *int64 `locationName:"originalSize" type:"integer"`
 
+	// The original throughput of the volume, in MiB/s.
+	OriginalThroughput *int64 `locationName:"originalThroughput" type:"integer"`
+
 	// The original EBS volume type of the volume.
 	OriginalVolumeType *string `locationName:"originalVolumeType" type:"string" enum:"VolumeType"`
 
@@ -112851,6 +114496,9 @@ type VolumeModification struct {
 
 	// The target size of the volume, in GiB.
 	TargetSize *int64 `locationName:"targetSize" type:"integer"`
+
+	// The target throughput of the volume, in MiB/s.
+	TargetThroughput *int64 `locationName:"targetThroughput" type:"integer"`
 
 	// The target EBS volume type of the volume.
 	TargetVolumeType *string `locationName:"targetVolumeType" type:"string" enum:"VolumeType"`
@@ -112893,6 +114541,12 @@ func (s *VolumeModification) SetOriginalSize(v int64) *VolumeModification {
 	return s
 }
 
+// SetOriginalThroughput sets the OriginalThroughput field's value.
+func (s *VolumeModification) SetOriginalThroughput(v int64) *VolumeModification {
+	s.OriginalThroughput = &v
+	return s
+}
+
 // SetOriginalVolumeType sets the OriginalVolumeType field's value.
 func (s *VolumeModification) SetOriginalVolumeType(v string) *VolumeModification {
 	s.OriginalVolumeType = &v
@@ -112926,6 +114580,12 @@ func (s *VolumeModification) SetTargetIops(v int64) *VolumeModification {
 // SetTargetSize sets the TargetSize field's value.
 func (s *VolumeModification) SetTargetSize(v int64) *VolumeModification {
 	s.TargetSize = &v
+	return s
+}
+
+// SetTargetThroughput sets the TargetThroughput field's value.
+func (s *VolumeModification) SetTargetThroughput(v int64) *VolumeModification {
+	s.TargetThroughput = &v
 	return s
 }
 
@@ -113673,6 +115333,9 @@ type VpcEndpointConnection struct {
 	// The DNS entries for the VPC endpoint.
 	DnsEntries []*DnsEntry `locationName:"dnsEntrySet" locationNameList:"item" type:"list"`
 
+	// The Amazon Resource Names (ARNs) of the Gateway Load Balancers for the service.
+	GatewayLoadBalancerArns []*string `locationName:"gatewayLoadBalancerArnSet" locationNameList:"item" type:"list"`
+
 	// The Amazon Resource Names (ARNs) of the network load balancers for the service.
 	NetworkLoadBalancerArns []*string `locationName:"networkLoadBalancerArnSet" locationNameList:"item" type:"list"`
 
@@ -113708,6 +115371,12 @@ func (s *VpcEndpointConnection) SetCreationTimestamp(v time.Time) *VpcEndpointCo
 // SetDnsEntries sets the DnsEntries field's value.
 func (s *VpcEndpointConnection) SetDnsEntries(v []*DnsEntry) *VpcEndpointConnection {
 	s.DnsEntries = v
+	return s
+}
+
+// SetGatewayLoadBalancerArns sets the GatewayLoadBalancerArns field's value.
+func (s *VpcEndpointConnection) SetGatewayLoadBalancerArns(v []*string) *VpcEndpointConnection {
+	s.GatewayLoadBalancerArns = v
 	return s
 }
 
@@ -114930,6 +116599,22 @@ func AllowsMultipleInstanceTypes_Values() []string {
 }
 
 const (
+	// ApplianceModeSupportValueEnable is a ApplianceModeSupportValue enum value
+	ApplianceModeSupportValueEnable = "enable"
+
+	// ApplianceModeSupportValueDisable is a ApplianceModeSupportValue enum value
+	ApplianceModeSupportValueDisable = "disable"
+)
+
+// ApplianceModeSupportValue_Values returns all elements of the ApplianceModeSupportValue enum
+func ApplianceModeSupportValue_Values() []string {
+	return []string{
+		ApplianceModeSupportValueEnable,
+		ApplianceModeSupportValueDisable,
+	}
+}
+
+const (
 	// ArchitectureTypeI386 is a ArchitectureType enum value
 	ArchitectureTypeI386 = "i386"
 
@@ -115494,6 +117179,22 @@ func ClientVpnConnectionStatusCode_Values() []string {
 }
 
 const (
+	// ClientVpnEndpointAttributeStatusCodeApplying is a ClientVpnEndpointAttributeStatusCode enum value
+	ClientVpnEndpointAttributeStatusCodeApplying = "applying"
+
+	// ClientVpnEndpointAttributeStatusCodeApplied is a ClientVpnEndpointAttributeStatusCode enum value
+	ClientVpnEndpointAttributeStatusCodeApplied = "applied"
+)
+
+// ClientVpnEndpointAttributeStatusCode_Values returns all elements of the ClientVpnEndpointAttributeStatusCode enum
+func ClientVpnEndpointAttributeStatusCode_Values() []string {
+	return []string{
+		ClientVpnEndpointAttributeStatusCodeApplying,
+		ClientVpnEndpointAttributeStatusCodeApplied,
+	}
+}
+
+const (
 	// ClientVpnEndpointStatusCodePendingAssociate is a ClientVpnEndpointStatusCode enum value
 	ClientVpnEndpointStatusCodePendingAssociate = "pending-associate"
 
@@ -115962,6 +117663,26 @@ func EndDateType_Values() []string {
 }
 
 const (
+	// EphemeralNvmeSupportUnsupported is a EphemeralNvmeSupport enum value
+	EphemeralNvmeSupportUnsupported = "unsupported"
+
+	// EphemeralNvmeSupportSupported is a EphemeralNvmeSupport enum value
+	EphemeralNvmeSupportSupported = "supported"
+
+	// EphemeralNvmeSupportRequired is a EphemeralNvmeSupport enum value
+	EphemeralNvmeSupportRequired = "required"
+)
+
+// EphemeralNvmeSupport_Values returns all elements of the EphemeralNvmeSupport enum
+func EphemeralNvmeSupport_Values() []string {
+	return []string{
+		EphemeralNvmeSupportUnsupported,
+		EphemeralNvmeSupportSupported,
+		EphemeralNvmeSupportRequired,
+	}
+}
+
+const (
 	// EventCodeInstanceReboot is a EventCode enum value
 	EventCodeInstanceReboot = "instance-reboot"
 
@@ -116186,6 +117907,18 @@ func FleetOnDemandAllocationStrategy_Values() []string {
 	return []string{
 		FleetOnDemandAllocationStrategyLowestPrice,
 		FleetOnDemandAllocationStrategyPrioritized,
+	}
+}
+
+const (
+	// FleetReplacementStrategyLaunch is a FleetReplacementStrategy enum value
+	FleetReplacementStrategyLaunch = "launch"
+)
+
+// FleetReplacementStrategy_Values returns all elements of the FleetReplacementStrategy enum
+func FleetReplacementStrategy_Values() []string {
+	return []string{
+		FleetReplacementStrategyLaunch,
 	}
 }
 
@@ -116547,6 +118280,9 @@ const (
 
 	// InstanceAttributeNameEnaSupport is a InstanceAttributeName enum value
 	InstanceAttributeNameEnaSupport = "enaSupport"
+
+	// InstanceAttributeNameEnclaveOptions is a InstanceAttributeName enum value
+	InstanceAttributeNameEnclaveOptions = "enclaveOptions"
 )
 
 // InstanceAttributeName_Values returns all elements of the InstanceAttributeName enum
@@ -116566,6 +118302,7 @@ func InstanceAttributeName_Values() []string {
 		InstanceAttributeNameEbsOptimized,
 		InstanceAttributeNameSriovNetSupport,
 		InstanceAttributeNameEnaSupport,
+		InstanceAttributeNameEnclaveOptions,
 	}
 }
 
@@ -116942,6 +118679,33 @@ const (
 
 	// InstanceTypeR5a24xlarge is a InstanceType enum value
 	InstanceTypeR5a24xlarge = "r5a.24xlarge"
+
+	// InstanceTypeR5bLarge is a InstanceType enum value
+	InstanceTypeR5bLarge = "r5b.large"
+
+	// InstanceTypeR5bXlarge is a InstanceType enum value
+	InstanceTypeR5bXlarge = "r5b.xlarge"
+
+	// InstanceTypeR5b2xlarge is a InstanceType enum value
+	InstanceTypeR5b2xlarge = "r5b.2xlarge"
+
+	// InstanceTypeR5b4xlarge is a InstanceType enum value
+	InstanceTypeR5b4xlarge = "r5b.4xlarge"
+
+	// InstanceTypeR5b8xlarge is a InstanceType enum value
+	InstanceTypeR5b8xlarge = "r5b.8xlarge"
+
+	// InstanceTypeR5b12xlarge is a InstanceType enum value
+	InstanceTypeR5b12xlarge = "r5b.12xlarge"
+
+	// InstanceTypeR5b16xlarge is a InstanceType enum value
+	InstanceTypeR5b16xlarge = "r5b.16xlarge"
+
+	// InstanceTypeR5b24xlarge is a InstanceType enum value
+	InstanceTypeR5b24xlarge = "r5b.24xlarge"
+
+	// InstanceTypeR5bMetal is a InstanceType enum value
+	InstanceTypeR5bMetal = "r5b.metal"
 
 	// InstanceTypeR5dLarge is a InstanceType enum value
 	InstanceTypeR5dLarge = "r5d.large"
@@ -117414,6 +119178,9 @@ const (
 	// InstanceTypeP3dn24xlarge is a InstanceType enum value
 	InstanceTypeP3dn24xlarge = "p3dn.24xlarge"
 
+	// InstanceTypeP4d24xlarge is a InstanceType enum value
+	InstanceTypeP4d24xlarge = "p4d.24xlarge"
+
 	// InstanceTypeD2Xlarge is a InstanceType enum value
 	InstanceTypeD2Xlarge = "d2.xlarge"
 
@@ -117425,6 +119192,36 @@ const (
 
 	// InstanceTypeD28xlarge is a InstanceType enum value
 	InstanceTypeD28xlarge = "d2.8xlarge"
+
+	// InstanceTypeD3Xlarge is a InstanceType enum value
+	InstanceTypeD3Xlarge = "d3.xlarge"
+
+	// InstanceTypeD32xlarge is a InstanceType enum value
+	InstanceTypeD32xlarge = "d3.2xlarge"
+
+	// InstanceTypeD34xlarge is a InstanceType enum value
+	InstanceTypeD34xlarge = "d3.4xlarge"
+
+	// InstanceTypeD38xlarge is a InstanceType enum value
+	InstanceTypeD38xlarge = "d3.8xlarge"
+
+	// InstanceTypeD3enXlarge is a InstanceType enum value
+	InstanceTypeD3enXlarge = "d3en.xlarge"
+
+	// InstanceTypeD3en2xlarge is a InstanceType enum value
+	InstanceTypeD3en2xlarge = "d3en.2xlarge"
+
+	// InstanceTypeD3en4xlarge is a InstanceType enum value
+	InstanceTypeD3en4xlarge = "d3en.4xlarge"
+
+	// InstanceTypeD3en6xlarge is a InstanceType enum value
+	InstanceTypeD3en6xlarge = "d3en.6xlarge"
+
+	// InstanceTypeD3en8xlarge is a InstanceType enum value
+	InstanceTypeD3en8xlarge = "d3en.8xlarge"
+
+	// InstanceTypeD3en12xlarge is a InstanceType enum value
+	InstanceTypeD3en12xlarge = "d3en.12xlarge"
 
 	// InstanceTypeF12xlarge is a InstanceType enum value
 	InstanceTypeF12xlarge = "f1.2xlarge"
@@ -117536,6 +119333,27 @@ const (
 
 	// InstanceTypeM5ad24xlarge is a InstanceType enum value
 	InstanceTypeM5ad24xlarge = "m5ad.24xlarge"
+
+	// InstanceTypeM5znLarge is a InstanceType enum value
+	InstanceTypeM5znLarge = "m5zn.large"
+
+	// InstanceTypeM5znXlarge is a InstanceType enum value
+	InstanceTypeM5znXlarge = "m5zn.xlarge"
+
+	// InstanceTypeM5zn2xlarge is a InstanceType enum value
+	InstanceTypeM5zn2xlarge = "m5zn.2xlarge"
+
+	// InstanceTypeM5zn3xlarge is a InstanceType enum value
+	InstanceTypeM5zn3xlarge = "m5zn.3xlarge"
+
+	// InstanceTypeM5zn6xlarge is a InstanceType enum value
+	InstanceTypeM5zn6xlarge = "m5zn.6xlarge"
+
+	// InstanceTypeM5zn12xlarge is a InstanceType enum value
+	InstanceTypeM5zn12xlarge = "m5zn.12xlarge"
+
+	// InstanceTypeM5znMetal is a InstanceType enum value
+	InstanceTypeM5znMetal = "m5zn.metal"
 
 	// InstanceTypeH12xlarge is a InstanceType enum value
 	InstanceTypeH12xlarge = "h1.2xlarge"
@@ -117764,6 +119582,9 @@ const (
 
 	// InstanceTypeM6gd16xlarge is a InstanceType enum value
 	InstanceTypeM6gd16xlarge = "m6gd.16xlarge"
+
+	// InstanceTypeMac1Metal is a InstanceType enum value
+	InstanceTypeMac1Metal = "mac1.metal"
 )
 
 // InstanceType_Values returns all elements of the InstanceType enum
@@ -117844,6 +119665,15 @@ func InstanceType_Values() []string {
 		InstanceTypeR5a12xlarge,
 		InstanceTypeR5a16xlarge,
 		InstanceTypeR5a24xlarge,
+		InstanceTypeR5bLarge,
+		InstanceTypeR5bXlarge,
+		InstanceTypeR5b2xlarge,
+		InstanceTypeR5b4xlarge,
+		InstanceTypeR5b8xlarge,
+		InstanceTypeR5b12xlarge,
+		InstanceTypeR5b16xlarge,
+		InstanceTypeR5b24xlarge,
+		InstanceTypeR5bMetal,
 		InstanceTypeR5dLarge,
 		InstanceTypeR5dXlarge,
 		InstanceTypeR5d2xlarge,
@@ -118001,10 +119831,21 @@ func InstanceType_Values() []string {
 		InstanceTypeP38xlarge,
 		InstanceTypeP316xlarge,
 		InstanceTypeP3dn24xlarge,
+		InstanceTypeP4d24xlarge,
 		InstanceTypeD2Xlarge,
 		InstanceTypeD22xlarge,
 		InstanceTypeD24xlarge,
 		InstanceTypeD28xlarge,
+		InstanceTypeD3Xlarge,
+		InstanceTypeD32xlarge,
+		InstanceTypeD34xlarge,
+		InstanceTypeD38xlarge,
+		InstanceTypeD3enXlarge,
+		InstanceTypeD3en2xlarge,
+		InstanceTypeD3en4xlarge,
+		InstanceTypeD3en6xlarge,
+		InstanceTypeD3en8xlarge,
+		InstanceTypeD3en12xlarge,
 		InstanceTypeF12xlarge,
 		InstanceTypeF14xlarge,
 		InstanceTypeF116xlarge,
@@ -118042,6 +119883,13 @@ func InstanceType_Values() []string {
 		InstanceTypeM5ad12xlarge,
 		InstanceTypeM5ad16xlarge,
 		InstanceTypeM5ad24xlarge,
+		InstanceTypeM5znLarge,
+		InstanceTypeM5znXlarge,
+		InstanceTypeM5zn2xlarge,
+		InstanceTypeM5zn3xlarge,
+		InstanceTypeM5zn6xlarge,
+		InstanceTypeM5zn12xlarge,
+		InstanceTypeM5znMetal,
 		InstanceTypeH12xlarge,
 		InstanceTypeH14xlarge,
 		InstanceTypeH18xlarge,
@@ -118118,6 +119966,7 @@ func InstanceType_Values() []string {
 		InstanceTypeM6gd8xlarge,
 		InstanceTypeM6gd12xlarge,
 		InstanceTypeM6gd16xlarge,
+		InstanceTypeMac1Metal,
 	}
 }
 
@@ -118942,6 +120791,18 @@ func RecurringChargeFrequency_Values() []string {
 }
 
 const (
+	// ReplacementStrategyLaunch is a ReplacementStrategy enum value
+	ReplacementStrategyLaunch = "launch"
+)
+
+// ReplacementStrategy_Values returns all elements of the ReplacementStrategy enum
+func ReplacementStrategy_Values() []string {
+	return []string{
+		ReplacementStrategyLaunch,
+	}
+}
+
+const (
 	// ReportInstanceReasonCodesInstanceStuckInState is a ReportInstanceReasonCodes enum value
 	ReportInstanceReasonCodesInstanceStuckInState = "instance-stuck-in-state"
 
@@ -119378,6 +121239,22 @@ func Scope_Values() []string {
 }
 
 const (
+	// SelfServicePortalEnabled is a SelfServicePortal enum value
+	SelfServicePortalEnabled = "enabled"
+
+	// SelfServicePortalDisabled is a SelfServicePortal enum value
+	SelfServicePortalDisabled = "disabled"
+)
+
+// SelfServicePortal_Values returns all elements of the SelfServicePortal enum
+func SelfServicePortal_Values() []string {
+	return []string{
+		SelfServicePortalEnabled,
+		SelfServicePortalDisabled,
+	}
+}
+
+const (
 	// ServiceStatePending is a ServiceState enum value
 	ServiceStatePending = "Pending"
 
@@ -119411,6 +121288,9 @@ const (
 
 	// ServiceTypeGateway is a ServiceType enum value
 	ServiceTypeGateway = "Gateway"
+
+	// ServiceTypeGatewayLoadBalancer is a ServiceType enum value
+	ServiceTypeGatewayLoadBalancer = "GatewayLoadBalancer"
 )
 
 // ServiceType_Values returns all elements of the ServiceType enum
@@ -119418,6 +121298,7 @@ func ServiceType_Values() []string {
 	return []string{
 		ServiceTypeInterface,
 		ServiceTypeGateway,
+		ServiceTypeGatewayLoadBalancer,
 	}
 }
 
@@ -120459,6 +122340,9 @@ const (
 
 	// VolumeTypeSt1 is a VolumeType enum value
 	VolumeTypeSt1 = "st1"
+
+	// VolumeTypeGp3 is a VolumeType enum value
+	VolumeTypeGp3 = "gp3"
 )
 
 // VolumeType_Values returns all elements of the VolumeType enum
@@ -120470,6 +122354,7 @@ func VolumeType_Values() []string {
 		VolumeTypeGp2,
 		VolumeTypeSc1,
 		VolumeTypeSt1,
+		VolumeTypeGp3,
 	}
 }
 
@@ -120527,6 +122412,9 @@ const (
 
 	// VpcEndpointTypeGateway is a VpcEndpointType enum value
 	VpcEndpointTypeGateway = "Gateway"
+
+	// VpcEndpointTypeGatewayLoadBalancer is a VpcEndpointType enum value
+	VpcEndpointTypeGatewayLoadBalancer = "GatewayLoadBalancer"
 )
 
 // VpcEndpointType_Values returns all elements of the VpcEndpointType enum
@@ -120534,6 +122422,7 @@ func VpcEndpointType_Values() []string {
 	return []string{
 		VpcEndpointTypeInterface,
 		VpcEndpointTypeGateway,
+		VpcEndpointTypeGatewayLoadBalancer,
 	}
 }
 
