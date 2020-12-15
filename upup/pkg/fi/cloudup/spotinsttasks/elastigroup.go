@@ -47,6 +47,7 @@ type Elastigroup struct {
 	Lifecycle *fi.Lifecycle
 
 	ID                       *string
+	Region                   *string
 	MinSize                  *int64
 	MaxSize                  *int64
 	SpotPercentage           *float64
@@ -81,13 +82,16 @@ type RootVolumeOpts struct {
 }
 
 type AutoScalerOpts struct {
-	Enabled   *bool
-	ClusterID *string
-	Cooldown  *int
-	Labels    map[string]string
-	Taints    []*corev1.Taint
-	Headroom  *AutoScalerHeadroomOpts
-	Down      *AutoScalerDownOpts
+	Enabled                *bool
+	AutoConfig             *bool
+	AutoHeadroomPercentage *int
+	ClusterID              *string
+	Cooldown               *int
+	Labels                 map[string]string
+	Taints                 []*corev1.Taint
+	Headroom               *AutoScalerHeadroomOpts
+	Down                   *AutoScalerDownOpts
+	ResourceLimits         *AutoScalerResourceLimitsOpts
 }
 
 type AutoScalerHeadroomOpts struct {
@@ -100,6 +104,11 @@ type AutoScalerHeadroomOpts struct {
 type AutoScalerDownOpts struct {
 	MaxPercentage     *float64
 	EvaluationPeriods *int
+}
+
+type AutoScalerResourceLimitsOpts struct {
+	MaxVCPU   *int
+	MaxMemory *int
 }
 
 var _ fi.Task = &Elastigroup{}
@@ -180,6 +189,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 	actual := &Elastigroup{}
 	actual.ID = group.ID
 	actual.Name = group.Name
+	actual.Region = group.Region
 
 	// Capacity.
 	{
@@ -212,11 +222,9 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 
 		// Subnets.
 		{
-			for _, zone := range compute.AvailabilityZones {
-				if zone.SubnetID != nil {
-					actual.Subnets = append(actual.Subnets,
-						&awstasks.Subnet{ID: zone.SubnetID})
-				}
+			for _, subnetID := range compute.SubnetIDs {
+				actual.Subnets = append(actual.Subnets,
+					&awstasks.Subnet{ID: fi.String(subnetID)})
 			}
 			if subnetSlicesEqualIgnoreOrder(actual.Subnets, e.Subnets) {
 				actual.Subnets = e.Subnets
@@ -280,7 +288,7 @@ func (e *Elastigroup) Find(c *fi.Context) (*Elastigroup, error) {
 							actual.RootVolumeOpts.IOPS = fi.Int32(int32(fi.IntValue(b.EBS.IOPS)))
 						}
 
-						actual.RootVolumeOpts.Type = b.EBS.VolumeType
+						actual.RootVolumeOpts.Type = fi.String(strings.ToLower(fi.StringValue(b.EBS.VolumeType)))
 						actual.RootVolumeOpts.Size = fi.Int32(int32(fi.IntValue(b.EBS.VolumeSize)))
 					}
 				}
@@ -488,6 +496,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 	{
 		group.SetName(e.Name)
 		group.SetDescription(e.Name)
+		group.SetRegion(e.Region)
 	}
 
 	// Capacity.
@@ -519,16 +528,13 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			group.Compute.InstanceTypes.SetSpot(e.SpotInstanceTypes)
 		}
 
-		// Availability zones.
+		// Subnets.
 		{
-			zones := make([]*aws.AvailabilityZone, len(e.Subnets))
+			subnets := make([]string, len(e.Subnets))
 			for i, subnet := range e.Subnets {
-				zone := new(aws.AvailabilityZone)
-				zone.SetName(subnet.AvailabilityZone)
-				zone.SetSubnetId(subnet.ID)
-				zones[i] = zone
+				subnets[i] = fi.StringValue(subnet.ID)
 			}
-			group.Compute.SetAvailabilityZones(zones)
+			group.Compute.SetSubnetIDs(subnets)
 		}
 
 		// Launch Specification.
@@ -578,7 +584,7 @@ func (_ *Elastigroup) create(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			// User data.
 			{
 				if e.UserData != nil {
-					userData, err := e.UserData.AsString()
+					userData, err := fi.ResourceAsString(e.UserData)
 					if err != nil {
 						return err
 					}
@@ -790,6 +796,13 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 	group := new(aws.Group)
 	group.SetId(actual.ID)
 
+	// Region.
+	if changes.Region != nil {
+		group.SetRegion(e.Region)
+		changes.Region = nil
+		changed = true
+	}
+
 	// Strategy.
 	{
 		// Spot percentage.
@@ -896,22 +909,19 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			}
 		}
 
-		// Availability zones.
+		// Subnets.
 		{
 			if changes.Subnets != nil {
 				if group.Compute == nil {
 					group.Compute = new(aws.Compute)
 				}
 
-				zones := make([]*aws.AvailabilityZone, len(e.Subnets))
+				subnets := make([]string, len(e.Subnets))
 				for i, subnet := range e.Subnets {
-					zone := new(aws.AvailabilityZone)
-					zone.SetName(subnet.AvailabilityZone)
-					zone.SetSubnetId(subnet.ID)
-					zones[i] = zone
+					subnets[i] = fi.StringValue(subnet.ID)
 				}
 
-				group.Compute.SetAvailabilityZones(zones)
+				group.Compute.SetSubnetIDs(subnets)
 				changes.Subnets = nil
 				changed = true
 			}
@@ -943,7 +953,7 @@ func (_ *Elastigroup) update(cloud awsup.AWSCloud, a, e, changes *Elastigroup) e
 			// User data.
 			{
 				if changes.UserData != nil {
-					userData, err := e.UserData.AsString()
+					userData, err := fi.ResourceAsString(e.UserData)
 					if err != nil {
 						return err
 					}
@@ -1339,7 +1349,6 @@ type terraformElastigroup struct {
 	EphemeralBlockDevice []*terraformElastigroupBlockDevice      `json:"ephemeral_block_device,omitempty" cty:"ephemeral_block_device"`
 	Integration          *terraformElastigroupIntegration        `json:"integration_kubernetes,omitempty" cty:"integration_kubernetes"`
 	Tags                 []*terraformKV                          `json:"tags,omitempty" cty:"tags"`
-	Lifecycle            *terraformLifecycle                     `json:"lifecycle,omitempty" cty:"lifecycle"`
 
 	MinSize         *int64  `json:"min_size,omitempty" cty:"min_size"`
 	MaxSize         *int64  `json:"max_size,omitempty" cty:"max_size"`
@@ -1393,12 +1402,14 @@ type terraformElastigroupIntegration struct {
 }
 
 type terraformAutoScaler struct {
-	Enabled    *bool                        `json:"autoscale_is_enabled,omitempty" cty:"autoscale_is_enabled"`
-	AutoConfig *bool                        `json:"autoscale_is_auto_config,omitempty" cty:"autoscale_is_auto_config"`
-	Cooldown   *int                         `json:"autoscale_cooldown,omitempty" cty:"autoscale_cooldown"`
-	Headroom   *terraformAutoScalerHeadroom `json:"autoscale_headroom,omitempty" cty:"autoscale_headroom"`
-	Down       *terraformAutoScalerDown     `json:"autoscale_down,omitempty" cty:"autoscale_down"`
-	Labels     []*terraformKV               `json:"autoscale_labels,omitempty" cty:"autoscale_labels"`
+	Enabled                *bool                              `json:"autoscale_is_enabled,omitempty" cty:"autoscale_is_enabled"`
+	AutoConfig             *bool                              `json:"autoscale_is_auto_config,omitempty" cty:"autoscale_is_auto_config"`
+	AutoHeadroomPercentage *int                               `json:"auto_headroom_percentage,omitempty" cty:"auto_headroom_percentage"`
+	Cooldown               *int                               `json:"autoscale_cooldown,omitempty" cty:"autoscale_cooldown"`
+	Headroom               *terraformAutoScalerHeadroom       `json:"autoscale_headroom,omitempty" cty:"autoscale_headroom"`
+	Down                   *terraformAutoScalerDown           `json:"autoscale_down,omitempty" cty:"autoscale_down"`
+	ResourceLimits         *terraformAutoScalerResourceLimits `json:"resource_limits,omitempty" cty:"resource_limits"`
+	Labels                 []*terraformKV                     `json:"autoscale_labels,omitempty" cty:"autoscale_labels"`
 }
 
 type terraformAutoScalerHeadroom struct {
@@ -1413,13 +1424,20 @@ type terraformAutoScalerDown struct {
 	EvaluationPeriods *int     `json:"evaluation_periods,omitempty" cty:"evaluation_periods"`
 }
 
+type terraformAutoScalerResourceLimits struct {
+	MaxVCPU   *int `json:"max_vcpu,omitempty" cty:"max_vcpu"`
+	MaxMemory *int `json:"max_memory_gib,omitempty" cty:"max_memory_gib"`
+}
+
 type terraformKV struct {
 	Key   *string `json:"key" cty:"key"`
 	Value *string `json:"value" cty:"value"`
 }
 
-type terraformLifecycle struct {
-	IgnoreChanges []string `json:"ignore_changes,omitempty" cty:"ignore_changes"`
+type terraformTaint struct {
+	Key    *string `json:"key" cty:"key"`
+	Value  *string `json:"value" cty:"value"`
+	Effect *string `json:"effect" cty:"effect"`
 }
 
 func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Elastigroup) error {
@@ -1430,7 +1448,7 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 		Name:        e.Name,
 		Description: e.Name,
 		Product:     e.Product,
-		Region:      fi.String(cloud.Region()),
+		Region:      e.Region,
 
 		DesiredCapacity: e.MinSize,
 		MinSize:         e.MinSize,
@@ -1627,16 +1645,6 @@ func (_ *Elastigroup) RenderTerraform(t *terraform.TerraformTarget, a, e, change
 							Key:   fi.String(k),
 							Value: fi.String(v),
 						})
-					}
-				}
-
-				// Ignore capacity changes because the auto scaler updates the
-				// desired capacity overtime.
-				if fi.BoolValue(tf.Integration.Enabled) {
-					tf.Lifecycle = &terraformLifecycle{
-						IgnoreChanges: []string{
-							"desired_capacity",
-						},
 					}
 				}
 			}
