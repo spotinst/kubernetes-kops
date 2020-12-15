@@ -24,6 +24,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 	"k8s.io/kops/pkg/apis/kops"
+	"k8s.io/kops/pkg/featureflag"
 	"k8s.io/kops/upup/pkg/fi"
 )
 
@@ -87,7 +88,28 @@ func (t *TerraformTarget) finish012(taskMap map[string]fi.Task) error {
 
 	terraformBlock := rootBody.AppendNewBlock("terraform", []string{})
 	terraformBody := terraformBlock.Body()
-	terraformBody.SetAttributeValue("required_version", cty.StringVal(">= 0.12.0"))
+	terraformBody.SetAttributeValue("required_version", cty.StringVal(">= 0.12.26"))
+
+	requiredProvidersBlock := terraformBody.AppendNewBlock("required_providers", []string{})
+	requiredProvidersBody := requiredProvidersBlock.Body()
+
+	if t.Cloud.ProviderID() == kops.CloudProviderGCE {
+		writeMap(requiredProvidersBody, "google", map[string]cty.Value{
+			"source":  cty.StringVal("hashicorp/google"),
+			"version": cty.StringVal(">= 2.19.0"),
+		})
+	} else if t.Cloud.ProviderID() == kops.CloudProviderAWS {
+		writeMap(requiredProvidersBody, "aws", map[string]cty.Value{
+			"source":  cty.StringVal("hashicorp/aws"),
+			"version": cty.StringVal(">= 2.46.0"),
+		})
+		if featureflag.Spotinst.Enabled() {
+			writeMap(requiredProvidersBody, "spotinst", map[string]cty.Value{
+				"source":  cty.StringVal("spotinst/spotinst"),
+				"version": cty.StringVal(">= 1.33.0"),
+			})
+		}
+	}
 
 	bytes := hclwrite.Format(f.Bytes())
 	t.files["kubernetes.tf"] = bytes
