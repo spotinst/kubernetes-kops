@@ -19979,6 +19979,18 @@ rules:
 - apiGroups: [""]
   resources: ["pods"]
   verbs: ["get", "list", "patch", "update", "create", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "patch","update","create","delete"]
+  # ----------------------------------------------------------------------------
+  # Required by Spotinst Wave.
+  # ----------------------------------------------------------------------------
+- apiGroups: ["sparkoperator.k8s.io"]
+  resources: ["sparkapplications", "scheduledsparkapplications"]
+  verbs: ["get", "list"]
+- apiGroups: ["wave.spot.io"]
+  resources: ["sparkapplications", "wavecomponents", "waveenvironments"]
+  verbs: ["get", "list"]
 ---
 # ------------------------------------------------------------------------------
 # Cluster Role Binding
@@ -20020,6 +20032,13 @@ spec:
       priorityClassName: system-cluster-critical
       affinity:
         nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: NotIn
+                values:
+                - windows
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
             preference:
@@ -20040,7 +20059,7 @@ spec:
       containers:
       - name: spotinst-kubernetes-cluster-controller
         imagePullPolicy: Always
-        image: spotinst/kubernetes-cluster-controller:1.0.67
+        image: spotinst/kubernetes-cluster-controller:1.0.72
         livenessProbe:
           httpGet:
             path: /healthcheck
@@ -20126,6 +20145,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
       serviceAccountName: spotinst-kubernetes-cluster-controller
+      dnsPolicy: Default
       tolerations:
       - key: node.kubernetes.io/not-ready
         effect: NoExecute

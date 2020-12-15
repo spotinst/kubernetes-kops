@@ -92,6 +92,12 @@ const (
 	// the auto scaler.
 	InstanceGroupLabelAutoScalerDefaultNodeLabels = "spotinst.io/autoscaler-default-node-labels"
 
+	// InstanceGroupLabelAutoScalerAuto* are the metadata labels used on the
+	// instance group to specify whether headroom resources should be
+	// automatically configured and optimized.
+	InstanceGroupLabelAutoScalerAutoConfig             = "spotinst.io/autoscaler-auto-config"
+	InstanceGroupLabelAutoScalerAutoHeadroomPercentage = "spotinst.io/autoscaler-auto-headroom-percentage"
+
 	// InstanceGroupLabelAutoScalerHeadroom* are the metadata labels used on the
 	// instance group to specify the headroom configuration used by the auto scaler.
 	InstanceGroupLabelAutoScalerHeadroomCPUPerUnit = "spotinst.io/autoscaler-headroom-cpu-per-unit"
@@ -107,6 +113,15 @@ const (
 	// instance group to specify the scale down configuration used by the auto scaler.
 	InstanceGroupLabelAutoScalerScaleDownMaxPercentage     = "spotinst.io/autoscaler-scale-down-max-percentage"
 	InstanceGroupLabelAutoScalerScaleDownEvaluationPeriods = "spotinst.io/autoscaler-scale-down-evaluation-periods"
+
+	// InstanceGroupLabelAutoScalerResourceLimits* are the metadata labels used on the
+	// instance group to specify the resource limits configuration used by the auto scaler.
+	InstanceGroupLabelAutoScalerResourceLimitsMaxVCPU   = "spotinst.io/autoscaler-resource-limits-max-vcpu"
+	InstanceGroupLabelAutoScalerResourceLimitsMaxMemory = "spotinst.io/autoscaler-resource-limits-max-memory"
+
+	// InstanceGroupLabelRestrictScaleDown is the metadata label used on the
+	// instance group to specify whether the scale-down activities should be restricted.
+	InstanceGroupLabelRestrictScaleDown = "spotinst.io/restrict-scale-down"
 )
 
 // InstanceGroupModelBuilder configures InstanceGroup objects
@@ -173,6 +188,7 @@ func (b *InstanceGroupModelBuilder) buildElastigroup(c *fi.ModelBuilderContext, 
 	group := &spotinsttasks.Elastigroup{
 		Lifecycle:            b.Lifecycle,
 		Name:                 fi.String(b.AutoscalingGroupName(ig)),
+		Region:               fi.String(b.Region),
 		ImageID:              fi.String(ig.Spec.Image),
 		OnDemandInstanceType: fi.String(strings.Split(ig.Spec.MachineType, ",")[0]),
 		SpotInstanceTypes:    strings.Split(ig.Spec.MachineType, ","),
@@ -360,21 +376,12 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 		klog.V(4).Infof("Detected default launch spec: %q", b.AutoscalingGroupName(ig))
 	}
 
-	// Rename the instance group to avoid duplicate tasks with same name.
-	ig.Name = fi.StringValue(ocean.Name)
-
 	// Image.
 	ocean.ImageID = fi.String(ig.Spec.Image)
 
 	// Strategy and instance types.
 	for k, v := range ig.ObjectMeta.Labels {
 		switch k {
-		case InstanceGroupLabelSpotPercentage:
-			ocean.SpotPercentage, err = parseFloat(v)
-			if err != nil {
-				return err
-			}
-
 		case InstanceGroupLabelUtilizeReservedInstances:
 			ocean.UtilizeReservedInstances, err = parseBool(v)
 			if err != nil {
@@ -411,11 +418,6 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 				return err
 			}
 		}
-	}
-
-	// Spot percentage.
-	if ocean.SpotPercentage == nil {
-		ocean.SpotPercentage = defaultSpotPercentage(ig)
 	}
 
 	// Capacity.
@@ -488,8 +490,8 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 	}
 
 	// Create a Launch Spec for each instance group.
-	for _, ig := range igs {
-		if err := b.buildLaunchSpec(c, ig, ocean); err != nil {
+	for _, g := range igs {
+		if err := b.buildLaunchSpec(c, g, ig, ocean); err != nil {
 			return fmt.Errorf("error building launch spec: %v", err)
 		}
 	}
@@ -501,7 +503,7 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 }
 
 func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
-	ig *kops.InstanceGroup, ocean *spotinsttasks.Ocean) (err error) {
+	ig, igOcean *kops.InstanceGroup, ocean *spotinsttasks.Ocean) (err error) {
 
 	klog.V(4).Infof("Building instance group as LaunchSpec: %q", b.AutoscalingGroupName(ig))
 	launchSpec := &spotinsttasks.LaunchSpec{
@@ -510,11 +512,23 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 		Ocean:   ocean, // link to Ocean
 	}
 
-	// Instance types.
+	// Instance types and strategy.
 	for k, v := range ig.ObjectMeta.Labels {
 		switch k {
 		case InstanceGroupLabelOceanInstanceTypesWhitelist, InstanceGroupLabelOceanInstanceTypes:
 			launchSpec.InstanceTypes, err = parseStringSlice(v)
+			if err != nil {
+				return err
+			}
+
+		case InstanceGroupLabelSpotPercentage:
+			launchSpec.SpotPercentage, err = parseInt(v)
+			if err != nil {
+				return err
+			}
+
+		case InstanceGroupLabelRestrictScaleDown:
+			launchSpec.RestrictScaleDown, err = parseBool(v)
 			if err != nil {
 				return err
 			}
@@ -527,9 +541,13 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	ocean.MaxSize = fi.Int64(fi.Int64Value(ocean.MaxSize) + fi.Int64Value(maxSize))
 
 	// User data.
-	launchSpec.UserData, err = b.BootstrapScriptBuilder.ResourceNodeUp(c, ig)
-	if err != nil {
-		return fmt.Errorf("error building user data: %v", err)
+	if ig.Name == igOcean.Name {
+		launchSpec.UserData = ocean.UserData
+	} else {
+		launchSpec.UserData, err = b.BootstrapScriptBuilder.ResourceNodeUp(c, ig)
+		if err != nil {
+			return fmt.Errorf("error building user data: %v", err)
+		}
 	}
 
 	// Instance profile.
@@ -575,6 +593,8 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	}
 	if autoScalerOpts != nil { // remove unsupported options
 		autoScalerOpts.Enabled = nil
+		autoScalerOpts.AutoConfig = nil
+		autoScalerOpts.AutoHeadroomPercentage = nil
 		autoScalerOpts.ClusterID = nil
 		autoScalerOpts.Cooldown = nil
 		autoScalerOpts.Down = nil
@@ -748,6 +768,7 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 
 	// Enable the auto scaler for Node instance groups.
 	opts.Enabled = fi.Bool(true)
+	opts.AutoConfig = fi.Bool(true)
 
 	// Parse instance group labels.
 	var defaultNodeLabels bool
@@ -778,6 +799,24 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 					return nil, err
 				}
 				opts.Cooldown = fi.Int(int(fi.Int64Value(v)))
+			}
+
+		case InstanceGroupLabelAutoScalerAutoConfig:
+			{
+				v, err := parseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.AutoConfig = v
+			}
+
+		case InstanceGroupLabelAutoScalerAutoHeadroomPercentage:
+			{
+				v, err := parseInt(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.AutoHeadroomPercentage = fi.Int(int(fi.Int64Value(v)))
 			}
 
 		case InstanceGroupLabelAutoScalerHeadroomCPUPerUnit:
@@ -851,7 +890,37 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 				}
 				opts.Down.EvaluationPeriods = fi.Int(int(fi.Int64Value(v)))
 			}
+
+		case InstanceGroupLabelAutoScalerResourceLimitsMaxVCPU:
+			{
+				v, err := parseInt(v)
+				if err != nil {
+					return nil, err
+				}
+				if opts.ResourceLimits == nil {
+					opts.ResourceLimits = new(spotinsttasks.AutoScalerResourceLimitsOpts)
+				}
+				opts.ResourceLimits.MaxVCPU = fi.Int(int(fi.Int64Value(v)))
+			}
+
+		case InstanceGroupLabelAutoScalerResourceLimitsMaxMemory:
+			{
+				v, err := parseInt(v)
+				if err != nil {
+					return nil, err
+				}
+				if opts.ResourceLimits == nil {
+					opts.ResourceLimits = new(spotinsttasks.AutoScalerResourceLimitsOpts)
+				}
+				opts.ResourceLimits.MaxMemory = fi.Int(int(fi.Int64Value(v)))
+			}
 		}
+	}
+
+	// Toggle automatic configuration off if headroom resources are explicitly defined.
+	if fi.BoolValue(opts.AutoConfig) && opts.Headroom != nil {
+		opts.AutoConfig = fi.Bool(false)
+		opts.AutoHeadroomPercentage = nil
 	}
 
 	// Configure Elastigroup defaults to avoid state drifts.
