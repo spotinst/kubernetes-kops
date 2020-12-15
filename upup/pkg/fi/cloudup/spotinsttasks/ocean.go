@@ -43,7 +43,6 @@ type Ocean struct {
 	ID                       *string
 	MinSize                  *int64
 	MaxSize                  *int64
-	SpotPercentage           *float64
 	UtilizeReservedInstances *bool
 	FallbackToOnDemand       *bool
 	DrainingTimeout          *int64
@@ -147,7 +146,6 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 	// Strategy.
 	{
 		if strategy := ocean.Strategy; strategy != nil {
-			actual.SpotPercentage = strategy.SpotPercentage
 			actual.FallbackToOnDemand = strategy.FallbackToOnDemand
 			actual.UtilizeReservedInstances = strategy.UtilizeReservedInstances
 
@@ -292,6 +290,8 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 			actual.AutoScalerOpts = new(AutoScalerOpts)
 			actual.AutoScalerOpts.ClusterID = ocean.ControllerClusterID
 			actual.AutoScalerOpts.Enabled = ocean.AutoScaler.IsEnabled
+			actual.AutoScalerOpts.AutoConfig = ocean.AutoScaler.IsAutoConfig
+			actual.AutoScalerOpts.AutoHeadroomPercentage = ocean.AutoScaler.AutoHeadroomPercentage
 			actual.AutoScalerOpts.Cooldown = ocean.AutoScaler.Cooldown
 
 			// Headroom.
@@ -309,6 +309,14 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 				actual.AutoScalerOpts.Down = &AutoScalerDownOpts{
 					MaxPercentage:     down.MaxScaleDownPercentage,
 					EvaluationPeriods: down.EvaluationPeriods,
+				}
+			}
+
+			// Resource limits.
+			if limits := ocean.AutoScaler.ResourceLimits; limits != nil {
+				actual.AutoScalerOpts.ResourceLimits = &AutoScalerResourceLimitsOpts{
+					MaxVCPU:   limits.MaxVCPU,
+					MaxMemory: limits.MaxMemoryGiB,
 				}
 			}
 		}
@@ -376,7 +384,6 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 
 	// Strategy.
 	{
-		ocean.Strategy.SetSpotPercentage(e.SpotPercentage)
 		ocean.Strategy.SetFallbackToOnDemand(e.FallbackToOnDemand)
 		ocean.Strategy.SetUtilizeReservedInstances(e.UtilizeReservedInstances)
 
@@ -440,7 +447,7 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			// User data.
 			{
 				if e.UserData != nil {
-					userData, err := e.UserData.AsString()
+					userData, err := fi.ResourceAsString(e.UserData)
 					if err != nil {
 						return err
 					}
@@ -512,7 +519,8 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			if opts.Enabled != nil {
 				autoScaler := new(aws.AutoScaler)
 				autoScaler.IsEnabled = opts.Enabled
-				autoScaler.IsAutoConfig = fi.Bool(true)
+				autoScaler.IsAutoConfig = opts.AutoConfig
+				autoScaler.AutoHeadroomPercentage = opts.AutoHeadroomPercentage
 				autoScaler.Cooldown = opts.Cooldown
 
 				// Headroom.
@@ -531,6 +539,14 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 					autoScaler.Down = &aws.AutoScalerDown{
 						MaxScaleDownPercentage: down.MaxPercentage,
 						EvaluationPeriods:      down.EvaluationPeriods,
+					}
+				}
+
+				// Resource limits.
+				if limits := opts.ResourceLimits; limits != nil {
+					autoScaler.ResourceLimits = &aws.AutoScalerResourceLimits{
+						MaxVCPU:      limits.MaxVCPU,
+						MaxMemoryGiB: limits.MaxMemory,
 					}
 				}
 
@@ -599,17 +615,6 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 
 	// Strategy.
 	{
-		// Spot percentage.
-		if changes.SpotPercentage != nil {
-			if ocean.Strategy == nil {
-				ocean.Strategy = new(aws.Strategy)
-			}
-
-			ocean.Strategy.SetSpotPercentage(e.SpotPercentage)
-			changes.SpotPercentage = nil
-			changed = true
-		}
-
 		// Fallback to on-demand.
 		if changes.FallbackToOnDemand != nil {
 			if ocean.Strategy == nil {
@@ -736,7 +741,7 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			// User data.
 			{
 				if changes.UserData != nil {
-					userData, err := e.UserData.AsString()
+					userData, err := fi.ResourceAsString(e.UserData)
 					if err != nil {
 						return err
 					}
@@ -934,6 +939,8 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			if opts.Enabled != nil {
 				autoScaler := new(aws.AutoScaler)
 				autoScaler.IsEnabled = e.AutoScalerOpts.Enabled
+				autoScaler.IsAutoConfig = e.AutoScalerOpts.AutoConfig
+				autoScaler.AutoHeadroomPercentage = e.AutoScalerOpts.AutoHeadroomPercentage
 				autoScaler.Cooldown = e.AutoScalerOpts.Cooldown
 
 				// Headroom.
@@ -958,6 +965,16 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 					}
 				} else if a.AutoScalerOpts.Down != nil {
 					autoScaler.SetDown(nil)
+				}
+
+				// Resource limits.
+				if limits := opts.ResourceLimits; limits != nil {
+					autoScaler.ResourceLimits = &aws.AutoScalerResourceLimits{
+						MaxVCPU:      limits.MaxVCPU,
+						MaxMemoryGiB: limits.MaxMemory,
+					}
+				} else if a.AutoScalerOpts.ResourceLimits != nil {
+					autoScaler.SetResourceLimits(nil)
 				}
 
 				ocean.SetAutoScaler(autoScaler)
@@ -1003,29 +1020,25 @@ type terraformOcean struct {
 	SubnetIDs              []*terraform.Literal `json:"subnet_ids,omitempty" cty:"subnet_ids"`
 	AutoScaler             *terraformAutoScaler `json:"autoscaler,omitempty" cty:"autoscaler"`
 	Tags                   []*terraformKV       `json:"tags,omitempty" cty:"tags"`
-	Lifecycle              *terraformLifecycle  `json:"lifecycle,omitempty" cty:"lifecycle"`
 
 	MinSize         *int64 `json:"min_size,omitempty" cty:"min_size"`
 	MaxSize         *int64 `json:"max_size,omitempty" cty:"max_size"`
 	DesiredCapacity *int64 `json:"desired_capacity,omitempty" cty:"desired_capacity"`
 
-	SpotPercentage           *float64 `json:"spot_percentage,omitempty" cty:"spot_percentage"`
-	FallbackToOnDemand       *bool    `json:"fallback_to_ondemand,omitempty" cty:"fallback_to_ondemand"`
-	UtilizeReservedInstances *bool    `json:"utilize_reserved_instances,omitempty" cty:"utilize_reserved_instances"`
-	DrainingTimeout          *int64   `json:"draining_timeout,omitempty" cty:"draining_timeout"`
-	GracePeriod              *int64   `json:"grace_period,omitempty" cty:"grace_period"`
+	FallbackToOnDemand       *bool  `json:"fallback_to_ondemand,omitempty" cty:"fallback_to_ondemand"`
+	UtilizeReservedInstances *bool  `json:"utilize_reserved_instances,omitempty" cty:"utilize_reserved_instances"`
+	DrainingTimeout          *int64 `json:"draining_timeout,omitempty" cty:"draining_timeout"`
+	GracePeriod              *int64 `json:"grace_period,omitempty" cty:"grace_period"`
 
-	Monitoring               *bool                          `json:"monitoring,omitempty" cty:"monitoring"`
-	EBSOptimized             *bool                          `json:"ebs_optimized,omitempty" cty:"ebs_optimized"`
-	ImageID                  *string                        `json:"image_id,omitempty" cty:"image_id"`
-	AssociatePublicIPAddress *bool                          `json:"associate_public_ip_address,omitempty" cty:"associate_public_ip_address"`
-	RootVolumeSize           *int32                         `json:"root_volume_size,omitempty" cty:"root_volume_size"`
-	UserData                 *terraform.Literal             `json:"user_data,omitempty" cty:"user_data"`
-	IAMInstanceProfile       *terraform.Literal             `json:"iam_instance_profile,omitempty" cty:"iam_instance_profile"`
-	KeyName                  *terraform.Literal             `json:"key_name,omitempty" cty:"key_name"`
-	SecurityGroups           []*terraform.Literal           `json:"security_groups,omitempty" cty:"security_groups"`
-	Labels                   []*terraformKV                 `json:"labels,omitempty" cty:"labels"`
-	Headrooms                []*terraformAutoScalerHeadroom `json:"autoscale_headrooms,omitempty" cty:"autoscale_headrooms"`
+	Monitoring               *bool                `json:"monitoring,omitempty" cty:"monitoring"`
+	EBSOptimized             *bool                `json:"ebs_optimized,omitempty" cty:"ebs_optimized"`
+	ImageID                  *string              `json:"image_id,omitempty" cty:"image_id"`
+	AssociatePublicIPAddress *bool                `json:"associate_public_ip_address,omitempty" cty:"associate_public_ip_address"`
+	RootVolumeSize           *int32               `json:"root_volume_size,omitempty" cty:"root_volume_size"`
+	UserData                 *terraform.Literal   `json:"user_data,omitempty" cty:"user_data"`
+	IAMInstanceProfile       *terraform.Literal   `json:"iam_instance_profile,omitempty" cty:"iam_instance_profile"`
+	KeyName                  *terraform.Literal   `json:"key_name,omitempty" cty:"key_name"`
+	SecurityGroups           []*terraform.Literal `json:"security_groups,omitempty" cty:"security_groups"`
 }
 
 func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Ocean) error {
@@ -1040,7 +1053,6 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 		MinSize:         e.MinSize,
 		MaxSize:         e.MaxSize,
 
-		SpotPercentage:           e.SpotPercentage,
 		FallbackToOnDemand:       e.FallbackToOnDemand,
 		UtilizeReservedInstances: e.UtilizeReservedInstances,
 		DrainingTimeout:          e.DrainingTimeout,
@@ -1154,9 +1166,10 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 
 			if opts.Enabled != nil {
 				tf.AutoScaler = &terraformAutoScaler{
-					Enabled:    opts.Enabled,
-					AutoConfig: fi.Bool(true),
-					Cooldown:   opts.Cooldown,
+					Enabled:                opts.Enabled,
+					AutoConfig:             opts.AutoConfig,
+					AutoHeadroomPercentage: opts.AutoHeadroomPercentage,
+					Cooldown:               opts.Cooldown,
 				}
 
 				// Headroom.
@@ -1178,13 +1191,11 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 					}
 				}
 
-				// Ignore capacity changes because the auto scaler updates the
-				// desired capacity overtime.
-				if fi.BoolValue(tf.AutoScaler.Enabled) {
-					tf.Lifecycle = &terraformLifecycle{
-						IgnoreChanges: []string{
-							"desired_capacity",
-						},
+				// Resource limits.
+				if limits := opts.ResourceLimits; limits != nil {
+					tf.AutoScaler.ResourceLimits = &terraformAutoScalerResourceLimits{
+						MaxVCPU:   limits.MaxVCPU,
+						MaxMemory: limits.MaxVCPU,
 					}
 				}
 			}
@@ -1224,11 +1235,6 @@ func (o *Ocean) buildTags() []*aws.Tag {
 }
 
 func (o *Ocean) applyDefaults() {
-	if o.SpotPercentage == nil {
-		f := float64(100.0)
-		o.SpotPercentage = &f
-	}
-
 	if o.FallbackToOnDemand == nil {
 		o.FallbackToOnDemand = fi.Bool(true)
 	}

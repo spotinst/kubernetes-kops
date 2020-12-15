@@ -695,7 +695,7 @@ func (b *BootstrapChannelBuilder) buildAddons(c *fi.ModelBuilderContext) (*chann
 		{
 			id := "v1.14.0"
 			location := key + "/" + id + ".yaml"
-			version := "1.0.67"
+			version := "1.0.72"
 
 			addons.Spec.Addons = append(addons.Spec.Addons, &channelsapi.AddonSpec{
 				Name:              fi.String(key),
@@ -784,7 +784,7 @@ func (b *BootstrapChannelBuilder) buildAddons(c *fi.ModelBuilderContext) (*chann
 		key := "networking.weave"
 		versions := map[string]string{
 			"k8s-1.9":  "2.7.0-kops.1",
-			"k8s-1.12": "2.8.1-kops.1",
+			"k8s-1.12": "2.7.0-kops.1",
 		}
 
 		{
@@ -858,7 +858,7 @@ func (b *BootstrapChannelBuilder) buildAddons(c *fi.ModelBuilderContext) (*chann
 			"k8s-1.7":    "2.6.12-kops.1",
 			"k8s-1.7-v3": "3.8.0-kops.2",
 			"k8s-1.12":   "3.9.6-kops.2",
-			"k8s-1.16":   "3.17.2-kops.1",
+			"k8s-1.16":   "3.17.1-kops.1",
 		}
 
 		{
