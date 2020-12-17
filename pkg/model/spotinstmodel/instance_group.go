@@ -91,6 +91,12 @@ const (
 	// the auto scaler.
 	InstanceGroupLabelAutoScalerDefaultNodeLabels = "spotinst.io/autoscaler-default-node-labels"
 
+	// InstanceGroupLabelAutoScalerAuto* are the metadata labels used on the
+	// instance group to specify whether headroom resources should be
+	// automatically configured and optimized.
+	InstanceGroupLabelAutoScalerAutoConfig             = "spotinst.io/autoscaler-auto-config"
+	InstanceGroupLabelAutoScalerAutoHeadroomPercentage = "spotinst.io/autoscaler-auto-headroom-percentage"
+
 	// InstanceGroupLabelAutoScalerHeadroom* are the metadata labels used on the
 	// instance group to specify the headroom configuration used by the auto scaler.
 	InstanceGroupLabelAutoScalerHeadroomCPUPerUnit = "spotinst.io/autoscaler-headroom-cpu-per-unit"
@@ -553,6 +559,8 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	}
 	if autoScalerOpts != nil { // remove unsupported options
 		autoScalerOpts.Enabled = nil
+		autoScalerOpts.AutoConfig = nil
+		autoScalerOpts.AutoHeadroomPercentage = nil
 		autoScalerOpts.ClusterID = nil
 		autoScalerOpts.Cooldown = nil
 		autoScalerOpts.Down = nil
@@ -725,6 +733,7 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 
 	// Enable the auto scaler for Node instance groups.
 	opts.Enabled = fi.Bool(true)
+	opts.AutoConfig = fi.Bool(true)
 
 	// Parse instance group labels.
 	var defaultNodeLabels bool
@@ -755,6 +764,24 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 					return nil, err
 				}
 				opts.Cooldown = fi.Int(int(fi.Int64Value(v)))
+			}
+
+		case InstanceGroupLabelAutoScalerAutoConfig:
+			{
+				v, err := parseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.AutoConfig = v
+			}
+
+		case InstanceGroupLabelAutoScalerAutoHeadroomPercentage:
+			{
+				v, err := parseInt(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.AutoHeadroomPercentage = fi.Int(int(fi.Int64Value(v)))
 			}
 
 		case InstanceGroupLabelAutoScalerHeadroomCPUPerUnit:
@@ -853,6 +880,12 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 				opts.ResourceLimits.MaxMemory = fi.Int(int(fi.Int64Value(v)))
 			}
 		}
+	}
+
+	// Toggle automatic configuration off if headroom resources are explicitly defined.
+	if fi.BoolValue(opts.AutoConfig) && opts.Headroom != nil {
+		opts.AutoConfig = fi.Bool(false)
+		opts.AutoHeadroomPercentage = nil
 	}
 
 	// Configure Elastigroup defaults to avoid state drifts.
