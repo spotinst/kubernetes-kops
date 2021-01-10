@@ -44,7 +44,6 @@ type Ocean struct {
 	ID                       *string
 	MinSize                  *int64
 	MaxSize                  *int64
-	SpotPercentage           *float64
 	UtilizeReservedInstances *bool
 	FallbackToOnDemand       *bool
 	DrainingTimeout          *int64
@@ -144,7 +143,6 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 	// Strategy.
 	{
 		if strategy := ocean.Strategy; strategy != nil {
-			actual.SpotPercentage = strategy.SpotPercentage
 			actual.FallbackToOnDemand = strategy.FallbackToOnDemand
 			actual.UtilizeReservedInstances = strategy.UtilizeReservedInstances
 
@@ -383,7 +381,6 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 
 	// Strategy.
 	{
-		ocean.Strategy.SetSpotPercentage(e.SpotPercentage)
 		ocean.Strategy.SetFallbackToOnDemand(e.FallbackToOnDemand)
 		ocean.Strategy.SetUtilizeReservedInstances(e.UtilizeReservedInstances)
 
@@ -615,17 +612,6 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 
 	// Strategy.
 	{
-		// Spot percentage.
-		if changes.SpotPercentage != nil {
-			if ocean.Strategy == nil {
-				ocean.Strategy = new(aws.Strategy)
-			}
-
-			ocean.Strategy.SetSpotPercentage(e.SpotPercentage)
-			changes.SpotPercentage = nil
-			changed = true
-		}
-
 		// Fallback to on-demand.
 		if changes.FallbackToOnDemand != nil {
 			if ocean.Strategy == nil {
@@ -1037,11 +1023,10 @@ type terraformOcean struct {
 	MaxSize         *int64 `json:"max_size,omitempty" cty:"max_size"`
 	DesiredCapacity *int64 `json:"desired_capacity,omitempty" cty:"desired_capacity"`
 
-	SpotPercentage           *float64 `json:"spot_percentage,omitempty" cty:"spot_percentage"`
-	FallbackToOnDemand       *bool    `json:"fallback_to_ondemand,omitempty" cty:"fallback_to_ondemand"`
-	UtilizeReservedInstances *bool    `json:"utilize_reserved_instances,omitempty" cty:"utilize_reserved_instances"`
-	DrainingTimeout          *int64   `json:"draining_timeout,omitempty" cty:"draining_timeout"`
-	GracePeriod              *int64   `json:"grace_period,omitempty" cty:"grace_period"`
+	FallbackToOnDemand       *bool  `json:"fallback_to_ondemand,omitempty" cty:"fallback_to_ondemand"`
+	UtilizeReservedInstances *bool  `json:"utilize_reserved_instances,omitempty" cty:"utilize_reserved_instances"`
+	DrainingTimeout          *int64 `json:"draining_timeout,omitempty" cty:"draining_timeout"`
+	GracePeriod              *int64 `json:"grace_period,omitempty" cty:"grace_period"`
 
 	Monitoring               *bool                          `json:"monitoring,omitempty" cty:"monitoring"`
 	EBSOptimized             *bool                          `json:"ebs_optimized,omitempty" cty:"ebs_optimized"`
@@ -1069,7 +1054,6 @@ func (_ *Ocean) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *Oce
 		MinSize:         e.MinSize,
 		MaxSize:         e.MaxSize,
 
-		SpotPercentage:           e.SpotPercentage,
 		FallbackToOnDemand:       e.FallbackToOnDemand,
 		UtilizeReservedInstances: e.UtilizeReservedInstances,
 		DrainingTimeout:          e.DrainingTimeout,
@@ -1262,11 +1246,6 @@ func (o *Ocean) buildTags() []*aws.Tag {
 }
 
 func (o *Ocean) applyDefaults() {
-	if o.SpotPercentage == nil {
-		f := float64(100.0)
-		o.SpotPercentage = &f
-	}
-
 	if o.FallbackToOnDemand == nil {
 		o.FallbackToOnDemand = fi.Bool(true)
 	}

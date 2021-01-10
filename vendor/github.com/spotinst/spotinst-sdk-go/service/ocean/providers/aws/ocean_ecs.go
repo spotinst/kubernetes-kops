@@ -48,6 +48,7 @@ type ECSCluster struct {
 type ECSStrategy struct {
 	DrainingTimeout          *int  `json:"drainingTimeout,omitempty"`
 	UtilizeReservedInstances *bool `json:"utilizeReservedInstances,omitempty"`
+	UtilizeCommitments       *bool `json:"utilizeCommitments,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -90,6 +91,7 @@ type ECSCapacity struct {
 type ECSCompute struct {
 	InstanceTypes       *ECSInstanceTypes       `json:"instanceTypes,omitempty"`
 	LaunchSpecification *ECSLaunchSpecification `json:"launchSpecification,omitempty"`
+	OptimizeImages      *ECSOptimizeImages      `json:"optimizeImages,omitempty"`
 	SubnetIDs           []string                `json:"subnetIds,omitempty"`
 
 	forceSendFields []string
@@ -104,15 +106,25 @@ type ECSInstanceTypes struct {
 }
 
 type ECSLaunchSpecification struct {
-	AssociatePublicIPAddress *bool                  `json:"associatePublicIpAddress,omitempty"`
-	SecurityGroupIDs         []string               `json:"securityGroupIds,omitempty"`
-	ImageID                  *string                `json:"imageId,omitempty"`
-	KeyPair                  *string                `json:"keyPair,omitempty"`
-	UserData                 *string                `json:"userData,omitempty"`
-	IAMInstanceProfile       *ECSIAMInstanceProfile `json:"iamInstanceProfile,omitempty"`
-	Tags                     []*Tag                 `json:"tags,omitempty"`
-	Monitoring               *bool                  `json:"monitoring,omitempty"`
-	EBSOptimized             *bool                  `json:"ebsOptimized,omitempty"`
+	AssociatePublicIPAddress *bool                    `json:"associatePublicIpAddress,omitempty"`
+	SecurityGroupIDs         []string                 `json:"securityGroupIds,omitempty"`
+	ImageID                  *string                  `json:"imageId,omitempty"`
+	KeyPair                  *string                  `json:"keyPair,omitempty"`
+	UserData                 *string                  `json:"userData,omitempty"`
+	IAMInstanceProfile       *ECSIAMInstanceProfile   `json:"iamInstanceProfile,omitempty"`
+	Tags                     []*Tag                   `json:"tags,omitempty"`
+	Monitoring               *bool                    `json:"monitoring,omitempty"`
+	EBSOptimized             *bool                    `json:"ebsOptimized,omitempty"`
+	BlockDeviceMappings      []*ECSBlockDeviceMapping `json:"blockDeviceMappings,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSOptimizeImages struct {
+	PerformAt            *string  `json:"performAt,omitempty"`
+	TimeWindows          []string `json:"timeWindows,omitempty"`
+	ShouldOptimizeECSAMI *bool    `json:"shouldOptimizeEcsAmi,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -156,7 +168,7 @@ type ECSAutoScalerResourceLimits struct {
 }
 
 type ECSAutoScalerDown struct {
-	MaxScaleDownPercentage *int `json:"maxScaleDownPercentage,omitempty"`
+	MaxScaleDownPercentage *float64 `json:"maxScaleDownPercentage,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -207,8 +219,14 @@ type ECSRollClusterOutput struct {
 }
 
 type ECSRoll struct {
-	ClusterID           *string `json:"clusterId,omitempty"`
-	BatchSizePercentage *int    `json:"batchSizePercentage,omitempty"`
+	ClusterID           *string  `json:"clusterId,omitempty"`
+	Comment             *string  `json:"comment,omitempty"`
+	BatchSizePercentage *int     `json:"batchSizePercentage,omitempty"`
+	LaunchSpecIDs       []string `json:"launchSpecIds,omitempty"`
+	InstanceIDs         []string `json:"instanceIds,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
 }
 
 type ECSRollClusterStatus struct {
@@ -657,6 +675,13 @@ func (o *ECSCompute) SetSubnetIDs(v []string) *ECSCompute {
 	return o
 }
 
+func (o *ECSCompute) SetOptimizeImages(v *ECSOptimizeImages) *ECSCompute {
+	if o.OptimizeImages = v; o.OptimizeImages == nil {
+		o.nullFields = append(o.nullFields, "OptimizeImages")
+	}
+	return o
+}
+
 // endregion
 
 // region Strategy
@@ -677,6 +702,13 @@ func (o *ECSStrategy) SetDrainingTimeout(v *int) *ECSStrategy {
 func (o *ECSStrategy) SetUtilizeReservedInstances(v *bool) *ECSStrategy {
 	if o.UtilizeReservedInstances = v; o.UtilizeReservedInstances == nil {
 		o.nullFields = append(o.nullFields, "UtilizeReservedInstances")
+	}
+	return o
+}
+
+func (o *ECSStrategy) SetUtilizeCommitments(v *bool) *ECSStrategy {
+	if o.UtilizeCommitments = v; o.UtilizeCommitments == nil {
+		o.nullFields = append(o.nullFields, "UtilizeCommitments")
 	}
 	return o
 }
@@ -767,6 +799,44 @@ func (o *ECSLaunchSpecification) SetMonitoring(v *bool) *ECSLaunchSpecification 
 func (o *ECSLaunchSpecification) SetEBSOptimized(v *bool) *ECSLaunchSpecification {
 	if o.EBSOptimized = v; o.EBSOptimized == nil {
 		o.nullFields = append(o.nullFields, "EBSOptimized")
+	}
+	return o
+}
+
+func (o *ECSLaunchSpecification) SetBlockDeviceMappings(v []*ECSBlockDeviceMapping) *ECSLaunchSpecification {
+	if o.BlockDeviceMappings = v; o.BlockDeviceMappings == nil {
+		o.nullFields = append(o.nullFields, "BlockDeviceMappings")
+	}
+	return o
+}
+
+// endregion
+
+// region ECSOptimizeImages
+
+func (o ECSOptimizeImages) MarshalJSON() ([]byte, error) {
+	type noMethod ECSOptimizeImages
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSOptimizeImages) SetPerformAt(v *string) *ECSOptimizeImages {
+	if o.PerformAt = v; o.PerformAt == nil {
+		o.nullFields = append(o.nullFields, "PerformAt")
+	}
+	return o
+}
+
+func (o *ECSOptimizeImages) SetTimeWindows(v []string) *ECSOptimizeImages {
+	if o.TimeWindows = v; o.TimeWindows == nil {
+		o.nullFields = append(o.nullFields, "TimeWindows")
+	}
+	return o
+}
+
+func (o *ECSOptimizeImages) SetShouldOptimizeECSAMI(v *bool) *ECSOptimizeImages {
+	if o.ShouldOptimizeECSAMI = v; o.ShouldOptimizeECSAMI == nil {
+		o.nullFields = append(o.nullFields, "ShouldOptimizeECSAMI")
 	}
 	return o
 }
@@ -912,9 +982,47 @@ func (o ECSAutoScalerDown) MarshalJSON() ([]byte, error) {
 	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
 }
 
-func (o *ECSAutoScalerDown) SetMaxScaleDownPercentage(v *int) *ECSAutoScalerDown {
+func (o *ECSAutoScalerDown) SetMaxScaleDownPercentage(v *float64) *ECSAutoScalerDown {
 	if o.MaxScaleDownPercentage = v; o.MaxScaleDownPercentage == nil {
 		o.nullFields = append(o.nullFields, "MaxScaleDownPercentage")
+	}
+	return o
+}
+
+// endregion
+
+// region ECSRoll
+
+func (o ECSRoll) MarshalJSON() ([]byte, error) {
+	type noMethod ECSRoll
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSRoll) SetComment(v *string) *ECSRoll {
+	if o.Comment = v; o.Comment == nil {
+		o.nullFields = append(o.nullFields, "Comment")
+	}
+	return o
+}
+
+func (o *ECSRoll) SetBatchSizePercentage(v *int) *ECSRoll {
+	if o.BatchSizePercentage = v; o.BatchSizePercentage == nil {
+		o.nullFields = append(o.nullFields, "BatchSizePercentage")
+	}
+	return o
+}
+
+func (o *ECSRoll) SetLaunchSpecIDs(v []string) *ECSRoll {
+	if o.LaunchSpecIDs = v; o.LaunchSpecIDs == nil {
+		o.nullFields = append(o.nullFields, "LaunchSpecIDs")
+	}
+	return o
+}
+
+func (o *ECSRoll) SetInstanceIDs(v []string) *ECSRoll {
+	if o.InstanceIDs = v; o.InstanceIDs == nil {
+		o.nullFields = append(o.nullFields, "InstanceIDs")
 	}
 	return o
 }
