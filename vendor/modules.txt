@@ -204,7 +204,7 @@ github.com/ghodss/yaml
 # github.com/go-bindata/go-bindata v3.1.2+incompatible
 github.com/go-bindata/go-bindata
 github.com/go-bindata/go-bindata/go-bindata
-# github.com/go-ini/ini v1.51.0
+# github.com/go-ini/ini v1.62.0
 github.com/go-ini/ini
 # github.com/go-logr/logr v0.1.0
 github.com/go-logr/logr
@@ -424,7 +424,7 @@ github.com/spf13/jwalterweatherman
 github.com/spf13/pflag
 # github.com/spf13/viper v1.4.0
 github.com/spf13/viper
-# github.com/spotinst/spotinst-sdk-go v1.49.0
+# github.com/spotinst/spotinst-sdk-go v1.75.0
 github.com/spotinst/spotinst-sdk-go/service/elastigroup
 github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/aws
 github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/azure
@@ -435,13 +435,14 @@ github.com/spotinst/spotinst-sdk-go/service/ocean/providers/gcp
 github.com/spotinst/spotinst-sdk-go/spotinst
 github.com/spotinst/spotinst-sdk-go/spotinst/client
 github.com/spotinst/spotinst-sdk-go/spotinst/credentials
+github.com/spotinst/spotinst-sdk-go/spotinst/featureflag
 github.com/spotinst/spotinst-sdk-go/spotinst/log
 github.com/spotinst/spotinst-sdk-go/spotinst/session
 github.com/spotinst/spotinst-sdk-go/spotinst/util/jsonutil
 github.com/spotinst/spotinst-sdk-go/spotinst/util/stringutil
 github.com/spotinst/spotinst-sdk-go/spotinst/util/uritemplates
 github.com/spotinst/spotinst-sdk-go/spotinst/util/useragent
-# github.com/stretchr/testify v1.5.1
+# github.com/stretchr/testify v1.6.1
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/urfave/cli v1.20.0
@@ -648,7 +649,7 @@ gopkg.in/inf.v0
 gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20190905181640-827449938966
+# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 gopkg.in/yaml.v3
 # honnef.co/go/tools v0.0.1-2019.2.3
 honnef.co/go/tools/arg

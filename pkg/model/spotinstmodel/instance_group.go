@@ -377,12 +377,6 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 	// Strategy and instance types.
 	for k, v := range ig.ObjectMeta.Labels {
 		switch k {
-		case InstanceGroupLabelSpotPercentage:
-			ocean.SpotPercentage, err = parseFloat(v)
-			if err != nil {
-				return err
-			}
-
 		case InstanceGroupLabelUtilizeReservedInstances:
 			ocean.UtilizeReservedInstances, err = parseBool(v)
 			if err != nil {
@@ -419,11 +413,6 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 				return err
 			}
 		}
-	}
-
-	// Spot percentage.
-	if ocean.SpotPercentage == nil {
-		ocean.SpotPercentage = defaultSpotPercentage(ig)
 	}
 
 	// Capacity.
@@ -568,6 +557,17 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 
 		if autoScalerOpts.Labels != nil || autoScalerOpts.Taints != nil || autoScalerOpts.Headroom != nil {
 			launchSpec.AutoScalerOpts = autoScalerOpts
+		}
+	}
+
+	// Strategy.
+	for k, v := range ig.ObjectMeta.Labels {
+		switch k {
+		case InstanceGroupLabelSpotPercentage:
+			launchSpec.SpotPercentage, err = parseInt(v)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -835,14 +835,14 @@ func (b *InstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig *ko
 
 		case InstanceGroupLabelAutoScalerScaleDownMaxPercentage:
 			{
-				v, err := parseInt(v)
+				v, err := parseFloat(v)
 				if err != nil {
 					return nil, err
 				}
 				if opts.Down == nil {
 					opts.Down = new(spotinsttasks.AutoScalerDownOpts)
 				}
-				opts.Down.MaxPercentage = fi.Int(int(fi.Int64Value(v)))
+				opts.Down.MaxPercentage = v
 			}
 
 		case InstanceGroupLabelAutoScalerScaleDownEvaluationPeriods:

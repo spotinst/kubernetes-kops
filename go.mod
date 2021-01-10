@@ -69,7 +69,7 @@ require (
 	github.com/fullsailor/pkcs7 v0.0.0-20180422025557-ae226422660e
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
-	github.com/go-ini/ini v1.51.0
+	github.com/go-ini/ini v1.62.0
 	github.com/go-logr/logr v0.1.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.3
@@ -90,8 +90,8 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
-	github.com/spotinst/spotinst-sdk-go v1.49.0
-	github.com/stretchr/testify v1.5.1
+	github.com/spotinst/spotinst-sdk-go v1.75.0
+	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli v1.20.0
 	github.com/weaveworks/mesh v0.0.0-20170419100114-1f158d31de55
 	github.com/zclconf/go-cty v1.3.1
