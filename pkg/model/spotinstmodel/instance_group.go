@@ -81,6 +81,7 @@ const (
 	// specific instance types.
 	InstanceGroupLabelOceanInstanceTypesWhitelist = "spotinst.io/ocean-instance-types-whitelist"
 	InstanceGroupLabelOceanInstanceTypesBlacklist = "spotinst.io/ocean-instance-types-blacklist"
+	InstanceGroupLabelOceanInstanceTypes          = "spotinst.io/ocean-instance-types" // launchspec
 
 	// InstanceGroupLabelAutoScalerDisabled is the metadata label used on the
 	// instance group to specify whether the auto scaler should be enabled.
@@ -560,9 +561,15 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 		}
 	}
 
-	// Strategy.
+	// Instance types and strategy.
 	for k, v := range ig.ObjectMeta.Labels {
 		switch k {
+		case InstanceGroupLabelOceanInstanceTypesWhitelist, InstanceGroupLabelOceanInstanceTypes:
+			launchSpec.InstanceTypes, err = parseStringSlice(v)
+			if err != nil {
+				return err
+			}
+
 		case InstanceGroupLabelSpotPercentage:
 			launchSpec.SpotPercentage, err = parseInt(v)
 			if err != nil {
