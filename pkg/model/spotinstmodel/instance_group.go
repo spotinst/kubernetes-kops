@@ -118,6 +118,10 @@ const (
 	// instance group to specify the resource limits configuration used by the auto scaler.
 	InstanceGroupLabelAutoScalerResourceLimitsMaxVCPU   = "spotinst.io/autoscaler-resource-limits-max-vcpu"
 	InstanceGroupLabelAutoScalerResourceLimitsMaxMemory = "spotinst.io/autoscaler-resource-limits-max-memory"
+
+	// InstanceGroupLabelRestrictScaleDown is the metadata label used on the
+	// instance group to specify whether the scale-down activities should be restricted.
+	InstanceGroupLabelRestrictScaleDown = "spotinst.io/restrict-scale-down"
 )
 
 // InstanceGroupModelBuilder configures InstanceGroup objects
@@ -336,7 +340,7 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 	{
 		// Single instance group.
 		if len(igs) == 1 {
-			ig = igs[0]
+			ig = igs[0].DeepCopy()
 		}
 
 		// Multiple instance groups.
@@ -356,7 +360,7 @@ func (b *InstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ..
 									InstanceGroupLabelOceanDefaultLaunchSpec)
 							}
 
-							ig = g
+							ig = g.DeepCopy()
 							break
 						}
 					}
@@ -508,6 +512,29 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 		Ocean:   ocean, // link to Ocean
 	}
 
+	// Instance types and strategy.
+	for k, v := range ig.ObjectMeta.Labels {
+		switch k {
+		case InstanceGroupLabelOceanInstanceTypesWhitelist, InstanceGroupLabelOceanInstanceTypes:
+			launchSpec.InstanceTypes, err = parseStringSlice(v)
+			if err != nil {
+				return err
+			}
+
+		case InstanceGroupLabelSpotPercentage:
+			launchSpec.SpotPercentage, err = parseInt(v)
+			if err != nil {
+				return err
+			}
+
+		case InstanceGroupLabelRestrictScaleDown:
+			launchSpec.RestrictScaleDown, err = parseBool(v)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	// Capacity.
 	minSize, maxSize := b.buildCapacity(ig)
 	ocean.MinSize = fi.Int64(fi.Int64Value(ocean.MinSize) + fi.Int64Value(minSize))
@@ -523,6 +550,18 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	launchSpec.IAMInstanceProfile, err = b.LinkToIAMInstanceProfile(ig)
 	if err != nil {
 		return fmt.Errorf("error building iam instance profile: %v", err)
+	}
+
+	// Root volume.
+	rootVolumeOpts, err := b.buildRootVolumeOpts(ig)
+	if err != nil {
+		return fmt.Errorf("error building root volume options: %v", err)
+	}
+	if rootVolumeOpts != nil { // remove unsupported options
+		launchSpec.RootVolumeOpts = rootVolumeOpts
+		launchSpec.RootVolumeOpts.Type = nil
+		launchSpec.RootVolumeOpts.IOPS = nil
+		launchSpec.RootVolumeOpts.Optimization = nil
 	}
 
 	// Security groups.
@@ -558,23 +597,6 @@ func (b *InstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 
 		if autoScalerOpts.Labels != nil || autoScalerOpts.Taints != nil || autoScalerOpts.Headroom != nil {
 			launchSpec.AutoScalerOpts = autoScalerOpts
-		}
-	}
-
-	// Instance types and strategy.
-	for k, v := range ig.ObjectMeta.Labels {
-		switch k {
-		case InstanceGroupLabelOceanInstanceTypesWhitelist, InstanceGroupLabelOceanInstanceTypes:
-			launchSpec.InstanceTypes, err = parseStringSlice(v)
-			if err != nil {
-				return err
-			}
-
-		case InstanceGroupLabelSpotPercentage:
-			launchSpec.SpotPercentage, err = parseInt(v)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
