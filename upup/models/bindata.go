@@ -19403,7 +19403,7 @@ spec:
       containers:
       - name: spotinst-kubernetes-cluster-controller
         imagePullPolicy: Always
-        image: spotinst/kubernetes-cluster-controller:1.0.69
+        image: spotinst/kubernetes-cluster-controller:1.0.70
         livenessProbe:
           httpGet:
             path: /healthcheck
@@ -19466,6 +19466,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
       serviceAccountName: spotinst-kubernetes-cluster-controller
+      dnsPolicy: Default
       tolerations:
       - key: node.kubernetes.io/not-ready
         effect: NoExecute
