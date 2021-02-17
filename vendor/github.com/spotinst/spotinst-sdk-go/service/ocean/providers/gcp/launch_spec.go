@@ -13,13 +13,14 @@ import (
 )
 
 type LaunchSpec struct {
-	ID          *string     `json:"id,omitempty"`
-	OceanID     *string     `json:"oceanId,omitempty"`
-	SourceImage *string     `json:"sourceImage,omitempty"`
-	Metadata    []*Metadata `json:"metadata,omitempty"`
-	Labels      []*Label    `json:"labels,omitempty"`
-	Taints      []*Taint    `json:"taints,omitempty"`
-	AutoScale   *AutoScale  `json:"autoScale,omitempty"`
+	ID                *string     `json:"id,omitempty"`
+	OceanID           *string     `json:"oceanId,omitempty"`
+	SourceImage       *string     `json:"sourceImage,omitempty"`
+	Metadata          []*Metadata `json:"metadata,omitempty"`
+	Labels            []*Label    `json:"labels,omitempty"`
+	Taints            []*Taint    `json:"taints,omitempty"`
+	AutoScale         *AutoScale  `json:"autoScale,omitempty"`
+	RestrictScaleDown *bool       `json:"restrictScaleDown,omitempty"`
 
 	// forceSendFields is a list of field names (e.g. "Keys") to
 	// unconditionally include in API requests. By default, fields with
@@ -356,6 +357,13 @@ func (o *LaunchSpec) SetAutoScale(v *AutoScale) *LaunchSpec {
 	return o
 }
 
+func (o *LaunchSpec) SetRestrictScaleDown(v *bool) *LaunchSpec {
+	if o.RestrictScaleDown = v; o.RestrictScaleDown == nil {
+		o.nullFields = append(o.nullFields, "RestrictScaleDown")
+	}
+	return o
+}
+
 // endregion
 
 // region Label
@@ -427,7 +435,7 @@ type ImportOceanGKELaunchSpecOutput struct {
 
 // endregion
 
-//region AutoScale
+// region AutoScale
 
 func (o AutoScale) MarshalJSON() ([]byte, error) {
 	type noMethod AutoScale
