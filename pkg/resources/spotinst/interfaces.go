@@ -61,37 +61,16 @@ type (
 		Obj() interface{}
 	}
 
-	// LaunchSpec wraps a cloud-specific launch specification object.
-	LaunchSpec interface {
-		// Id returns the ID of the LaunchSpec.
-		Id() string
-
-		// Name returns the name of the LaunchSpec.
-		Name() string
-
-		// OceanId returns the ID of the Ocean instance group.
-		OceanId() string
-
-		// CreatedAt returns the timestamp when the LaunchSpec has been created.
-		CreatedAt() time.Time
-
-		// UpdatedAt returns the timestamp when the LaunchSpec has been updated.
-		UpdatedAt() time.Time
-
-		// Obj returns the raw object which is a cloud-specific implementation.
-		Obj() interface{}
-	}
-
 	// Cloud wraps all services provided by Spotinst.
 	Cloud interface {
-		// Elastigroups returns a new Elastigroup service.
+		// Elastigroup returns a new Elastigroup service.
 		Elastigroup() InstanceGroupService
 
-		// Ocean returns a new Ocean service.
-		Ocean() InstanceGroupService
+		// OceanCluster returns a new OceanCluster service.
+		OceanCluster() InstanceGroupService
 
-		// LaunchSpec returns a new LaunchSpec service.
-		LaunchSpec() LaunchSpecService
+		// OceanLaunchSpec returns a new OceanLaunchSpec service.
+		OceanLaunchSpec() InstanceGroupService
 	}
 
 	// InstanceGroupService wraps all common functionality for InstanceGroups.
@@ -102,51 +81,29 @@ type (
 		// Create creates a new InstanceGroup and returns its ID.
 		Create(ctx context.Context, group InstanceGroup) (string, error)
 
-		// Read returns an existing InstanceGroup by ID.
+		// Read returns a specific InstanceGroup by ID.
 		Read(ctx context.Context, groupID string) (InstanceGroup, error)
 
 		// Update updates an existing InstanceGroup.
 		Update(ctx context.Context, group InstanceGroup) error
 
-		// Delete deletes an existing InstanceGroup by ID.
+		// Delete deletes a specific InstanceGroup by ID.
 		Delete(ctx context.Context, groupID string) error
 
-		// Detach removes one or more instances from the specified InstanceGroup.
-		Detach(ctx context.Context, groupID string, instanceIDs []string) error
+		// Detach removes an instances from a specific InstanceGroup.
+		Detach(ctx context.Context, groupID, instanceID string) error
 
-		// Instances returns a list of all instances that belong to specified InstanceGroup.
+		// Instances returns a list of all instances belonging to a specific InstanceGroup.
 		Instances(ctx context.Context, groupID string) ([]Instance, error)
 	}
-
-	// LaunchSpecService wraps all common functionality for LaunchSpecs.
-	LaunchSpecService interface {
-		// List returns a list of LaunchSpecs.
-		List(ctx context.Context, oceanID string) ([]LaunchSpec, error)
-
-		// Create creates a new LaunchSpec and returns its ID.
-		Create(ctx context.Context, spec LaunchSpec) (string, error)
-
-		// Read returns an existing LaunchSpec by ID.
-		Read(ctx context.Context, specID string) (LaunchSpec, error)
-
-		// Update updates an existing LaunchSpec.
-		Update(ctx context.Context, spec LaunchSpec) error
-
-		// Delete deletes an existing LaunchSpec by ID.
-		Delete(ctx context.Context, specID string) error
-	}
 )
 
-type ResourceType string
-
-const (
-	ResourceTypeInstanceGroup ResourceType = "instancegroup"
-	ResourceTypeLaunchSpec    ResourceType = "launchspec"
-)
-
+// InstanceGroupType represents the type of InstanceGroup.
 type InstanceGroupType string
 
+// These are valid InstanceGroup types.
 const (
-	InstanceGroupElastigroup InstanceGroupType = "elastigroup"
-	InstanceGroupOcean       InstanceGroupType = "ocean"
+	InstanceGroupElastigroup     InstanceGroupType = "elastigroup"
+	InstanceGroupOceanCluster    InstanceGroupType = "ocean/cluster"
+	InstanceGroupOceanLaunchSpec InstanceGroupType = "ocean/launchspec"
 )

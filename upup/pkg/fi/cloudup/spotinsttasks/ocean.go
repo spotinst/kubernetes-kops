@@ -129,7 +129,7 @@ var _ fi.HasCheckExisting = &Ocean{}
 func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 	cloud := c.Cloud.(awsup.AWSCloud)
 
-	ocean, err := o.find(cloud.Spotinst().Ocean(), *o.Name)
+	ocean, err := o.find(cloud.Spotinst().OceanCluster(), *o.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func (o *Ocean) Find(c *fi.Context) (*Ocean, error) {
 
 func (o *Ocean) CheckExisting(c *fi.Context) bool {
 	cloud := c.Cloud.(awsup.AWSCloud)
-	ocean, err := o.find(cloud.Spotinst().Ocean(), *o.Name)
+	ocean, err := o.find(cloud.Spotinst().OceanCluster(), *o.Name)
 	return err == nil && ocean != nil
 }
 
@@ -548,13 +548,13 @@ readyLoop:
 		time.Sleep(10 * time.Second)
 
 		// Wrap the raw object as an Ocean.
-		oc, err := spotinst.NewOcean(cloud.ProviderID(), ocean)
+		oc, err := spotinst.NewOceanCluster(cloud.ProviderID(), ocean)
 		if err != nil {
 			return err
 		}
 
 		// Create a new Ocean.
-		id, err := cloud.Spotinst().Ocean().Create(context.Background(), oc)
+		id, err := cloud.Spotinst().OceanCluster().Create(context.Background(), oc)
 		if err == nil {
 			e.ID = fi.String(id)
 			break
@@ -583,7 +583,7 @@ readyLoop:
 func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 	klog.V(2).Infof("Updating Ocean %q", *e.Name)
 
-	actual, err := e.find(cloud.Spotinst().Ocean(), *e.Name)
+	actual, err := e.find(cloud.Spotinst().OceanCluster(), *e.Name)
 	if err != nil {
 		klog.Errorf("Unable to resolve Ocean %q, error: %s", *e.Name, err)
 		return err
@@ -964,13 +964,13 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 	klog.V(2).Infof("Updating Ocean %q (config: %s)", *ocean.ID, stringutil.Stringify(ocean))
 
 	// Wrap the raw object as an Ocean.
-	oc, err := spotinst.NewOcean(cloud.ProviderID(), ocean)
+	oc, err := spotinst.NewOceanCluster(cloud.ProviderID(), ocean)
 	if err != nil {
 		return err
 	}
 
 	// Update an existing Ocean.
-	if err := cloud.Spotinst().Ocean().Update(context.Background(), oc); err != nil {
+	if err := cloud.Spotinst().OceanCluster().Update(context.Background(), oc); err != nil {
 		return fmt.Errorf("spotinst: failed to update ocean: %v", err)
 	}
 

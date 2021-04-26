@@ -94,10 +94,10 @@ func (o *LaunchSpec) GetDependencies(tasks map[string]fi.Task) []fi.Task {
 	return deps
 }
 
-func (o *LaunchSpec) find(svc spotinst.LaunchSpecService, oceanID string) (*aws.LaunchSpec, error) {
+func (o *LaunchSpec) find(svc spotinst.InstanceGroupService, oceanID string) (*aws.LaunchSpec, error) {
 	klog.V(4).Infof("Attempting to find LaunchSpec: %q", fi.StringValue(o.Name))
 
-	specs, err := svc.List(context.Background(), oceanID)
+	specs, err := svc.List(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("spotinst: failed to find launch spec %q: %v", fi.StringValue(o.Name), err)
 	}
@@ -107,8 +107,11 @@ func (o *LaunchSpec) find(svc spotinst.LaunchSpecService, oceanID string) (*aws.
 
 	var out *aws.LaunchSpec
 	for _, spec := range specs {
-		if spec.Name() == fi.StringValue(o.Name) {
-			out = spec.Obj().(*aws.LaunchSpec)
+		s, ok := spec.Obj().(*aws.LaunchSpec)
+		if ok &&
+			fi.StringValue(s.OceanID) == oceanID &&
+			fi.StringValue(s.Name) == fi.StringValue(o.Name) {
+			out = s
 			break
 		}
 	}
@@ -125,12 +128,12 @@ var _ fi.HasCheckExisting = &LaunchSpec{}
 func (o *LaunchSpec) Find(c *fi.Context) (*LaunchSpec, error) {
 	cloud := c.Cloud.(awsup.AWSCloud)
 
-	ocean, err := o.Ocean.find(cloud.Spotinst().Ocean(), *o.Ocean.Name)
+	ocean, err := o.Ocean.find(cloud.Spotinst().OceanCluster(), *o.Ocean.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	spec, err := o.find(cloud.Spotinst().LaunchSpec(), *ocean.ID)
+	spec, err := o.find(cloud.Spotinst().OceanLaunchSpec(), *ocean.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +348,7 @@ func (o *LaunchSpec) createOrUpdate(cloud awsup.AWSCloud, a, e, changes *LaunchS
 }
 
 func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) error {
-	ocean, err := e.Ocean.find(cloud.Spotinst().Ocean(), *e.Ocean.Name)
+	ocean, err := e.Ocean.find(cloud.Spotinst().OceanCluster(), *e.Ocean.Name)
 	if err != nil {
 		return err
 	}
@@ -503,13 +506,13 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	}
 
 	// Wrap the raw object as a LaunchSpec.
-	sp, err := spotinst.NewLaunchSpec(cloud.ProviderID(), spec)
+	sp, err := spotinst.NewOceanLaunchSpec(cloud.ProviderID(), spec)
 	if err != nil {
 		return err
 	}
 
 	// Create a new LaunchSpec.
-	id, err := cloud.Spotinst().LaunchSpec().Create(context.Background(), sp)
+	id, err := cloud.Spotinst().OceanLaunchSpec().Create(context.Background(), sp)
 	if err != nil {
 		return fmt.Errorf("spotinst: failed to create launch spec: %v", err)
 	}
@@ -521,7 +524,7 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) error {
 	klog.V(2).Infof("Updating Launch Spec for Ocean %q", *a.Ocean.ID)
 
-	actual, err := e.find(cloud.Spotinst().LaunchSpec(), *a.Ocean.ID)
+	actual, err := e.find(cloud.Spotinst().OceanLaunchSpec(), *a.Ocean.ID)
 	if err != nil {
 		klog.Errorf("Unable to resolve Launch Spec %q, error: %v", *e.Name, err)
 		return err
@@ -732,7 +735,7 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	klog.V(2).Infof("Updating Launch Spec %q (config: %s)", *spec.ID, stringutil.Stringify(spec))
 	ctx := context.Background()
 
-	ocean, err := e.Ocean.find(cloud.Spotinst().Ocean(), *e.Ocean.Name)
+	ocean, err := e.Ocean.find(cloud.Spotinst().OceanCluster(), *e.Ocean.Name)
 	if err != nil {
 		return err
 	}
@@ -745,25 +748,25 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 		c.Strategy.SetSpotPercentage(nil)
 
 		// Wrap the raw object as a Cluster.
-		o, err := spotinst.NewOcean(cloud.ProviderID(), c)
+		o, err := spotinst.NewOceanCluster(cloud.ProviderID(), c)
 		if err != nil {
 			return err
 		}
 
 		// Update the existing Cluster.
-		if err = cloud.Spotinst().Ocean().Update(ctx, o); err != nil {
+		if err = cloud.Spotinst().OceanCluster().Update(ctx, o); err != nil {
 			return err
 		}
 	}
 
 	// Wrap the raw object as a Launch Spec.
-	sp, err := spotinst.NewLaunchSpec(cloud.ProviderID(), spec)
+	sp, err := spotinst.NewOceanLaunchSpec(cloud.ProviderID(), spec)
 	if err != nil {
 		return err
 	}
 
 	// Update the existing Launch Spec.
-	if err = cloud.Spotinst().LaunchSpec().Update(ctx, sp); err != nil {
+	if err = cloud.Spotinst().OceanLaunchSpec().Update(ctx, sp); err != nil {
 		return fmt.Errorf("spotinst: failed to update launch spec: %v", err)
 	}
 

@@ -19,10 +19,6 @@ package spotinst
 import (
 	"fmt"
 
-	"github.com/spotinst/spotinst-sdk-go/service/elastigroup"
-	awseg "github.com/spotinst/spotinst-sdk-go/service/elastigroup/providers/aws"
-	"github.com/spotinst/spotinst-sdk-go/service/ocean"
-	awsoc "github.com/spotinst/spotinst-sdk-go/service/ocean/providers/aws"
 	"github.com/spotinst/spotinst-sdk-go/spotinst"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/credentials"
 	"github.com/spotinst/spotinst-sdk-go/spotinst/log"
@@ -34,35 +30,20 @@ import (
 
 // NewCloud returns a Cloud interface for the specified cloud provider.
 func NewCloud(cloudProviderID kops.CloudProviderID) (Cloud, error) {
-	var (
-		cloud Cloud
-		sess  = session.New(NewConfig())
-		eg    = elastigroup.New(sess)
-		oc    = ocean.New(sess)
-	)
-
 	switch cloudProviderID {
 	case kops.CloudProviderAWS:
-		cloud = &awsCloud{
-			eg: &awsElastigroupService{eg.CloudProviderAWS()},
-			oc: &awsOceanService{oc.CloudProviderAWS()},
-			ls: &awsOceanLaunchSpecService{oc.CloudProviderAWS()},
-		}
+		return newAWSCloud(session.New(NewConfig())), nil
 	default:
 		return nil, fmt.Errorf("spotinst: unsupported cloud provider: %s", cloudProviderID)
 	}
-
-	return cloud, nil
 }
 
 // NewConfig returns a new configuration object.
 func NewConfig() *spotinst.Config {
 	config := spotinst.DefaultConfig()
-
 	config.WithCredentials(NewCredentials())
 	config.WithLogger(NewStdLogger())
 	config.WithUserAgent("kubernetes-kops/" + kopsv.Version)
-
 	return config
 }
 
@@ -81,22 +62,12 @@ func NewStdLogger() log.Logger {
 	})
 }
 
-// NewInstanceGroups returns an InstanceGroup wrapper for the specified cloud provider.
+// NewInstanceGroup returns an InstanceGroup wrapper for the specified cloud provider.
 func NewInstanceGroup(cloudProviderID kops.CloudProviderID,
-	instanceGroupType InstanceGroupType, obj interface{}) (InstanceGroup, error) {
-
+	typ InstanceGroupType, obj interface{}) (InstanceGroup, error) {
 	switch cloudProviderID {
 	case kops.CloudProviderAWS:
-		{
-			switch instanceGroupType {
-			case InstanceGroupElastigroup:
-				return &awsElastigroupInstanceGroup{obj.(*awseg.Group)}, nil
-			case InstanceGroupOcean:
-				return &awsOceanInstanceGroup{obj.(*awsoc.Cluster)}, nil
-			default:
-				return nil, fmt.Errorf("spotinst: unsupported instance group type: %s", instanceGroupType)
-			}
-		}
+		return newAWSInstanceGroup(typ, obj)
 	default:
 		return nil, fmt.Errorf("spotinst: unsupported cloud provider: %s", cloudProviderID)
 	}
@@ -105,46 +76,35 @@ func NewInstanceGroup(cloudProviderID kops.CloudProviderID,
 // NewElastigroup returns an Elastigroup wrapper for the specified cloud provider.
 func NewElastigroup(cloudProviderID kops.CloudProviderID,
 	obj interface{}) (InstanceGroup, error) {
-
 	return NewInstanceGroup(
 		cloudProviderID,
 		InstanceGroupElastigroup,
 		obj)
 }
 
-// NewOcean returns an Ocean wrapper for the specified cloud provider.
-func NewOcean(cloudProviderID kops.CloudProviderID,
+// NewOceanCluster returns an Ocean Cluster wrapper for the specified cloud provider.
+func NewOceanCluster(cloudProviderID kops.CloudProviderID,
 	obj interface{}) (InstanceGroup, error) {
-
 	return NewInstanceGroup(
 		cloudProviderID,
-		InstanceGroupOcean,
+		InstanceGroupOceanCluster,
 		obj)
 }
 
-// NewLaunchSpec returns a LaunchSpec wrapper for the specified cloud provider.
-func NewLaunchSpec(cloudProviderID kops.CloudProviderID, obj interface{}) (LaunchSpec, error) {
-	switch cloudProviderID {
-	case kops.CloudProviderAWS:
-		return &awsOceanLaunchSpec{obj.(*awsoc.LaunchSpec)}, nil
-	default:
-		return nil, fmt.Errorf("spotinst: unsupported cloud provider: %s", cloudProviderID)
-	}
+// NewOceanLaunchSpec returns an Ocean LaunchSpec wrapper for the specified cloud provider.
+func NewOceanLaunchSpec(cloudProviderID kops.CloudProviderID,
+	obj interface{}) (InstanceGroup, error) {
+	return NewInstanceGroup(
+		cloudProviderID,
+		InstanceGroupOceanLaunchSpec,
+		obj)
 }
 
 // LoadCredentials attempts to load credentials using the default chain.
 func LoadCredentials() (credentials.Value, error) {
-	var (
-		chain = NewCredentials()
-		creds credentials.Value
-		err   error
-	)
-
-	// Attempt to load the credentials.
-	creds, err = chain.Get()
+	value, err := NewCredentials().Get()
 	if err != nil {
-		return creds, fmt.Errorf("spotinst: unable to load credentials: %v", err)
+		return value, fmt.Errorf("spotinst: unable to load credentials: %v", err)
 	}
-
-	return creds, nil
+	return value, nil
 }

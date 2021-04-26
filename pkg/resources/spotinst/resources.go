@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spotinst/spotinst-sdk-go/service/ocean/providers/aws"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/kops/pkg/apis/kops"
@@ -35,134 +36,141 @@ import (
 func ListResources(cloud Cloud, clusterName string) ([]*resources.Resource, error) {
 	klog.V(2).Info("Listing all resources")
 
-	fns := []func(Cloud, string) ([]*resources.Resource, error){
-		ListElastigroupResources,
-		ListOceanResources,
+	fns := []func(context.Context, Cloud, string) ([]*resources.Resource, error){
+		listElastigroupResources,
+		listOceanResources,
 	}
 
-	var resourceTrackers []*resources.Resource
+	var out []*resources.Resource
 	for _, fn := range fns {
-		resources, err := fn(cloud, clusterName)
+		r, err := fn(context.TODO(), cloud, clusterName)
 		if err != nil {
 			return nil, fmt.Errorf("spotinst: error listing resources: %v", err)
 		}
-
-		resourceTrackers = append(resourceTrackers, resources...)
+		out = append(out, r...)
 	}
 
-	return resourceTrackers, nil
+	return out, nil
 }
 
-// ListElastigroupResources returns a list of all Elastigroup resources.
-func ListElastigroupResources(cloud Cloud, clusterName string) ([]*resources.Resource, error) {
+// listElastigroupResources returns a list of all Elastigroup resources.
+func listElastigroupResources(ctx context.Context, cloud Cloud,
+	clusterName string) ([]*resources.Resource, error) {
+
 	klog.V(2).Info("Listing all Elastigroup resources")
-
-	// List all Elastigroup instance groups.
-	groups, err := listInstanceGroups(cloud.Elastigroup(), clusterName)
-	if err != nil {
-		return nil, err
-	}
-
-	return groups, nil
+	return listInstanceGroups(ctx, cloud.Elastigroup(),
+		filterClusterName(clusterName))
 }
 
-// ListOceanResources returns a list of all Ocean resources.
-func ListOceanResources(cloud Cloud, clusterName string) ([]*resources.Resource, error) {
-	klog.V(2).Info("Listing all Ocean resources")
-	var resourceTrackers []*resources.Resource
+// listOceanResources returns a list of all Ocean Cluster resources.
+func listOceanResources(ctx context.Context, cloud Cloud,
+	clusterName string) ([]*resources.Resource, error) {
 
-	// List all Ocean instance groups.
-	oceans, err := listInstanceGroups(cloud.Ocean(), clusterName)
+	klog.V(2).Info("Listing all Ocean resources")
+	var out []*resources.Resource
+
+	clusters, err := listInstanceGroups(ctx, cloud.OceanCluster(),
+		filterClusterName(clusterName))
 	if err != nil {
 		return nil, err
 	}
-	resourceTrackers = append(resourceTrackers, oceans...)
+	out = append(out, clusters...)
 
-	// List all Ocean launch specs.
-	for _, ocean := range oceans {
-		specs, err := listLaunchSpecs(cloud.LaunchSpec(), ocean.ID)
+	for _, cluster := range clusters {
+		specs, err := listInstanceGroups(ctx, cloud.OceanLaunchSpec(),
+			filterClusterName(clusterName),
+			filterOceanId(cluster.ID))
 		if err != nil {
 			return nil, err
 		}
-		resourceTrackers = append(resourceTrackers, specs...)
+		out = append(out, specs...)
 	}
 
-	return resourceTrackers, nil
+	return out, nil
+}
+
+// filterFunc is a function that takes an InstanceGroup and returns whether it
+// should be filtered out.
+type filterFunc func(InstanceGroup) bool
+
+// filterClusterName filters instance groups based on matching the given cluster name.
+func filterClusterName(clusterName string) filterFunc {
+	return func(ig InstanceGroup) bool {
+		internal := strings.HasPrefix(ig.Name(), "Spotinst::Ocean::")
+		suffixed := strings.HasSuffix(ig.Name(), fmt.Sprintf(".%s", clusterName))
+		return !internal && suffixed
+	}
+}
+
+// filterOceanId filters instance groups based on matching the given Ocean ID.
+func filterOceanId(oceanID string) filterFunc {
+	return func(ig InstanceGroup) bool {
+		spec, ok := ig.Obj().(*aws.LaunchSpec)
+		return ok && spec != nil && fi.StringValue(spec.OceanID) == oceanID
+	}
+}
+
+// filterAnd returns a filter function to take logical conjunction of given filters.
+func filterAnd(filters ...filterFunc) filterFunc {
+	return func(ig InstanceGroup) bool {
+		if len(filters) > 0 {
+			for _, f := range filters {
+				if !f(ig) {
+					return false
+				}
+			}
+		}
+		return true
+	}
 }
 
 // listInstanceGroups returns a list of all instance groups.
-func listInstanceGroups(svc InstanceGroupService, clusterName string) ([]*resources.Resource, error) {
-	groups, err := svc.List(context.Background())
+func listInstanceGroups(ctx context.Context, svc InstanceGroupService,
+	filters ...filterFunc) ([]*resources.Resource, error) {
+
+	groups, err := svc.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var resourceTrackers []*resources.Resource
+	var out []*resources.Resource
 	for _, group := range groups {
-		if strings.HasSuffix(group.Name(), fmt.Sprintf(".%s", clusterName)) &&
-			!strings.HasPrefix(strings.ToLower(group.Name()), "spotinst::ocean::") {
-			resource := &resources.Resource{
+		if filterAnd(filters...)(group) {
+			out = append(out, &resources.Resource{
 				ID:      group.Id(),
 				Name:    group.Name(),
-				Type:    string(ResourceTypeInstanceGroup),
+				Type:    string(group.Type()),
 				Obj:     group,
-				Deleter: instanceGroupDeleter(svc, group),
+				Deleter: instanceGroupDeleter(ctx, svc, group),
 				Dumper:  dumper,
-			}
-			resourceTrackers = append(resourceTrackers, resource)
+			})
 		}
 	}
 
-	return resourceTrackers, nil
-}
-
-// listLaunchSpecs returns a list of all launch specs.
-func listLaunchSpecs(svc LaunchSpecService, oceanID string) ([]*resources.Resource, error) {
-	specs, err := svc.List(context.Background(), oceanID)
-	if err != nil {
-		return nil, err
-	}
-
-	var resourceTrackers []*resources.Resource
-	for _, spec := range specs {
-		resource := &resources.Resource{
-			ID:      spec.Id(),
-			Name:    spec.Name(),
-			Type:    string(ResourceTypeLaunchSpec),
-			Obj:     spec,
-			Deleter: launchSpecDeleter(svc, spec),
-			Dumper:  dumper,
-		}
-		resourceTrackers = append(resourceTrackers, resource)
-	}
-
-	return resourceTrackers, nil
+	return out, nil
 }
 
 // DeleteInstanceGroup deletes an existing InstanceGroup.
 func DeleteInstanceGroup(cloud Cloud, group *cloudinstances.CloudInstanceGroup) error {
 	klog.V(2).Infof("Deleting instance group: %q", group.HumanName)
 
-	switch obj := group.Raw.(type) {
-	case InstanceGroup:
-		{
-			var svc InstanceGroupService
-			switch obj.Type() {
-			case InstanceGroupElastigroup:
-				svc = cloud.Elastigroup()
-			case InstanceGroupOcean:
-				svc = cloud.Ocean()
-			}
-
-			return svc.Delete(context.Background(), obj.Id())
+	raw := group.Raw
+	if ig, ok := raw.(InstanceGroup); ok {
+		var svc InstanceGroupService
+		switch ig.Type() {
+		case InstanceGroupElastigroup:
+			svc = cloud.Elastigroup()
+		case InstanceGroupOceanCluster:
+			svc = cloud.OceanCluster()
+		case InstanceGroupOceanLaunchSpec:
+			svc = cloud.OceanLaunchSpec()
 		}
-	case LaunchSpec:
-		{
-			return cloud.LaunchSpec().Delete(context.Background(), obj.Id())
+		if svc != nil {
+			return svc.Delete(context.TODO(), ig.Id())
 		}
 	}
 
-	return fmt.Errorf("spotinst: unexpected instance group type, got: %T", group.Raw)
+	return fmt.Errorf("spotinst: unexpected instance group type, got: %T", raw)
 }
 
 // DeleteInstance removes an instance from its instance group.
@@ -170,32 +178,29 @@ func DeleteInstance(cloud Cloud, instance *cloudinstances.CloudInstance) error {
 	klog.V(2).Infof("Detaching instance %q from instance group: %q",
 		instance.ID, instance.CloudInstanceGroup.HumanName)
 
-	group := instance.CloudInstanceGroup
-	switch obj := group.Raw.(type) {
-	case InstanceGroup:
-		{
-			var svc InstanceGroupService
-			switch obj.Type() {
-			case InstanceGroupElastigroup:
-				svc = cloud.Elastigroup()
-			case InstanceGroupOcean:
-				svc = cloud.Ocean()
-			}
-
-			return svc.Detach(context.Background(), obj.Id(), []string{instance.ID})
+	raw := instance.CloudInstanceGroup.Raw
+	if ig, ok := raw.(InstanceGroup); ok {
+		var svc InstanceGroupService
+		switch ig.Type() {
+		case InstanceGroupElastigroup:
+			svc = cloud.Elastigroup()
+		case InstanceGroupOceanCluster:
+			svc = cloud.OceanCluster()
+		case InstanceGroupOceanLaunchSpec:
+			svc = cloud.OceanLaunchSpec()
 		}
-	case LaunchSpec:
-		{
-			return cloud.Ocean().Detach(context.Background(), obj.OceanId(), []string{instance.ID})
+		if svc != nil {
+			return svc.Detach(context.TODO(), ig.Id(), instance.ID)
 		}
 	}
 
-	return fmt.Errorf("spotinst: unexpected instance group type, got: %T", group.Raw)
+	return fmt.Errorf("spotinst: unexpected instance group type, got: %T", raw)
 }
 
-// DetachInstance is not implemented yet. It needs to cause a cloud instance to no longer be counted against the group's size limits.
+// DetachInstance is not implemented yet. It needs to cause a cloud instance to
+// no longer be counted against the group's size limits.
 func DetachInstance(cloud Cloud, instance *cloudinstances.CloudInstance) error {
-	return fmt.Errorf("spotinst does not support surging")
+	return fmt.Errorf("spotinst: does not support surging")
 }
 
 // GetCloudGroups returns a list of InstanceGroups as CloudInstanceGroup objects.
@@ -213,26 +218,29 @@ func GetCloudGroups(cloud Cloud, cluster *kops.Cluster, instanceGroups []*kops.I
 
 	// Build all cloud instance groups.
 	for _, resource := range resources {
-
-		// Filter out the Ocean resources (they're not needed for now since
-		// we fetch the instances from the launch specs).
-		if ResourceType(resource.Type) == ResourceTypeInstanceGroup {
-			if resource.Obj.(InstanceGroup).Type() == InstanceGroupOcean {
-				continue
-			}
+		// Ocean Cluster resources should be ignored since we already have the
+		// instances from the Ocean Launch Spec resources.
+		if InstanceGroupType(resource.Type) == InstanceGroupOceanCluster {
+			continue
 		}
 
 		// Build cloud instance group.
-		ig, err := buildCloudInstanceGroupFromResource(cloud, cluster, instanceGroups, resource, nodeMap)
+		ig, err := buildCloudInstanceGroupFromResource(
+			cloud, cluster, instanceGroups, resource, nodeMap)
 		if err != nil {
-			return nil, fmt.Errorf("spotinst: error building cloud instance group: %v", err)
+			return nil, fmt.Errorf("spotinst: error building cloud "+
+				"instance group: %v", err)
 		}
 		if ig == nil {
 			if warnUnmatched {
-				klog.V(2).Infof("Found group with no corresponding instance group: %q", resource.Name)
+				klog.V(2).Infof("Found group with no corresponding "+
+					"instance group: %q", resource.Name)
 			}
 			continue
 		}
+
+		klog.V(2).Infof("Discovered resource: %q (%s)",
+			resource.Name, resource.Type)
 
 		cloudInstanceGroups[resource.Name] = ig
 	}
@@ -243,62 +251,46 @@ func GetCloudGroups(cloud Cloud, cluster *kops.Cluster, instanceGroups []*kops.I
 func buildCloudInstanceGroupFromResource(cloud Cloud, cluster *kops.Cluster,
 	instanceGroups []*kops.InstanceGroup, resource *resources.Resource,
 	nodeMap map[string]*v1.Node) (*cloudinstances.CloudInstanceGroup, error) {
+	klog.V(2).Infof("Building instance group for resource: %q", resource.Name)
 
-	// Find corresponding instance group.
 	ig, err := findInstanceGroupFromResource(cluster, instanceGroups, resource)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find instance group of resource %q: %v", resource.Name, err)
+		return nil, fmt.Errorf("spotinst: failed to find instance group "+
+			"of resource %q: %v", resource.Name, err)
 	}
 	if ig == nil {
 		return nil, nil
 	}
 
-	switch ResourceType(resource.Type) {
-	case ResourceTypeInstanceGroup:
-		{
-			if group, ok := resource.Obj.(InstanceGroup); ok {
-				return buildCloudInstanceGroupFromInstanceGroup(cloud, ig, group, nodeMap)
-			}
-		}
-
-	case ResourceTypeLaunchSpec:
-		{
-			if spec, ok := resource.Obj.(LaunchSpec); ok {
-				return buildCloudInstanceGroupFromLaunchSpec(cloud, ig, spec, nodeMap)
-			}
-		}
+	switch g := resource.Obj.(InstanceGroup); g.Type() {
+	case InstanceGroupElastigroup:
+		return buildCloudInstanceGroupFromElastigroup(cloud, ig, g, nodeMap)
+	case InstanceGroupOceanLaunchSpec:
+		return buildCloudInstanceGroupFromOceanLaunchSpec(cloud, ig, g, nodeMap)
+	default:
+		return nil, fmt.Errorf("spotinst: unexpected resource type: %s", resource.Type)
 	}
-
-	return nil, fmt.Errorf("unexpected resource type: %s", resource.Type)
 }
 
-func buildCloudInstanceGroupFromInstanceGroup(cloud Cloud, ig *kops.InstanceGroup, group InstanceGroup,
-	nodeMap map[string]*v1.Node) (*cloudinstances.CloudInstanceGroup, error) {
+func buildCloudInstanceGroupFromElastigroup(cloud Cloud, ig *kops.InstanceGroup,
+	group InstanceGroup, nodeMap map[string]*v1.Node) (*cloudinstances.CloudInstanceGroup, error) {
 
 	instanceGroup := &cloudinstances.CloudInstanceGroup{
 		HumanName:     group.Name(),
-		InstanceGroup: ig,
 		MinSize:       group.MinSize(),
-		TargetSize:    group.MinSize(), // TODO: Retrieve the target size from the cloud provider
+		TargetSize:    group.MinSize(),
 		MaxSize:       group.MaxSize(),
 		Raw:           group,
+		InstanceGroup: ig,
 	}
 
-	var svc InstanceGroupService
-	switch group.Type() {
-	case InstanceGroupElastigroup:
-		svc = cloud.Elastigroup()
-	case InstanceGroupOcean:
-		svc = cloud.Ocean()
-	}
-
-	klog.V(2).Infof("Attempting to fetch all instances of instance group: %q (id: %q)", group.Name(), group.Id())
-	instances, err := svc.Instances(context.Background(), group.Id())
+	klog.V(2).Infof("Attempting to fetch all instances of "+
+		"instance group %q (id: %q)", group.Name(), group.Id())
+	instances, err := cloud.Elastigroup().Instances(context.TODO(), group.Id())
 	if err != nil {
 		return nil, err
 	}
 
-	// Register all instances as group members.
 	if err := registerCloudInstances(instanceGroup, nodeMap,
 		instances, group.Name(), group.UpdatedAt()); err != nil {
 		return nil, err
@@ -311,27 +303,31 @@ func buildCloudInstanceGroupFromInstanceGroup(cloud Cloud, ig *kops.InstanceGrou
 // but, since we do not support it at the moment, we should fetch all instances only once.
 var fetchOceanInstances sync.Once
 
-func buildCloudInstanceGroupFromLaunchSpec(cloud Cloud, ig *kops.InstanceGroup, spec LaunchSpec,
-	nodeMap map[string]*v1.Node) (*cloudinstances.CloudInstanceGroup, error) {
+func buildCloudInstanceGroupFromOceanLaunchSpec(cloud Cloud, ig *kops.InstanceGroup,
+	spec InstanceGroup, nodeMap map[string]*v1.Node) (*cloudinstances.CloudInstanceGroup, error) {
 
 	instanceGroup := &cloudinstances.CloudInstanceGroup{
 		HumanName:     spec.Name(),
-		InstanceGroup: ig,
 		Raw:           spec,
+		InstanceGroup: ig,
 	}
 
 	var instances []Instance
 	var err error
 
+	s, ok := spec.Obj().(*aws.LaunchSpec)
+	if !ok {
+		return nil, fmt.Errorf("spotinst: unexpected object type: %T", spec.Obj())
+	}
+
 	fetchOceanInstances.Do(func() {
-		klog.V(2).Infof("Attempting to fetch all instances of instance group: %q (id: %q)", spec.Name(), spec.Id())
-		instances, err = cloud.Ocean().Instances(context.Background(), spec.OceanId())
+		klog.V(2).Infof("Fetching instances of instance group %q (id: %q)", spec.Name(), spec.Id())
+		instances, err = cloud.OceanCluster().Instances(context.TODO(), fi.StringValue(s.OceanID))
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Register all instances as group members.
 	if err := registerCloudInstances(instanceGroup, nodeMap,
 		instances, spec.Name(), spec.UpdatedAt()); err != nil {
 		return nil, err
@@ -342,24 +338,23 @@ func buildCloudInstanceGroupFromLaunchSpec(cloud Cloud, ig *kops.InstanceGroup, 
 
 func registerCloudInstances(instanceGroup *cloudinstances.CloudInstanceGroup, nodeMap map[string]*v1.Node,
 	instances []Instance, currentInstanceGroupName string, instanceGroupUpdatedAt time.Time) error {
-
 	// The instance registration below registers all active instances with
-	// their instance group. In addition, it looks for outdated instances by
+	// their instance group. It also checks for outdated instances by
 	// comparing each instance creation timestamp against the modification
 	// timestamp of its instance group.
 	//
-	// In a rolling-update operation, one or more detach operations are
-	// performed to replace existing instances. This is done by updating the
-	// instance group and results in updating the modification timestamp to the
-	// current time.
+	// A rolling-update operation involves one or more detach operations, which
+	// are performed to replace existing instances. This is done by updating the
+	// instance group and results in the modification timestamp being updated to
+	// the current time.
 	//
-	// The update of the modification timestamp occurs only after the detach
-	// operation is completed, meaning that new instances have already been
-	// created, so our comparison may be incorrect.
+	// Once the detach operation is complete, the modification timestamp is
+	// updated, meaning that new instances have already been created, so our
+	// comparison may be inaccurate.
 	//
-	// In order to work around this issue, we assume that the detach operation
-	// will take up to two minutes, and therefore we subtract this duration from
-	// the modification timestamp of the instance group before the comparison.
+	// In order to work around this, we assume that the detach operation will
+	// take up to two minutes, and therefore we subtract this duration from the
+	// modification timestamp of the instance group before the comparison.
 	instanceGroupUpdatedAt = instanceGroupUpdatedAt.Add(-2 * time.Minute)
 
 	for _, instance := range instances {
@@ -371,10 +366,12 @@ func registerCloudInstances(instanceGroup *cloudinstances.CloudInstanceGroup, no
 		// If the instance was created before the last update, mark it as `NeedUpdate`.
 		newInstanceGroupName := currentInstanceGroupName
 		if instance.CreatedAt().Before(instanceGroupUpdatedAt) {
-			newInstanceGroupName = fmt.Sprintf("%s:%d", currentInstanceGroupName, time.Now().Nanosecond())
+			newInstanceGroupName = fmt.Sprintf("%s:%d",
+				currentInstanceGroupName, time.Now().Nanosecond())
 		}
 
-		klog.V(2).Infof("Adding instance %q (created at: %s) to instance group: %q (updated at: %s)",
+		klog.V(2).Infof("Adding instance %q (created at: %s) to "+
+			"instance group: %q (updated at: %s)",
 			instance.Id(), instance.CreatedAt().Format(time.RFC3339),
 			currentInstanceGroupName, instanceGroupUpdatedAt.Format(time.RFC3339))
 
@@ -384,7 +381,8 @@ func registerCloudInstances(instanceGroup *cloudinstances.CloudInstanceGroup, no
 		}
 		if _, err := instanceGroup.NewCloudInstance(
 			instance.Id(), status, nodeMap[instance.Id()]); err != nil {
-			return fmt.Errorf("error creating cloud instance group member: %v", err)
+			return fmt.Errorf("spotinst: error creating cloud "+
+				"instance group member: %v", err)
 		}
 	}
 
@@ -400,10 +398,10 @@ func findInstanceGroupFromResource(cluster *kops.Cluster, instanceGroups []*kops
 		if name == "" {
 			continue
 		}
-
 		if name == resource.Name {
 			if instanceGroup != nil {
-				return nil, fmt.Errorf("found multiple instance groups matching group: %q", name)
+				return nil, fmt.Errorf("spotinst: found multiple "+
+					"instance groups matching group: %q", name)
 			}
 
 			klog.V(2).Infof("Found group with corresponding instance group: %q", name)
@@ -431,27 +429,20 @@ func getGroupNameByRole(cluster *kops.Cluster, ig *kops.InstanceGroup) string {
 	return groupName
 }
 
-func instanceGroupDeleter(svc InstanceGroupService, group InstanceGroup) func(fi.Cloud, *resources.Resource) error {
+func instanceGroupDeleter(ctx context.Context, svc InstanceGroupService,
+	group InstanceGroup) func(fi.Cloud, *resources.Resource) error {
+
 	return func(cloud fi.Cloud, resource *resources.Resource) error {
 		klog.V(2).Infof("Deleting instance group: %q", group.Id())
-		return svc.Delete(context.Background(), group.Id())
-	}
-}
-
-func launchSpecDeleter(svc LaunchSpecService, spec LaunchSpec) func(fi.Cloud, *resources.Resource) error {
-	return func(cloud fi.Cloud, resource *resources.Resource) error {
-		klog.V(2).Infof("Deleting launch spec: %q", spec.Id())
-		return svc.Delete(context.Background(), spec.Id())
+		return svc.Delete(ctx, group.Id())
 	}
 }
 
 func dumper(op *resources.DumpOperation, resource *resources.Resource) error {
 	data := make(map[string]interface{})
-
 	data["id"] = resource.ID
 	data["type"] = resource.Type
 	data["raw"] = resource.Obj
-
 	op.Dump.Resources = append(op.Dump.Resources, data)
 	return nil
 }
