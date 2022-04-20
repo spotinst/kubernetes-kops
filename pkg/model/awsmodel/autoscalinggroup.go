@@ -352,10 +352,11 @@ func (b *AutoscalingGroupModelBuilder) buildAutoScalingGroupTask(c *fi.ModelBuil
 	t.LoadBalancers = []*awstasks.LoadBalancer{}
 	t.TargetGroups = []*awstasks.TargetGroup{}
 
-	// When Spotinst Elastigroups are used, there is no need to create
-	// a separate task for the attachment of the load balancer since this
-	// is already done as part of the Elastigroup's creation, if needed.
-	if !featureflag.Spotinst.Enabled() {
+	// Spotinst handles load balancer attachments internally, so there's no
+	// need to create separate attachments for both managed (+Spotinst) and
+	// hybrid (+SpotinstHybrid) instance groups.
+	if !featureflag.Spotinst.Enabled() ||
+		(featureflag.SpotinstHybrid.Enabled() && !spotinstmodel.HybridInstanceGroup(ig)) {
 		if b.UseLoadBalancerForAPI() && ig.Spec.Role == kops.InstanceGroupRoleMaster {
 			t.LoadBalancers = append(t.LoadBalancers, b.LinkToELB("api"))
 		}
