@@ -127,18 +127,18 @@ Resources.AWSEC2LaunchTemplateapiserverapiserversminimalexamplecom.Properties.La
   cloudConfig:
     awsEBSCSIDriver:
       enabled: true
-      version: v1.5.0
+      version: v1.8.0
     manageStorageClasses: true
   containerRuntime: containerd
   containerd:
     logLevel: info
-    version: 1.4.12
+    version: 1.4.13
   docker:
     skipInstall: true
   kubeProxy:
     clusterCIDR: 100.96.0.0/11
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.22.0
+    image: registry.k8s.io/kube-proxy:v1.22.0
     logLevel: 2
   kubelet:
     anonymousAuth: false
@@ -155,9 +155,11 @@ Resources.AWSEC2LaunchTemplateapiserverapiserversminimalexamplecom.Properties.La
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
     protectKernelDefaults: true
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -166,7 +168,7 @@ Resources.AWSEC2LaunchTemplateapiserverapiserversminimalexamplecom.Properties.La
   ConfigBase: memfs://clusters.example.com/minimal.example.com
   InstanceGroupName: apiserver
   InstanceGroupRole: APIServer
-  NodeupConfigHash: lJvIfsBLG+O4Nj5rxkSE6Cre23QYwFVKyErAGDOps3U=
+  NodeupConfigHash: xTGbw8Jh6hdzxkQeWHb9O7eLEC1+h+KqyTbm+mw/AV8=
 
   __EOF_KUBE_ENV
 
@@ -301,20 +303,20 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalexamplecom.Properties.
   cloudConfig:
     awsEBSCSIDriver:
       enabled: true
-      version: v1.5.0
+      version: v1.8.0
     manageStorageClasses: true
   containerRuntime: containerd
   containerd:
     logLevel: info
-    version: 1.4.12
+    version: 1.4.13
   docker:
     skipInstall: true
   encryptionConfig: null
   etcdClusters:
     events:
-      version: 3.5.1
+      version: 3.5.4
     main:
-      version: 3.5.1
+      version: 3.5.4
   kubeAPIServer:
     allowPrivileged: true
     anonymousAuth: false
@@ -341,7 +343,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalexamplecom.Properties.
     featureGates:
       CSIMigrationAWS: "true"
       InTreePluginAWSUnregister: "true"
-    image: k8s.gcr.io/kube-apiserver:v1.22.0
+    image: registry.k8s.io/kube-apiserver:v1.22.0
     kubeletPreferredAddressTypes:
     - InternalIP
     - Hostname
@@ -370,7 +372,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalexamplecom.Properties.
     featureGates:
       CSIMigrationAWS: "true"
       InTreePluginAWSUnregister: "true"
-    image: k8s.gcr.io/kube-controller-manager:v1.22.0
+    image: registry.k8s.io/kube-controller-manager:v1.22.0
     leaderElection:
       leaderElect: true
     logLevel: 2
@@ -378,13 +380,13 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalexamplecom.Properties.
   kubeProxy:
     clusterCIDR: 100.96.0.0/11
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.22.0
+    image: registry.k8s.io/kube-proxy:v1.22.0
     logLevel: 2
   kubeScheduler:
     featureGates:
       CSIMigrationAWS: "true"
       InTreePluginAWSUnregister: "true"
-    image: k8s.gcr.io/kube-scheduler:v1.22.0
+    image: registry.k8s.io/kube-scheduler:v1.22.0
     leaderElection:
       leaderElect: true
     logLevel: 2
@@ -403,9 +405,11 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalexamplecom.Properties.
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
     protectKernelDefaults: true
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
   masterKubelet:
     anonymousAuth: false
     cgroupDriver: systemd
@@ -421,10 +425,12 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalexamplecom.Properties.
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
     protectKernelDefaults: true
     registerSchedulable: false
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -433,7 +439,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalexamplecom.Properties.
   ConfigBase: memfs://clusters.example.com/minimal.example.com
   InstanceGroupName: master-us-test-1a
   InstanceGroupRole: Master
-  NodeupConfigHash: qHq7EcCRxYCbh/iRszfG6rVcwqWk7x6lI73/xCRJw/A=
+  NodeupConfigHash: 3qdPx3oiEVN1GYvNvnqegPn5HfCT20qnIKcMOu2SUUk=
 
   __EOF_KUBE_ENV
 
@@ -568,18 +574,18 @@ Resources.AWSEC2LaunchTemplatenodesminimalexamplecom.Properties.LaunchTemplateDa
   cloudConfig:
     awsEBSCSIDriver:
       enabled: true
-      version: v1.5.0
+      version: v1.8.0
     manageStorageClasses: true
   containerRuntime: containerd
   containerd:
     logLevel: info
-    version: 1.4.12
+    version: 1.4.13
   docker:
     skipInstall: true
   kubeProxy:
     clusterCIDR: 100.96.0.0/11
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.22.0
+    image: registry.k8s.io/kube-proxy:v1.22.0
     logLevel: 2
   kubelet:
     anonymousAuth: false
@@ -596,9 +602,11 @@ Resources.AWSEC2LaunchTemplatenodesminimalexamplecom.Properties.LaunchTemplateDa
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
     protectKernelDefaults: true
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -607,7 +615,7 @@ Resources.AWSEC2LaunchTemplatenodesminimalexamplecom.Properties.LaunchTemplateDa
   ConfigBase: memfs://clusters.example.com/minimal.example.com
   InstanceGroupName: nodes
   InstanceGroupRole: Node
-  NodeupConfigHash: 6VEiV841OFo63LSICN9NUcHc5zs9u3PzRxsHK2Ospm8=
+  NodeupConfigHash: loNyJuRcOIlS5l6W6VX0xSHt5O2FE8KprqhQCFj6ngo=
 
   __EOF_KUBE_ENV
 

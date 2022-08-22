@@ -18,8 +18,17 @@ spec:
         tier: control-plane
         component: cloud-controller-manager
     spec:
-      nodeSelector:
-        node-role.kubernetes.io/master: ""
+      nodeSelector: null
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: Exists
       tolerations:
       - key: node.cloudprovider.kubernetes.io/uninitialized
         value: "true"
@@ -27,6 +36,8 @@ spec:
       - key: node.kubernetes.io/not-ready
         effect: NoSchedule
       - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
         effect: NoSchedule
       serviceAccountName: cloud-controller-manager
       containers:
@@ -41,9 +52,20 @@ spec:
         env:
         - name: KUBERNETES_SERVICE_HOST
           value: "127.0.0.1"
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            host: 127.0.0.1
+            path: /healthz
+            port: 10258
+            scheme: HTTPS
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 15
         resources:
           requests:
-            cpu: 200m
+            cpu: {{ or .ExternalCloudControllerManager.CPURequest "200m" }}
         volumeMounts:
         - mountPath: /etc/kubernetes/cloud.config
           name: cloudconfig

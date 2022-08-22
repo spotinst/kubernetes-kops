@@ -75,11 +75,15 @@ func (b *AutoscalingGroupModelBuilder) buildInstanceTemplate(c *fi.ModelBuilderC
 			}
 
 			namePrefix := gce.LimitedLengthName(name, gcetasks.InstanceTemplateNamePrefixMaxLength)
+			network, err := b.LinkToNetwork()
+			if err != nil {
+				return nil, err
+			}
 			t := &gcetasks.InstanceTemplate{
 				Name:           s(name),
 				NamePrefix:     s(namePrefix),
 				Lifecycle:      b.Lifecycle,
-				Network:        b.LinkToNetwork(),
+				Network:        network,
 				MachineType:    s(ig.Spec.MachineType),
 				BootDiskType:   s(volumeType),
 				BootDiskSizeGB: i64(int64(volumeSize)),
@@ -142,7 +146,7 @@ func (b *AutoscalingGroupModelBuilder) buildInstanceTemplate(c *fi.ModelBuilderC
 			t.Labels = map[string]string{
 				gce.GceLabelNameKubernetesCluster: gce.SafeClusterName(b.ClusterName()),
 				roleLabel:                         "",
-				gce.GceLabelNameInstanceGroup:     name,
+				gce.GceLabelNameInstanceGroup:     ig.ObjectMeta.Name,
 			}
 
 			if gce.UsesIPAliases(b.Cluster) {
@@ -163,6 +167,14 @@ func (b *AutoscalingGroupModelBuilder) buildInstanceTemplate(c *fi.ModelBuilderC
 			//	return fmt.Errorf("error building cloud tags: %v", err)
 			//}
 			//t.Labels = labels
+
+			t.GuestAccelerators = []gcetasks.AcceleratorConfig{}
+			for _, accelerator := range ig.Spec.GuestAccelerators {
+				t.GuestAccelerators = append(t.GuestAccelerators, gcetasks.AcceleratorConfig{
+					AcceleratorCount: accelerator.AcceleratorCount,
+					AcceleratorType:  accelerator.AcceleratorType,
+				})
+			}
 
 			return t, nil
 		}
@@ -263,7 +275,15 @@ func (b *AutoscalingGroupModelBuilder) Build(c *fi.ModelBuilderContext) error {
 			switch ig.Spec.Role {
 			case kops.InstanceGroupRoleMaster:
 				if b.UseLoadBalancerForAPI() {
-					t.TargetPools = append(t.TargetPools, b.LinkToTargetPool("api"))
+					lbSpec := b.Cluster.Spec.API.LoadBalancer
+					if lbSpec != nil {
+						switch lbSpec.Type {
+						case kops.LoadBalancerTypePublic:
+							t.TargetPools = append(t.TargetPools, b.LinkToTargetPool("api"))
+						case kops.LoadBalancerTypeInternal:
+							klog.Warningf("Not hooking the instance group manager up to anything.")
+						}
+					}
 				}
 			}
 

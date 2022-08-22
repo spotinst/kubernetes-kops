@@ -157,6 +157,7 @@ func (c *RollingUpdateCluster) rollingUpdateInstanceGroup(group *cloudinstances.
 				if err := c.detachInstance(u); err != nil {
 					// If detaching a node fails, we simply proceed to the next one instead of
 					// bubbling up the error.
+					klog.Errorf("Failed to detach instance %q: %v", u.ID, err)
 					skippedNodes++
 					numSurge--
 					if maxSurge > len(update)-skippedNodes {
@@ -409,9 +410,8 @@ func (c *RollingUpdateCluster) drainTerminateAndWait(u *cloudinstances.CloudInst
 		}
 	}
 
-	// We unregister the node before deleting it; if the replacement comes up with the same name it would otherwise still be cordoned
-	// (It often seems like GCE tries to re-use names)
-	if !isBastion && !c.CloudOnly {
+	// GCE often re-uses names, so we delete the node object to prevent the new instance from using the cordoned Node object
+	if c.Cluster.Spec.GetCloudProvider() == api.CloudProviderGCE && !isBastion && !c.CloudOnly {
 		if u.Node == nil {
 			klog.Warningf("no kubernetes Node associated with %s, skipping node deletion", instanceID)
 		} else {
@@ -440,8 +440,9 @@ func (c *RollingUpdateCluster) drainTerminateAndWait(u *cloudinstances.CloudInst
 }
 
 func (c *RollingUpdateCluster) reconcileInstanceGroup() error {
-	if api.CloudProviderID(c.Cluster.Spec.CloudProvider) != api.CloudProviderOpenstack &&
-		api.CloudProviderID(c.Cluster.Spec.CloudProvider) != api.CloudProviderDO {
+	if c.Cluster.Spec.GetCloudProvider() != api.CloudProviderOpenstack &&
+		c.Cluster.Spec.GetCloudProvider() != api.CloudProviderHetzner &&
+		c.Cluster.Spec.GetCloudProvider() != api.CloudProviderDO {
 		return nil
 	}
 	rto := fi.RunTasksOptions{}

@@ -79,7 +79,7 @@ kind: Pod
 spec:
   containers:
   - name: healthcheck
-    image: k8s.gcr.io/kops/kube-apiserver-healthcheck:1.24.0-alpha.2
+    image: registry.k8s.io/kops/kube-apiserver-healthcheck:1.24.1
     livenessProbe:
       httpGet:
         # The sidecar serves a healthcheck on the same port,
@@ -89,12 +89,13 @@ spec:
         host: 127.0.0.1
       initialDelaySeconds: 5
       timeoutSeconds: 5
-    command:
-    - /kube-apiserver-healthcheck
     args:
     - --ca-cert=/secrets/ca.crt
     - --client-cert=/secrets/client.crt
     - --client-key=/secrets/client.key
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10012
     volumeMounts:
     - name: healthcheck-secrets
       mountPath: /secrets

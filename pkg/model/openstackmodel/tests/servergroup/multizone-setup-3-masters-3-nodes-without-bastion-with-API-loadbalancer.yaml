@@ -24,6 +24,7 @@ LB:
   Lifecycle: Sync
   Name: master-public-name
   PortID: null
+  Provider: null
   SecurityGroup:
     Description: null
     ID: null
@@ -76,9 +77,7 @@ Metadata:
   ig_generation: "0"
   k8s: cluster
   k8s.io_cluster-autoscaler_node-template_label_kops.k8s.io_kops-controller-pki: ""
-  k8s.io_cluster-autoscaler_node-template_label_kubernetes.io_role: master
   k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_control-plane: ""
-  k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_master: ""
   k8s.io_cluster-autoscaler_node-template_label_node.kubernetes.io_exclude-from-external-load-balancers: ""
   k8s.io_role_master: "1"
   kops.k8s.io_instancegroup: master-a
@@ -151,9 +150,7 @@ Metadata:
   ig_generation: "0"
   k8s: cluster
   k8s.io_cluster-autoscaler_node-template_label_kops.k8s.io_kops-controller-pki: ""
-  k8s.io_cluster-autoscaler_node-template_label_kubernetes.io_role: master
   k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_control-plane: ""
-  k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_master: ""
   k8s.io_cluster-autoscaler_node-template_label_node.kubernetes.io_exclude-from-external-load-balancers: ""
   k8s.io_role_master: "1"
   kops.k8s.io_instancegroup: master-b
@@ -226,9 +223,7 @@ Metadata:
   ig_generation: "0"
   k8s: cluster
   k8s.io_cluster-autoscaler_node-template_label_kops.k8s.io_kops-controller-pki: ""
-  k8s.io_cluster-autoscaler_node-template_label_kubernetes.io_role: master
   k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_control-plane: ""
-  k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_master: ""
   k8s.io_cluster-autoscaler_node-template_label_node.kubernetes.io_exclude-from-external-load-balancers: ""
   k8s.io_role_master: "1"
   kops.k8s.io_instancegroup: master-c
@@ -306,7 +301,6 @@ Metadata:
   cluster_generation: "0"
   ig_generation: "0"
   k8s: cluster
-  k8s.io_cluster-autoscaler_node-template_label_kubernetes.io_role: node
   k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_node: ""
   k8s.io_role_node: "1"
   kops.k8s.io_instancegroup: node-a
@@ -384,7 +378,6 @@ Metadata:
   cluster_generation: "0"
   ig_generation: "0"
   k8s: cluster
-  k8s.io_cluster-autoscaler_node-template_label_kubernetes.io_role: node
   k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_node: ""
   k8s.io_role_node: "1"
   kops.k8s.io_instancegroup: node-b
@@ -462,7 +455,6 @@ Metadata:
   cluster_generation: "0"
   ig_generation: "0"
   k8s: cluster
-  k8s.io_cluster-autoscaler_node-template_label_kubernetes.io_role: node
   k8s.io_cluster-autoscaler_node-template_label_node-role.kubernetes.io_node: ""
   k8s.io_role_node: "1"
   kops.k8s.io_instancegroup: node-c
@@ -626,6 +618,7 @@ ID: null
 Lifecycle: Sync
 Name: master-public-name
 PortID: null
+Provider: null
 SecurityGroup:
   Description: null
   ID: null
@@ -648,6 +641,7 @@ Pool:
     Lifecycle: Sync
     Name: master-public-name
     PortID: null
+    Provider: null
     SecurityGroup:
       Description: null
       ID: null
@@ -666,6 +660,7 @@ Loadbalancer:
   Lifecycle: Sync
   Name: master-public-name
   PortID: null
+  Provider: null
   SecurityGroup:
     Description: null
     ID: null
@@ -749,6 +744,7 @@ Pool:
     Lifecycle: Sync
     Name: master-public-name
     PortID: null
+    Provider: null
     SecurityGroup:
       Description: null
       ID: null
@@ -783,6 +779,7 @@ Pool:
     Lifecycle: Sync
     Name: master-public-name
     PortID: null
+    Provider: null
     SecurityGroup:
       Description: null
       ID: null
@@ -817,6 +814,7 @@ Pool:
     Lifecycle: Sync
     Name: master-public-name
     PortID: null
+    Provider: null
     SecurityGroup:
       Description: null
       ID: null
@@ -850,6 +848,7 @@ Pool:
     Lifecycle: Sync
     Name: master-public-name
     PortID: null
+    Provider: null
     SecurityGroup:
       Description: null
       ID: null

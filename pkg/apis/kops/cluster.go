@@ -60,8 +60,8 @@ type ClusterSpec struct {
 	// both because this must be accessible to the cluster,
 	// and because it might be on a different cloud or storage system (etcd vs S3)
 	ConfigBase string `json:"configBase,omitempty"`
-	// The CloudProvider to use (aws or gce)
-	CloudProvider string `json:"cloudProvider,omitempty"`
+	// CloudProvider configures the cloud provider to use.
+	CloudProvider CloudProviderSpec `json:"cloudProvider,omitempty"`
 	// GossipConfig for the cluster assuming the use of gossip DNS
 	GossipConfig *GossipConfig `json:"gossipConfig,omitempty"`
 	// Container runtime to use for Kubernetes
@@ -76,9 +76,10 @@ type ClusterSpec struct {
 	MasterPublicName string `json:"masterPublicName,omitempty"`
 	// MasterInternalName is the internal DNS name for the master nodes
 	MasterInternalName string `json:"masterInternalName,omitempty"`
-	// NetworkCIDR is the CIDR used for the AWS VPC / GCE Network, or otherwise allocated to k8s
+	// NetworkCIDR is the CIDR used for the AWS VPC / DO/ GCE Network, or otherwise allocated to k8s
 	// This is a real CIDR, not the internal k8s network
 	// On AWS, it maps to the VPC CIDR.  It is not required on GCE.
+	// On DO, it maps to the VPC CIDR.
 	NetworkCIDR string `json:"networkCIDR,omitempty"`
 	// AdditionalNetworkCIDRs is a list of additional CIDR used for the AWS VPC
 	// or otherwise allocated to k8s. This is a real CIDR, not the internal k8s network
@@ -216,6 +217,46 @@ type ClusterSpec struct {
 	SnapshotController *SnapshotControllerConfig `json:"snapshotController,omitempty"`
 	// Karpenter defines the Karpenter configuration.
 	Karpenter *KarpenterConfig `json:"karpenter,omitempty"`
+	// PodIdentityWebhook determines the EKS Pod Identity Webhook configuration.
+	PodIdentityWebhook *PodIdentityWebhookConfig `json:"podIdentityWebhook,omitempty"`
+}
+
+// PodIdentityWebhookConfig configures an EKS Pod Identity Webhook.
+type PodIdentityWebhookConfig struct {
+	Enabled  bool `json:"enabled,omitempty"`
+	Replicas int  `json:"replicas,omitempty"`
+}
+
+// CloudProviderSpec configures the cloud provider to use.
+type CloudProviderSpec struct {
+	// AWS configures the AWS cloud provider.
+	AWS *AWSSpec `json:"aws,omitempty"`
+	// Azure configures the Azure cloud provider.
+	Azure *AzureSpec `json:"azure,omitempty"`
+	// DO configures the Digital Ocean cloud provider.
+	DO *DOSpec `json:"do,omitempty"`
+	// GCE configures the GCE cloud provider.
+	GCE *GCESpec `json:"gce,omitempty"`
+	// Hetzner configures the Hetzner cloud provider.
+	Hetzner *HetznerSpec `json:"hetzner,omitempty"`
+	// Openstack configures the Openstack cloud provider.
+	Openstack *OpenstackSpec `json:"openstack,omitempty"`
+}
+
+// AWSSpec configures the AWS cloud provider.
+type AWSSpec struct {
+}
+
+// DOSpec configures the Digital Ocean cloud provider.
+type DOSpec struct {
+}
+
+// GCESpec configures the GCE cloud provider.
+type GCESpec struct {
+}
+
+// HetznerSpec configures the Hetzner cloud provider.
+type HetznerSpec struct {
 }
 
 type KarpenterConfig struct {
@@ -294,6 +335,8 @@ type FileAssetSpec struct {
 	Content string `json:"content,omitempty"`
 	// IsBase64 indicates the contents is base64 encoded
 	IsBase64 bool `json:"isBase64,omitempty"`
+	// Mode is this file's mode and permission bits
+	Mode string `json:"mode,omitempty"`
 }
 
 // Assets defines the privately hosted assets
@@ -528,6 +571,9 @@ type NodeLocalDNSConfig struct {
 	MemoryRequest *resource.Quantity `json:"memoryRequest,omitempty"`
 	// CPURequest specifies the cpu requests of each node-local-dns container in the daemonset. Default 25m.
 	CPURequest *resource.Quantity `json:"cpuRequest,omitempty"`
+	// PodAnnotations makes possible to add additional annotations to node-local-dns.
+	// Default: none
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
 type ExternalDNSProvider string
@@ -602,8 +648,10 @@ type EtcdManagerSpec struct {
 	// This allows etcd setting to be overwriten. No config validation is done.
 	// A list of etcd config ENV vars can be found at https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/configuration.md
 	Env []EnvVar `json:"env,omitempty"`
+	// BackupInterval which is used for backups. The default is 15 minutes.
+	BackupInterval *metav1.Duration `json:"backupInterval,omitempty"`
 	// DiscoveryPollInterval which is used for discovering other cluster members. The default is 60 seconds.
-	DiscoveryPollInterval *string `json:"discoveryPollInterval,omitempty"`
+	DiscoveryPollInterval *metav1.Duration `json:"discoveryPollInterval,omitempty"`
 	// LogLevel allows the klog library verbose log level to be set for etcd-manager. The default is 6.
 	// https://github.com/google/glog#verbose-logging
 	LogLevel *int32 `json:"logLevel,omitempty"`
@@ -680,6 +728,15 @@ type ClusterSubnetSpec struct {
 	Type SubnetType `json:"type,omitempty"`
 	// PublicIP to attach to NatGateway
 	PublicIP string `json:"publicIP,omitempty"`
+	// AdditionalRoutes to attach to the subnet's route table
+	AdditionalRoutes []RouteSpec `json:"additionalRoutes,omitempty"`
+}
+
+type RouteSpec struct {
+	// CIDR destination of the route
+	CIDR string `json:"cidr,omitempty"`
+	// Target of the route
+	Target string `json:"target,omitempty"`
 }
 
 type EgressProxySpec struct {
@@ -816,12 +873,12 @@ func (c *Cluster) IsKubernetesLT(version string) bool {
 
 // IsSharedAzureResourceGroup returns true if the resource group is shared.
 func (c *Cluster) IsSharedAzureResourceGroup() bool {
-	return c.Spec.CloudConfig.Azure.ResourceGroupName != ""
+	return c.Spec.CloudProvider.Azure.ResourceGroupName != ""
 }
 
 // AzureResourceGroupName returns the name of the resource group where the cluster is built.
 func (c *Cluster) AzureResourceGroupName() string {
-	r := c.Spec.CloudConfig.Azure.ResourceGroupName
+	r := c.Spec.CloudProvider.Azure.ResourceGroupName
 	if r != "" {
 		return r
 	}
@@ -830,7 +887,7 @@ func (c *Cluster) AzureResourceGroupName() string {
 
 // IsSharedAzureRouteTable returns true if the route table is shared.
 func (c *Cluster) IsSharedAzureRouteTable() bool {
-	return c.Spec.CloudConfig.Azure.RouteTableName != ""
+	return c.Spec.CloudProvider.Azure.RouteTableName != ""
 }
 
 func (c *ClusterSpec) IsIPv6Only() bool {
@@ -839,6 +896,23 @@ func (c *ClusterSpec) IsIPv6Only() bool {
 
 func (c *ClusterSpec) IsKopsControllerIPAM() bool {
 	return c.IsIPv6Only()
+}
+
+func (c *ClusterSpec) GetCloudProvider() CloudProviderID {
+	if c.CloudProvider.AWS != nil {
+		return CloudProviderAWS
+	} else if c.CloudProvider.Azure != nil {
+		return CloudProviderAzure
+	} else if c.CloudProvider.DO != nil {
+		return CloudProviderDO
+	} else if c.CloudProvider.GCE != nil {
+		return CloudProviderGCE
+	} else if c.CloudProvider.Hetzner != nil {
+		return CloudProviderHetzner
+	} else if c.CloudProvider.Openstack != nil {
+		return CloudProviderOpenstack
+	}
+	return ""
 }
 
 // EnvVar represents an environment variable present in a Container.

@@ -25,8 +25,8 @@ Public and utility subnets are expected to be dual-stack. Subnets of type `Priva
 There is a new type of subnet `DualStack` which is like `Private` but is dual-stack.
 The `DualStack` subnets are used by default for the control plane and APIServer nodes.
 
-IPv6-only subnets require Kubernetes 1.23 or later. For this reason, private topology on an IPv6 cluster also
-requires Kubernetes 1.23 or later.
+IPv6-only subnets require Kubernetes 1.22 or later. For this reason, private topology on an IPv6 cluster also
+requires Kubernetes 1.22 or later.
 
 ## Routing and NAT64
 
@@ -47,8 +47,7 @@ CNIs must not masquerade IPv6 addresses.
 
 ### Calico
 
-Running IPv6 with Calico requires a Debian 11-based AMI. As of the writing of this document, Ubuntu does not work due to an 
-[issue with systemd's handling of AWS's incorrect DHCP responses](https://github.com/systemd/systemd/issues/20803).
+Running IPv6 with Calico requires a Debian 11 or Ubuntu 22.04 based AMI.
 
 ## Future work
 

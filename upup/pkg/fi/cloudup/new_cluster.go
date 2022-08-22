@@ -244,22 +244,56 @@ func NewCluster(opt *NewClusterOptions, clientset simple.Clientset) (*NewCluster
 	allZones.Insert(opt.Zones...)
 	allZones.Insert(opt.MasterZones...)
 
-	cluster.Spec.CloudProvider = opt.CloudProvider
-	if cluster.Spec.CloudProvider == "" {
+	if opt.CloudProvider == "" {
 		for _, zone := range allZones.List() {
 			cloud, known := zones.GuessCloudForZone(zone)
 			if known {
 				klog.Infof("Inferred %q cloud provider from zone %q", cloud, zone)
-				cluster.Spec.CloudProvider = string(cloud)
+				opt.CloudProvider = string(cloud)
 				break
 			}
 		}
-		if cluster.Spec.CloudProvider == "" {
+		if opt.CloudProvider == "" {
 			if allZones.Len() == 0 {
 				return nil, fmt.Errorf("must specify --zones or --cloud")
 			}
 			return nil, fmt.Errorf("unable to infer cloud provider from zones. pass in the cloud provider explicitly using --cloud")
 		}
+	}
+	switch api.CloudProviderID(opt.CloudProvider) {
+	case api.CloudProviderAWS:
+		cluster.Spec.CloudProvider.AWS = &api.AWSSpec{}
+	case api.CloudProviderAzure:
+		cluster.Spec.CloudProvider.Azure = &api.AzureSpec{
+			SubscriptionID:    opt.AzureSubscriptionID,
+			TenantID:          opt.AzureTenantID,
+			ResourceGroupName: opt.AzureResourceGroupName,
+			RouteTableName:    opt.AzureRouteTableName,
+			AdminUser:         opt.AzureAdminUser,
+		}
+	case api.CloudProviderDO:
+		cluster.Spec.CloudProvider.DO = &api.DOSpec{}
+	case api.CloudProviderGCE:
+		cluster.Spec.CloudProvider.GCE = &api.GCESpec{}
+	case api.CloudProviderHetzner:
+		cluster.Spec.CloudProvider.Hetzner = &api.HetznerSpec{}
+	case api.CloudProviderOpenstack:
+		cluster.Spec.CloudProvider.Openstack = &api.OpenstackSpec{
+			Router: &api.OpenstackRouter{
+				ExternalNetwork: fi.String(opt.OpenstackExternalNet),
+			},
+			BlockStorage: &api.OpenstackBlockStorageConfig{
+				Version:  fi.String("v3"),
+				IgnoreAZ: fi.Bool(opt.OpenstackStorageIgnoreAZ),
+			},
+			Monitor: &api.OpenstackMonitor{
+				Delay:      fi.String("15s"),
+				Timeout:    fi.String("10s"),
+				MaxRetries: fi.Int(3),
+			},
+		}
+	default:
+		return nil, fmt.Errorf("unsupported cloud provider %s", opt.CloudProvider)
 	}
 
 	if opt.DiscoveryStore != "" {
@@ -270,7 +304,7 @@ func NewCluster(opt *NewClusterOptions, clientset simple.Clientset) (*NewCluster
 		cluster.Spec.ServiceAccountIssuerDiscovery = &api.ServiceAccountIssuerDiscoveryConfig{
 			DiscoveryStore: discoveryPath.Join(cluster.Name).Path(),
 		}
-		if cluster.Spec.CloudProvider == string(api.CloudProviderAWS) {
+		if cluster.Spec.GetCloudProvider() == api.CloudProviderAWS {
 			cluster.Spec.ServiceAccountIssuerDiscovery.EnableAWSOIDCProvider = true
 			cluster.Spec.IAM.UseServiceAccountExternalPermissions = fi.Bool(true)
 		}
@@ -350,7 +384,7 @@ func NewCluster(opt *NewClusterOptions, clientset simple.Clientset) (*NewCluster
 func setupVPC(opt *NewClusterOptions, cluster *api.Cluster) error {
 	cluster.Spec.NetworkID = opt.NetworkID
 
-	switch api.CloudProviderID(cluster.Spec.CloudProvider) {
+	switch cluster.Spec.GetCloudProvider() {
 	case api.CloudProviderAWS:
 		if cluster.Spec.NetworkID == "" && len(opt.SubnetIDs) > 0 {
 			cloudTags := map[string]string{}
@@ -396,20 +430,6 @@ func setupVPC(opt *NewClusterOptions, cluster *api.Cluster) error {
 		if cluster.Spec.CloudConfig == nil {
 			cluster.Spec.CloudConfig = &api.CloudConfiguration{}
 		}
-		cluster.Spec.CloudConfig.Openstack = &api.OpenstackConfiguration{
-			Router: &api.OpenstackRouter{
-				ExternalNetwork: fi.String(opt.OpenstackExternalNet),
-			},
-			BlockStorage: &api.OpenstackBlockStorageConfig{
-				Version:  fi.String("v3"),
-				IgnoreAZ: fi.Bool(opt.OpenstackStorageIgnoreAZ),
-			},
-			Monitor: &api.OpenstackMonitor{
-				Delay:      fi.String("15s"),
-				Timeout:    fi.String("10s"),
-				MaxRetries: fi.Int(3),
-			},
-		}
 
 		if cluster.Spec.NetworkID == "" && len(opt.SubnetIDs) > 0 {
 			tags := make(map[string]string)
@@ -427,10 +447,10 @@ func setupVPC(opt *NewClusterOptions, cluster *api.Cluster) error {
 		}
 
 		if opt.OpenstackDNSServers != "" {
-			cluster.Spec.CloudConfig.Openstack.Router.DNSServers = fi.String(opt.OpenstackDNSServers)
+			cluster.Spec.CloudProvider.Openstack.Router.DNSServers = fi.String(opt.OpenstackDNSServers)
 		}
 		if opt.OpenstackExternalSubnet != "" {
-			cluster.Spec.CloudConfig.Openstack.Router.ExternalSubnet = fi.String(opt.OpenstackExternalSubnet)
+			cluster.Spec.CloudProvider.Openstack.Router.ExternalSubnet = fi.String(opt.OpenstackExternalSubnet)
 		}
 	case api.CloudProviderAzure:
 		// TODO(kenji): Find a right place for this.
@@ -438,14 +458,6 @@ func setupVPC(opt *NewClusterOptions, cluster *api.Cluster) error {
 		// Creating an empty CloudConfig so that --cloud-config is passed to kubelet, api-server, etc.
 		if cluster.Spec.CloudConfig == nil {
 			cluster.Spec.CloudConfig = &api.CloudConfiguration{}
-		}
-
-		cluster.Spec.CloudConfig.Azure = &api.AzureConfiguration{
-			SubscriptionID:    opt.AzureSubscriptionID,
-			TenantID:          opt.AzureTenantID,
-			ResourceGroupName: opt.AzureResourceGroupName,
-			RouteTableName:    opt.AzureRouteTableName,
-			AdminUser:         opt.AzureAdminUser,
 		}
 	}
 
@@ -474,7 +486,7 @@ func setupZones(opt *NewClusterOptions, cluster *api.Cluster, allZones sets.Stri
 
 	var zoneToSubnetProviderID map[string]string
 
-	switch api.CloudProviderID(cluster.Spec.CloudProvider) {
+	switch cluster.Spec.GetCloudProvider() {
 	case api.CloudProviderGCE:
 		// On GCE, subnets are regional - we create one per region, not per zone
 		for _, zoneName := range allZones.List() {
@@ -530,6 +542,12 @@ func setupZones(opt *NewClusterOptions, cluster *api.Cluster, allZones sets.Stri
 		}
 		zoneToSubnetMap[region] = subnet
 		return zoneToSubnetMap, nil
+
+	case api.CloudProviderHetzner:
+		if len(opt.Zones) > 1 {
+			return nil, fmt.Errorf("hetzner cloud provider currently supports only one zone (location)")
+		}
+		// TODO(hakman): Add customizations for Hetzner Cloud
 
 	case api.CloudProviderAzure:
 		// On Azure, subnets are regional - we create one per region, not per zone
@@ -661,7 +679,7 @@ func getOpenstackZoneToSubnetProviderID(spec *api.ClusterSpec, zones []string, s
 }
 
 func setupMasters(opt *NewClusterOptions, cluster *api.Cluster, zoneToSubnetMap map[string]*api.ClusterSubnetSpec) ([]*api.InstanceGroup, error) {
-	cloudProvider := api.CloudProviderID(cluster.Spec.CloudProvider)
+	cloudProvider := cluster.Spec.GetCloudProvider()
 
 	var masters []*api.InstanceGroup
 
@@ -815,7 +833,7 @@ func trimCommonPrefix(names []string) []string {
 }
 
 func setupNodes(opt *NewClusterOptions, cluster *api.Cluster, zoneToSubnetMap map[string]*api.ClusterSubnetSpec) ([]*api.InstanceGroup, error) {
-	cloudProvider := api.CloudProviderID(cluster.Spec.CloudProvider)
+	cloudProvider := cluster.Spec.GetCloudProvider()
 
 	var nodes []*api.InstanceGroup
 
@@ -883,7 +901,7 @@ func setupKarpenterNodes(opt *NewClusterOptions, cluster *api.Cluster, zoneToSub
 }
 
 func setupAPIServers(opt *NewClusterOptions, cluster *api.Cluster, zoneToSubnetMap map[string]*api.ClusterSubnetSpec) ([]*api.InstanceGroup, error) {
-	cloudProvider := api.CloudProviderID(cluster.Spec.CloudProvider)
+	cloudProvider := cluster.Spec.GetCloudProvider()
 
 	var nodes []*api.InstanceGroup
 
@@ -948,7 +966,7 @@ func setupNetworking(opt *NewClusterOptions, cluster *api.Cluster) error {
 	case "weave":
 		cluster.Spec.Networking.Weave = &api.WeaveNetworkingSpec{}
 
-		if cluster.Spec.CloudProvider == "aws" {
+		if cluster.Spec.GetCloudProvider() == api.CloudProviderAWS {
 			// AWS supports "jumbo frames" of 9001 bytes and weave adds up to 87 bytes overhead
 			// sets the default to the largest number that leaves enough overhead and is divisible by 4
 			jumboFrameMTUSize := int32(8912)
@@ -1027,7 +1045,7 @@ func setupTopology(opt *NewClusterOptions, cluster *api.Cluster, allZones sets.S
 		var zoneToSubnetProviderID map[string]string
 		var err error
 		if len(opt.Zones) > 0 && len(opt.UtilitySubnetIDs) > 0 {
-			switch api.CloudProviderID(cluster.Spec.CloudProvider) {
+			switch cluster.Spec.GetCloudProvider() {
 			case api.CloudProviderAWS:
 				zoneToSubnetProviderID, err = getAWSZoneToSubnetProviderID(cluster.Spec.NetworkID, opt.Zones[0][:len(opt.Zones[0])-1], opt.UtilitySubnetIDs)
 				if err != nil {
@@ -1065,7 +1083,7 @@ func setupTopology(opt *NewClusterOptions, cluster *api.Cluster, allZones sets.S
 		}
 
 		addUtilitySubnets := true
-		switch api.CloudProviderID(cluster.Spec.CloudProvider) {
+		switch cluster.Spec.GetCloudProvider() {
 		case api.CloudProviderGCE:
 			// GCE does not need utility subnets
 			addUtilitySubnets = false
@@ -1103,7 +1121,7 @@ func setupTopology(opt *NewClusterOptions, cluster *api.Cluster, allZones sets.S
 					PublicName: "bastion." + cluster.Name,
 				}
 			}
-			if api.CloudProviderID(cluster.Spec.CloudProvider) == api.CloudProviderGCE {
+			if cluster.Spec.GetCloudProvider() == api.CloudProviderGCE {
 				bastionGroup.Spec.Zones = allZones.List()
 			}
 
@@ -1123,7 +1141,7 @@ func setupTopology(opt *NewClusterOptions, cluster *api.Cluster, allZones sets.S
 	if opt.IPv6 {
 		cluster.Spec.NonMasqueradeCIDR = "::/0"
 		cluster.Spec.ExternalCloudControllerManager = &api.CloudControllerManagerConfig{}
-		if api.CloudProviderID(cluster.Spec.CloudProvider) == api.CloudProviderAWS {
+		if cluster.Spec.GetCloudProvider() == api.CloudProviderAWS {
 			for i := range cluster.Spec.Subnets {
 				cluster.Spec.Subnets[i].IPv6CIDR = fmt.Sprintf("/64#%x", i)
 			}
@@ -1147,11 +1165,11 @@ func setupTopology(opt *NewClusterOptions, cluster *api.Cluster, allZones sets.S
 
 func setupAPI(opt *NewClusterOptions, cluster *api.Cluster) error {
 	// Populate the API access, so that it can be discoverable
-	klog.Infof(" Cloud Provider ID = %s", api.CloudProviderID(cluster.Spec.CloudProvider))
+	klog.Infof(" Cloud Provider ID = %s", cluster.Spec.GetCloudProvider())
 	cluster.Spec.API = &api.AccessSpec{}
-	if api.CloudProviderID(cluster.Spec.CloudProvider) == api.CloudProviderOpenstack {
+	if cluster.Spec.GetCloudProvider() == api.CloudProviderOpenstack {
 		initializeOpenstackAPI(opt, cluster)
-	} else if api.CloudProviderID(cluster.Spec.CloudProvider) == api.CloudProviderAzure {
+	} else if cluster.Spec.GetCloudProvider() == api.CloudProviderAzure {
 		// Do nothing to disable the use of loadbalancer for the k8s API server.
 		// TODO(kenji): Remove this condition once we support the loadbalancer
 		// in pkg/model/azuremodel/api_loadbalancer.go.
@@ -1192,7 +1210,7 @@ func setupAPI(opt *NewClusterOptions, cluster *api.Cluster) error {
 		cluster.Spec.API.LoadBalancer.SSLCertificate = opt.APISSLCertificate
 	}
 
-	if cluster.Spec.API.LoadBalancer != nil && cluster.Spec.API.LoadBalancer.Class == "" && api.CloudProviderID(cluster.Spec.CloudProvider) == api.CloudProviderAWS {
+	if cluster.Spec.API.LoadBalancer != nil && cluster.Spec.API.LoadBalancer.Class == "" && cluster.Spec.GetCloudProvider() == api.CloudProviderAWS {
 		switch opt.APILoadBalancerClass {
 		case "", "classic":
 			cluster.Spec.API.LoadBalancer.Class = api.LoadBalancerClassClassic
@@ -1218,15 +1236,19 @@ func initializeOpenstackAPI(opt *NewClusterOptions, cluster *api.Cluster) {
 			}
 		}
 
-		cluster.Spec.CloudConfig.Openstack.Loadbalancer = &api.OpenstackLoadbalancerConfig{
+		LbMethod := "ROUND_ROBIN"
+		if provider == "ovn" {
+			LbMethod = "SOURCE_IP_PORT"
+		}
+		cluster.Spec.CloudProvider.Openstack.Loadbalancer = &api.OpenstackLoadbalancerConfig{
 			FloatingNetwork: fi.String(opt.OpenstackExternalNet),
-			Method:          fi.String("ROUND_ROBIN"),
+			Method:          fi.String(LbMethod),
 			Provider:        fi.String(provider),
 			UseOctavia:      fi.Bool(opt.OpenstackLBOctavia),
 		}
 
 		if opt.OpenstackLBSubnet != "" {
-			cluster.Spec.CloudConfig.Openstack.Loadbalancer.FloatingSubnet = fi.String(opt.OpenstackLBSubnet)
+			cluster.Spec.CloudProvider.Openstack.Loadbalancer.FloatingSubnet = fi.String(opt.OpenstackLBSubnet)
 		}
 	}
 }

@@ -23,7 +23,7 @@ metadata:
     app.kubernetes.io/managed-by: kops
     k8s-addon: kops-controller.addons.k8s.io
     k8s-app: kops-controller
-    version: v1.24.0-alpha.2
+    version: v1.24.1
   name: kops-controller
   namespace: kube-system
 spec:
@@ -34,20 +34,36 @@ spec:
     metadata:
       annotations:
         dns.alpha.kubernetes.io/internal: kops-controller.internal.minimal.example.com
+      creationTimestamp: null
       labels:
         k8s-addon: kops-controller.addons.k8s.io
         k8s-app: kops-controller
-        version: v1.24.0-alpha.2
+        kops.k8s.io/managed-by: kops
+        version: v1.24.1
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+              - key: kops.k8s.io/kops-controller-pki
+                operator: Exists
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: Exists
+              - key: kops.k8s.io/kops-controller-pki
+                operator: Exists
       containers:
-      - command:
-        - /kops-controller
+      - args:
         - --v=2
         - --conf=/etc/kubernetes/kops-controller/config/config.yaml
+        command: null
         env:
         - name: KUBERNETES_SERVICE_HOST
           value: 127.0.0.1
-        image: k8s.gcr.io/kops/kops-controller:1.24.0-alpha.2
+        image: registry.k8s.io/kops/kops-controller:1.24.1
         name: kops-controller
         resources:
           requests:
@@ -55,6 +71,7 @@ spec:
             memory: 50Mi
         securityContext:
           runAsNonRoot: true
+          runAsUser: 10011
         volumeMounts:
         - mountPath: /etc/kubernetes/kops-controller/config/
           name: kops-controller-config
@@ -62,9 +79,7 @@ spec:
           name: kops-controller-pki
       dnsPolicy: Default
       hostNetwork: true
-      nodeSelector:
-        kops.k8s.io/kops-controller-pki: ""
-        node-role.kubernetes.io/master: ""
+      nodeSelector: null
       priorityClassName: system-cluster-critical
       serviceAccount: kops-controller
       tolerations:
@@ -73,6 +88,8 @@ spec:
       - key: node.kubernetes.io/not-ready
         operator: Exists
       - key: node-role.kubernetes.io/master
+        operator: Exists
+      - key: node-role.kubernetes.io/control-plane
         operator: Exists
       volumes:
       - configMap:

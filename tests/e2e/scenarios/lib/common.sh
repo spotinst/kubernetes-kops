@@ -19,8 +19,12 @@ set -o nounset
 set -o pipefail
 set -o xtrace
 
+if [[ -z "${CLOUD_PROVIDER-}" ]]; then
+    export CLOUD_PROVIDER="aws"
+fi
+
 echo "CLOUD_PROVIDER=${CLOUD_PROVIDER}"
-echo "CLUSTER_NAME=${CLUSTER_NAME}"
+echo "CLUSTER_NAME=${CLUSTER_NAME-}"
 
 if [[ -z "${WORKSPACE-}" ]]; then
     export WORKSPACE
@@ -43,13 +47,7 @@ export KOPS_FEATURE_FLAGS="SpecOverrideFlag"
 export KOPS_RUN_TOO_NEW_VERSION=1
 
 if [[ -z "${DISCOVERY_STORE-}" ]]; then 
-    DISCOVERY_STORE="${KOPS_STATE_STORE}"
-fi
-
-if [[ ${KOPS_IRSA-} = true ]]; then
-    OVERRIDES="${OVERRIDES-} --override=cluster.spec.serviceAccountIssuerDiscovery.discoveryStore=${DISCOVERY_STORE}/${CLUSTER_NAME}/discovery"
-    OVERRIDES="${OVERRIDES} --override=cluster.spec.serviceAccountIssuerDiscovery.enableAWSOIDCProvider=true"
-    OVERRIDES="${OVERRIDES} --override=cluster.spec.iam.useServiceAccountExternalPermissions=true"
+    DISCOVERY_STORE="${KOPS_STATE_STORE-}"
 fi
 
 export GO111MODULE=on
@@ -63,6 +61,10 @@ fi
 
 KUBETEST2="kubetest2 kops -v=2 --cloud-provider=${CLOUD_PROVIDER} --cluster-name=${CLUSTER_NAME:-} --kops-root=${REPO_ROOT}"
 KUBETEST2="${KUBETEST2} --admin-access=${ADMIN_ACCESS:-} --env=KOPS_FEATURE_FLAGS=${KOPS_FEATURE_FLAGS}"
+
+if [[ -n "${GCP_PROJECT-}" ]]; then
+  KUBETEST2="${KUBETEST2} --gcp-project=${GCP_PROJECT}"
+fi
 
 # Always tear-down the cluster when we're done
 function kops-finish {
@@ -109,7 +111,7 @@ function kops-acquire-latest() {
             KOPS_BASE_URL=""
          fi
          $KUBETEST2 --build
-         KOPS="${REPO_ROOT}/.bazelbuild/dist/linux/amd64/kops"
+         KOPS="${REPO_ROOT}/.build/dist/linux/amd64/kops"
          KOPS_BASE_URL=$(cat "${REPO_ROOT}/.kubetest2/kops-base-url")
          export KOPS_BASE_URL
          echo "KOPS_BASE_URL=$KOPS_BASE_URL"
@@ -123,11 +125,17 @@ function kops-up() {
         create_args="${create_args} --zones=${ZONES}"
     fi
     if [[ -z "${K8S_VERSION-}" ]]; then
-        K8S_VERSION="v1.22.1"
+        K8S_VERSION="$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)"
     fi
+
+    if [[ ${KOPS_IRSA-} = true ]]; then
+        create_args="${create_args} --discovery-store=${DISCOVERY_STORE}/${CLUSTER_NAME}/discovery"
+    fi
+
     ${KUBETEST2} \
         --up \
         --kops-binary-path="${KOPS}" \
         --kubernetes-version="${K8S_VERSION}" \
-        --create-args="${create_args}"
+        --create-args="${create_args}" \
+        --template-path="${KOPS_TEMPLATE-}"
 }

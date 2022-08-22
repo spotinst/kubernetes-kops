@@ -23,9 +23,11 @@ import (
 
 	compute "google.golang.org/api/compute/v1"
 	clouddns "google.golang.org/api/dns/v1"
+	"google.golang.org/api/iam/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/kops/pkg/dns"
 	"k8s.io/kops/pkg/resources"
+	"k8s.io/kops/pkg/truncate"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/cloudup/gce"
 )
@@ -41,12 +43,15 @@ const (
 	typeFirewallRule         = "FirewallRule"
 	typeForwardingRule       = "ForwardingRule"
 	typeHTTPHealthcheck      = "HTTP HealthCheck"
+	typeHealthcheck          = "HealthCheck"
 	typeAddress              = "Address"
 	typeRoute                = "Route"
 	typeNetwork              = "Network"
 	typeSubnet               = "Subnet"
 	typeRouter               = "Router"
 	typeDNSRecord            = "DNSRecord"
+	typeServiceAccount       = "ServiceAccount"
+	typeBackendService       = "BackendService"
 )
 
 // Maximum number of `-` separated tokens in a name
@@ -106,6 +111,9 @@ func ListResourcesGCE(gceCloud gce.GCECloud, clusterName string, region string) 
 		d.listSubnets,
 		d.listRouters,
 		d.listNetworks,
+		d.listServiceAccounts,
+		d.listBackendServices,
+		d.listHealthchecks,
 	}
 	for _, fn := range listFunctions {
 		resourceTrackers, err := fn()
@@ -401,6 +409,25 @@ func (d *clusterDiscoveryGCE) listTargetPools() ([]*resources.Resource, error) {
 
 		klog.V(4).Infof("Found resource: %s", tp.SelfLink)
 		resourceTrackers = append(resourceTrackers, resourceTracker)
+
+		for _, healthCheckLink := range tp.HealthChecks {
+			healthCheckName := gce.LastComponent(healthCheckLink)
+			hc, err := c.Compute().HTTPHealthChecks().Get(c.Project(), healthCheckName)
+			if err != nil {
+				return nil, fmt.Errorf("error getting HTTPHealthCheck %q: %w", healthCheckName, err)
+			}
+
+			healthCheckResource := &resources.Resource{
+				Name:    hc.Name,
+				ID:      hc.Name,
+				Type:    typeHTTPHealthcheck,
+				Deleter: deleteHTTPHealthCheck,
+				Obj:     hc,
+			}
+			healthCheckResource.Blocked = append(healthCheckResource.Blocked, resourceTracker.Type+":"+resourceTracker.ID)
+			resourceTrackers = append(resourceTrackers, healthCheckResource)
+		}
+
 	}
 
 	return resourceTrackers, nil
@@ -511,12 +538,13 @@ nextFirewallRule:
 
 		// TODO: Check network?  (or other fields?)  No label support currently.
 
-		// We consider only firewall rules that target our cluster tags, which include the cluster name
+		// We consider only firewall rules that target our cluster tags, which include the cluster name or hash
 		tagPrefix := gce.SafeClusterName(d.clusterName) + "-"
+		clusterNameHash := truncate.HashString(gce.SafeClusterName(d.clusterName), 6)
 		if len(firewallRule.TargetTags) != 0 {
 			tagMatchCount := 0
 			for _, target := range firewallRule.TargetTags {
-				if strings.HasPrefix(target, tagPrefix) {
+				if strings.HasPrefix(target, tagPrefix) || strings.Contains(target, clusterNameHash) {
 					tagMatchCount++
 				}
 			}
@@ -607,7 +635,6 @@ nextFirewallRule:
 				// l4 level healthchecks
 
 				healthCheckName := gce.LastComponent(healthCheckLink)
-
 				if !strings.HasPrefix(healthCheckName, "k8s-") || !strings.Contains(healthCheckLink, "/httpHealthChecks/") {
 					klog.Warningf("found non-k8s healthcheck %q in targetPool %q, assuming firewallRule %q is not a k8s rule", healthCheckLink, targetPoolName, firewallRule.Name)
 					continue nextFirewallRule
@@ -968,6 +995,152 @@ func deleteRouter(cloud fi.Cloud, r *resources.Resource) error {
 	return c.WaitForOp(op)
 }
 
+func (d *clusterDiscoveryGCE) listServiceAccounts() ([]*resources.Resource, error) {
+	c := d.gceCloud
+	ctx := context.Background()
+
+	sas, err := c.IAM().ServiceAccounts().List(ctx, fmt.Sprintf("projects/%s", c.Project()))
+	if err != nil {
+		return nil, fmt.Errorf("error listing ServiceAccounts %w", err)
+	}
+	var resourceTrackers []*resources.Resource
+	for _, sa := range sas {
+		tokens := strings.Split(gce.LastComponent(sa.Name), "@")
+		if len(tokens) != 2 {
+			return nil, fmt.Errorf("Invalid service account email '%s'", gce.LastComponent(sa.Name))
+		}
+		accountID := tokens[0]
+		names := []string{gce.ControlPlane, gce.Bastion, gce.Node}
+		for _, name := range names {
+			generatedName := gce.ServiceAccountName(name, d.clusterName)
+			if generatedName == accountID {
+				resourceTracker := &resources.Resource{
+					Name:    gce.LastComponent(sa.Name),
+					ID:      sa.Name,
+					Type:    typeServiceAccount,
+					Deleter: deleteServiceAccount,
+					Obj:     sa,
+				}
+
+				klog.V(4).Infof("found resource: %s", sa.Name)
+				resourceTrackers = append(resourceTrackers, resourceTracker)
+				break
+			}
+		}
+	}
+	return resourceTrackers, nil
+}
+
+func deleteServiceAccount(cloud fi.Cloud, r *resources.Resource) error {
+	c := cloud.(gce.GCECloud)
+	o := r.Obj.(*iam.ServiceAccount)
+
+	klog.V(2).Infof("deleting GCE ServiceAccount %s", o.Name)
+	_, err := c.IAM().ServiceAccounts().Delete(o.Name)
+	return err
+}
+
+// containsOnlyListedIGMs returns true if all the given backend service's backends
+// are contained in the provided list of IGM resources.
+func containsOnlyListedIGMs(svc *compute.BackendService, igms []*resources.Resource) bool {
+	for _, be := range svc.Backends {
+		listed := false
+		for _, igm := range igms {
+			// NOTE: this should be sufficient / strict enough since IGM names include the cluster
+			// that they are part of, but revisit if naming conventions change.
+			if strings.HasSuffix(be.Group, "/"+igm.Name) {
+				listed = true
+				break
+			}
+		}
+
+		if !listed {
+			return false
+		}
+	}
+	return true
+}
+
+func (d *clusterDiscoveryGCE) listBackendServices() ([]*resources.Resource, error) {
+	c := d.gceCloud
+
+	svcs, err := c.Compute().RegionBackendServices().List(context.Background(), c.Project(), c.Region())
+	if err != nil {
+		if gce.IsNotFound(err) {
+			klog.Infof("backend services not found, assuming none exist in project: %q region: %q", c.Project(), c.Region())
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Failed to list backend services: %w", err)
+	}
+	// TODO: cache, for efficiency, if needed.
+	// Find all relevant backend services by finding all the cluster's IGMs, and then
+	// listing all backend services in the project / region, then selecting
+	// the backend services which contain only the relevant IGMs.
+	igms, err := d.listInstanceGroupManagersAndInstances()
+	if err != nil {
+		return nil, err
+	}
+	var bs []*resources.Resource
+	for _, svc := range svcs {
+		if containsOnlyListedIGMs(svc, igms) {
+			bs = append(bs, &resources.Resource{
+				Name: svc.Name,
+				ID:   svc.Name,
+				Type: typeBackendService,
+				Deleter: func(cloud fi.Cloud, r *resources.Resource) error {
+					op, err := c.Compute().RegionBackendServices().Delete(c.Project(), c.Region(), svc.Name)
+					if err != nil {
+						return err
+					}
+					return c.WaitForOp(op)
+				},
+				Obj: svc,
+			})
+		}
+	}
+
+	return bs, nil
+}
+
+func (d *clusterDiscoveryGCE) listHealthchecks() ([]*resources.Resource, error) {
+	c := d.gceCloud
+	// TODO: cache, for efficiency, if needed.
+	// Find relevant healthchecks by finding all the backend services relevant to this
+	// cluster, then selecting all the healthchecks they use.
+	backendServices, err := d.listBackendServices()
+	if err != nil {
+		return nil, err
+	}
+	hcs := make(map[string]struct{})
+	for _, bs := range backendServices {
+		bsObj, ok := bs.Obj.(*compute.BackendService)
+		if !ok {
+			return nil, fmt.Errorf("%T is not a *compute.BackendService", bs)
+		}
+		for _, hc := range bsObj.HealthChecks {
+			hcs[hc] = struct{}{}
+		}
+	}
+	var hcResources []*resources.Resource
+	for hc := range hcs {
+		hcResources = append(hcResources, &resources.Resource{
+			Name: gce.LastComponent(hc),
+			ID:   gce.LastComponent(hc),
+			Type: typeHealthcheck,
+			Deleter: func(cloud fi.Cloud, r *resources.Resource) error {
+				op, err := c.Compute().RegionHealthChecks().Delete(c.Project(), c.Region(), gce.LastComponent(hc))
+				if err != nil {
+					return err
+				}
+				return c.WaitForOp(op)
+			},
+			Obj: hc,
+		})
+	}
+
+	return hcResources, nil
+}
+
 func (d *clusterDiscoveryGCE) listNetworks() ([]*resources.Resource, error) {
 	// Templates are very accurate because of the metadata, so use those as the sanity check
 	templates, err := d.findInstanceTemplates()
@@ -993,7 +1166,7 @@ func (d *clusterDiscoveryGCE) listNetworks() ([]*resources.Resource, error) {
 	}
 
 	for _, o := range networks.Items {
-		if o.Name != gce.SafeClusterName(d.clusterName) {
+		if o.Name != gce.SafeTruncatedClusterName(d.clusterName, 63) {
 			klog.V(8).Infof("skipping network with name %q", o.Name)
 			continue
 		}
@@ -1063,7 +1236,11 @@ func (d *clusterDiscoveryGCE) matchesClusterNameMultipart(name string, maxParts 
 		if id == "" {
 			continue
 		}
-		if name == gce.SafeObjectName(id, d.clusterName) {
+
+		safeName := gce.SafeObjectName(id, d.clusterName)
+		clusterNameHash := truncate.HashString(gce.SafeClusterName(d.clusterName), 6)
+
+		if name == safeName || strings.Contains(name, clusterNameHash) {
 			return true
 		}
 	}

@@ -62,6 +62,8 @@ var (
 	Spotinst = new("Spotinst", Bool(false))
 	// SpotinstOcean toggles the use of Spotinst Ocean instance group implementation.
 	SpotinstOcean = new("SpotinstOcean", Bool(false))
+	// SpotinstOceanTemplate toggles the use of Spotinst Ocean object as a template for Virtual Node Groups.
+	SpotinstOceanTemplate = new("SpotinstOceanTemplate", Bool(false))
 	// SpotinstHybrid toggles between hybrid and full instance group implementations.
 	SpotinstHybrid = new("SpotinstHybrid", Bool(false))
 	// SpotinstController toggles the installation of the Spotinst controller addon.
@@ -84,10 +86,12 @@ var (
 	UseAddonOperators = new("UseAddonOperators", Bool(false))
 	// TerraformManagedFiles enables rendering managed files into the Terraform configuration.
 	TerraformManagedFiles = new("TerraformManagedFiles", Bool(true))
-	// AlphaAllowGCE is a feature flag that gates GCE support while it is alpha.
-	AlphaAllowGCE = new("AlphaAllowGCE", Bool(false))
 	// Karpenter enables karpenter-managed Instance Groups
 	Karpenter = new("Karpenter", Bool(false))
+	// ImageDigest remaps all manifests with image digests
+	ImageDigest = new("ImageDigest", Bool(true))
+	// Hetzner toggles the Hetzner Cloud support.
+	Hetzner = new("Hetzner", Bool(false))
 )
 
 // FeatureFlag defines a feature flag

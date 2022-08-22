@@ -24,7 +24,7 @@
 
 #set -x
 
-# bazel caching doesn't work when when we switch architectures
+# Dev environments typically do not need to test multiple architectures
 KOPS_ARCH=amd64
 export KOPS_ARCH
 
@@ -43,8 +43,5 @@ export KOPS_BASE_URL=https://storage.googleapis.com/${UPLOAD_DEST_BUCKET}/kops/$
 KOPS_STATE_STORE="gs://kops-state-$(gcloud config get-value project)"
 export KOPS_STATE_STORE
 gsutil ls "${KOPS_STATE_STORE}" || gsutil mb "${KOPS_STATE_STORE}" || return
-
-# Set feature flags needed on GCE
-export KOPS_FEATURE_FLAGS=AlphaAllowGCE
 
 echo "SUCCESS"

@@ -187,8 +187,10 @@ func TestValidateSubnets(t *testing.T) {
 	}
 	for _, g := range grid {
 		cluster := &kops.ClusterSpec{
-			CloudProvider: "aws",
-			Subnets:       g.Input,
+			CloudProvider: kops.CloudProviderSpec{
+				AWS: &kops.AWSSpec{},
+			},
+			Subnets: g.Input,
 		}
 		errs := validateSubnets(cluster, field.NewPath("subnets"))
 
@@ -251,7 +253,9 @@ func TestValidateKubeAPIServer(t *testing.T) {
 						RBAC: &kops.RBACAuthorizationSpec{},
 					},
 					KubernetesVersion: "1.19.0",
-					CloudProvider:     "aws",
+					CloudProvider: kops.CloudProviderSpec{
+						AWS: &kops.AWSSpec{},
+					},
 				},
 			},
 			ExpectedErrors: []string{
@@ -268,7 +272,9 @@ func TestValidateKubeAPIServer(t *testing.T) {
 						RBAC: &kops.RBACAuthorizationSpec{},
 					},
 					KubernetesVersion: "1.19.0",
-					CloudProvider:     "aws",
+					CloudProvider: kops.CloudProviderSpec{
+						AWS: &kops.AWSSpec{},
+					},
 				},
 			},
 		},
@@ -282,7 +288,9 @@ func TestValidateKubeAPIServer(t *testing.T) {
 						RBAC: &kops.RBACAuthorizationSpec{},
 					},
 					KubernetesVersion: "1.19.0",
-					CloudProvider:     "aws",
+					CloudProvider: kops.CloudProviderSpec{
+						AWS: &kops.AWSSpec{},
+					},
 				},
 			},
 			ExpectedErrors: []string{
@@ -824,7 +832,9 @@ func Test_Validate_Cilium(t *testing.T) {
 				IPAM: "eni",
 			},
 			Spec: kops.ClusterSpec{
-				CloudProvider: "aws",
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
 			},
 		},
 		{
@@ -833,7 +843,9 @@ func Test_Validate_Cilium(t *testing.T) {
 				IPAM:       "eni",
 			},
 			Spec: kops.ClusterSpec{
-				CloudProvider: "aws",
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
 			},
 		},
 		{
@@ -848,7 +860,9 @@ func Test_Validate_Cilium(t *testing.T) {
 				IPAM:       "eni",
 			},
 			Spec: kops.ClusterSpec{
-				CloudProvider: "aws",
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
 			},
 			ExpectedErrors: []string{"Forbidden::cilium.masquerade"},
 		},
@@ -858,7 +872,9 @@ func Test_Validate_Cilium(t *testing.T) {
 				InstallIptablesRules: fi.Bool(false),
 			},
 			Spec: kops.ClusterSpec{
-				CloudProvider: "aws",
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
 			},
 			ExpectedErrors: []string{"Forbidden::cilium.enableL7Proxy"},
 		},
@@ -867,7 +883,9 @@ func Test_Validate_Cilium(t *testing.T) {
 				IPAM: "eni",
 			},
 			Spec: kops.ClusterSpec{
-				CloudProvider: "gce",
+				CloudProvider: kops.CloudProviderSpec{
+					GCE: &kops.GCESpec{},
+				},
 			},
 			ExpectedErrors: []string{"Forbidden::cilium.ipam"},
 		},
@@ -903,7 +921,7 @@ func Test_Validate_Cilium(t *testing.T) {
 		},
 		{
 			Cilium: kops.CiliumNetworkingSpec{
-				Version: "v1.8.0",
+				Version: "v1.11.6",
 				Hubble: &kops.HubbleSpec{
 					Enabled: fi.Bool(true),
 				},
@@ -1159,6 +1177,7 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 	grid := []struct {
 		Description    string
 		Input          kops.CloudConfiguration
+		CloudProvider  kops.CloudProviderSpec
 		ExpectedErrors []string
 	}{
 		{
@@ -1179,8 +1198,9 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 		},
 		{
 			Description: "os false",
-			Input: kops.CloudConfiguration{
-				Openstack: &kops.OpenstackConfiguration{
+			Input:       kops.CloudConfiguration{},
+			CloudProvider: kops.CloudProviderSpec{
+				Openstack: &kops.OpenstackSpec{
 					BlockStorage: &kops.OpenstackBlockStorageConfig{
 						CreateStorageClass: fi.Bool(false),
 					},
@@ -1189,8 +1209,9 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 		},
 		{
 			Description: "os true",
-			Input: kops.CloudConfiguration{
-				Openstack: &kops.OpenstackConfiguration{
+			Input:       kops.CloudConfiguration{},
+			CloudProvider: kops.CloudProviderSpec{
+				Openstack: &kops.OpenstackSpec{
 					BlockStorage: &kops.OpenstackBlockStorageConfig{
 						CreateStorageClass: fi.Bool(true),
 					},
@@ -1201,7 +1222,9 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 			Description: "all false, os false",
 			Input: kops.CloudConfiguration{
 				ManageStorageClasses: fi.Bool(false),
-				Openstack: &kops.OpenstackConfiguration{
+			},
+			CloudProvider: kops.CloudProviderSpec{
+				Openstack: &kops.OpenstackSpec{
 					BlockStorage: &kops.OpenstackBlockStorageConfig{
 						CreateStorageClass: fi.Bool(false),
 					},
@@ -1212,7 +1235,9 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 			Description: "all false, os true",
 			Input: kops.CloudConfiguration{
 				ManageStorageClasses: fi.Bool(false),
-				Openstack: &kops.OpenstackConfiguration{
+			},
+			CloudProvider: kops.CloudProviderSpec{
+				Openstack: &kops.OpenstackSpec{
 					BlockStorage: &kops.OpenstackBlockStorageConfig{
 						CreateStorageClass: fi.Bool(true),
 					},
@@ -1224,7 +1249,9 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 			Description: "all true, os false",
 			Input: kops.CloudConfiguration{
 				ManageStorageClasses: fi.Bool(true),
-				Openstack: &kops.OpenstackConfiguration{
+			},
+			CloudProvider: kops.CloudProviderSpec{
+				Openstack: &kops.OpenstackSpec{
 					BlockStorage: &kops.OpenstackBlockStorageConfig{
 						CreateStorageClass: fi.Bool(false),
 					},
@@ -1236,7 +1263,9 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 			Description: "all true, os true",
 			Input: kops.CloudConfiguration{
 				ManageStorageClasses: fi.Bool(true),
-				Openstack: &kops.OpenstackConfiguration{
+			},
+			CloudProvider: kops.CloudProviderSpec{
+				Openstack: &kops.OpenstackSpec{
 					BlockStorage: &kops.OpenstackBlockStorageConfig{
 						CreateStorageClass: fi.Bool(true),
 					},
@@ -1248,7 +1277,10 @@ func Test_Validate_CloudConfiguration(t *testing.T) {
 	for _, g := range grid {
 		fldPath := field.NewPath("cloudConfig")
 		t.Run(g.Description, func(t *testing.T) {
-			errs := validateCloudConfiguration(&g.Input, fldPath)
+			spec := &kops.ClusterSpec{
+				CloudProvider: g.CloudProvider,
+			}
+			errs := validateCloudConfiguration(&g.Input, spec, fldPath)
 			testErrors(t, g.Input, errs, g.ExpectedErrors)
 		})
 	}
@@ -1341,7 +1373,7 @@ func TestValidateSAExternalPermissions(t *testing.T) {
 	}
 }
 
-func Test_Validate_Nvdia(t *testing.T) {
+func Test_Validate_Nvidia_Cluster(t *testing.T) {
 	grid := []struct {
 		Input          kops.ClusterSpec
 		ExpectedErrors []string
@@ -1353,7 +1385,9 @@ func Test_Validate_Nvdia(t *testing.T) {
 						Enabled: fi.Bool(true),
 					},
 				},
-				CloudProvider:    "aws",
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
 				ContainerRuntime: "containerd",
 			},
 		},
@@ -1364,7 +1398,9 @@ func Test_Validate_Nvdia(t *testing.T) {
 						Enabled: fi.Bool(true),
 					},
 				},
-				CloudProvider:    "gce",
+				CloudProvider: kops.CloudProviderSpec{
+					Openstack: &kops.OpenstackSpec{},
+				},
 				ContainerRuntime: "containerd",
 			},
 			ExpectedErrors: []string{"Forbidden::containerd.nvidiaGPU"},
@@ -1376,14 +1412,96 @@ func Test_Validate_Nvdia(t *testing.T) {
 						Enabled: fi.Bool(true),
 					},
 				},
-				CloudProvider:    "aws",
+				CloudProvider: kops.CloudProviderSpec{
+					GCE: &kops.GCESpec{},
+				},
+				ContainerRuntime: "containerd",
+			},
+			ExpectedErrors: []string{"Forbidden::containerd.nvidiaGPU"},
+		},
+		{
+			Input: kops.ClusterSpec{
+				Containerd: &kops.ContainerdConfig{
+					NvidiaGPU: &kops.NvidiaGPUConfig{
+						Enabled: fi.Bool(true),
+					},
+				},
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
 				ContainerRuntime: "docker",
 			},
 			ExpectedErrors: []string{"Forbidden::containerd.nvidiaGPU"},
 		},
 	}
 	for _, g := range grid {
-		errs := validateNvidiaConfig(&g.Input, g.Input.Containerd.NvidiaGPU, field.NewPath("containerd", "nvidiaGPU"))
+		errs := validateNvidiaConfig(&g.Input, g.Input.Containerd.NvidiaGPU, field.NewPath("containerd", "nvidiaGPU"), true)
+		testErrors(t, g.Input, errs, g.ExpectedErrors)
+	}
+}
+
+func Test_Validate_Nvidia_Ig(t *testing.T) {
+	grid := []struct {
+		Input          kops.ClusterSpec
+		ExpectedErrors []string
+	}{
+		{
+			Input: kops.ClusterSpec{
+				Containerd: &kops.ContainerdConfig{
+					NvidiaGPU: &kops.NvidiaGPUConfig{
+						Enabled: fi.Bool(true),
+					},
+				},
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
+				ContainerRuntime: "containerd",
+			},
+		},
+		{
+			Input: kops.ClusterSpec{
+				Containerd: &kops.ContainerdConfig{
+					NvidiaGPU: &kops.NvidiaGPUConfig{
+						Enabled: fi.Bool(true),
+					},
+				},
+				CloudProvider: kops.CloudProviderSpec{
+					Openstack: &kops.OpenstackSpec{},
+				},
+				ContainerRuntime: "containerd",
+			},
+		},
+		{
+			Input: kops.ClusterSpec{
+				Containerd: &kops.ContainerdConfig{
+					NvidiaGPU: &kops.NvidiaGPUConfig{
+						Enabled: fi.Bool(true),
+					},
+				},
+				CloudProvider: kops.CloudProviderSpec{
+					GCE: &kops.GCESpec{},
+				},
+				ContainerRuntime: "containerd",
+			},
+			ExpectedErrors: []string{"Forbidden::containerd.nvidiaGPU"},
+		},
+		{
+			Input: kops.ClusterSpec{
+				Containerd: &kops.ContainerdConfig{
+					NvidiaGPU: &kops.NvidiaGPUConfig{
+						Enabled: fi.Bool(true),
+					},
+				},
+				CloudProvider: kops.CloudProviderSpec{
+					AWS: &kops.AWSSpec{},
+				},
+				ContainerRuntime: "docker",
+			},
+			ExpectedErrors: []string{"Forbidden::containerd.nvidiaGPU"},
+		},
+	}
+	for _, g := range grid {
+		errs := validateNvidiaConfig(&g.Input, g.Input.Containerd.NvidiaGPU, field.NewPath("containerd", "nvidiaGPU"), false)
 		testErrors(t, g.Input, errs, g.ExpectedErrors)
 	}
 }

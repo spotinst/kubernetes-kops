@@ -42,20 +42,19 @@ func TestBuildAzure(t *testing.T) {
 			Name: "testcluster.test.com",
 		},
 		Spec: kops.ClusterSpec{
-			CloudProvider: string(kops.CloudProviderAzure),
-			NetworkID:     vnetName,
-			Subnets: []kops.ClusterSubnetSpec{
-				{
-					Name:   "test-subnet",
-					Region: "eastus",
-				},
-			},
-			CloudConfig: &kops.CloudConfiguration{
-				Azure: &kops.AzureConfiguration{
+			CloudProvider: kops.CloudProviderSpec{
+				Azure: &kops.AzureSpec{
 					SubscriptionID:    subscriptionID,
 					TenantID:          tenantID,
 					ResourceGroupName: resourceGroupName,
 					RouteTableName:    routeTableName,
+				},
+			},
+			NetworkID: vnetName,
+			Subnets: []kops.ClusterSubnetSpec{
+				{
+					Name:   "test-subnet",
+					Region: "eastus",
 				},
 			},
 		},
@@ -119,7 +118,9 @@ func TestBuildAWSCustomNodeIPFamilies(t *testing.T) {
 			Name: "testcluster.test.com",
 		},
 		Spec: kops.ClusterSpec{
-			CloudProvider: string(kops.CloudProviderAWS),
+			CloudProvider: kops.CloudProviderSpec{
+				AWS: &kops.AWSSpec{},
+			},
 			CloudConfig: &kops.CloudConfiguration{
 				NodeIPFamilies: []string{"ipv6"},
 			},

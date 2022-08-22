@@ -127,7 +127,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalipv6examplecom.Propert
   cloudConfig:
     awsEBSCSIDriver:
       enabled: true
-      version: v1.5.0
+      version: v1.8.0
     manageStorageClasses: true
     nodeIPFamilies:
     - ipv6
@@ -135,15 +135,17 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalipv6examplecom.Propert
   containerRuntime: containerd
   containerd:
     logLevel: info
-    version: 1.4.12
+    runc:
+      version: 1.1.3
+    version: 1.6.8
   docker:
     skipInstall: true
   encryptionConfig: null
   etcdClusters:
     events:
-      version: 3.4.13
+      version: 3.5.4
     main:
-      version: 3.4.13
+      version: 3.5.4
   kubeAPIServer:
     allowPrivileged: true
     anonymousAuth: false
@@ -170,7 +172,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalipv6examplecom.Propert
     featureGates:
       CSIMigrationAWS: "true"
       InTreePluginAWSUnregister: "true"
-    image: k8s.gcr.io/kube-apiserver:v1.21.0
+    image: registry.k8s.io/kube-apiserver:v1.24.0
     kubeletPreferredAddressTypes:
     - InternalIP
     - Hostname
@@ -201,20 +203,20 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalipv6examplecom.Propert
     featureGates:
       CSIMigrationAWS: "true"
       InTreePluginAWSUnregister: "true"
-    image: k8s.gcr.io/kube-controller-manager:v1.21.0
+    image: registry.k8s.io/kube-controller-manager:v1.24.0
     leaderElection:
       leaderElect: true
     logLevel: 2
     useServiceAccountCredentials: true
   kubeProxy:
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.21.0
+    image: registry.k8s.io/kube-proxy:v1.24.0
     logLevel: 2
   kubeScheduler:
     featureGates:
       CSIMigrationAWS: "true"
       InTreePluginAWSUnregister: "true"
-    image: k8s.gcr.io/kube-scheduler:v1.21.0
+    image: registry.k8s.io/kube-scheduler:v1.24.0
     leaderElection:
       leaderElect: true
     logLevel: 2
@@ -232,9 +234,11 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalipv6examplecom.Propert
       InTreePluginAWSUnregister: "true"
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
-    networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
+    protectKernelDefaults: true
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
   masterKubelet:
     anonymousAuth: false
     cgroupDriver: systemd
@@ -249,10 +253,12 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalipv6examplecom.Propert
       InTreePluginAWSUnregister: "true"
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
-    networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
+    protectKernelDefaults: true
     registerSchedulable: false
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -261,7 +267,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersminimalipv6examplecom.Propert
   ConfigBase: memfs://clusters.example.com/minimal-ipv6.example.com
   InstanceGroupName: master-us-test-1a
   InstanceGroupRole: Master
-  NodeupConfigHash: 7n+GG/TP2TnAc4zt2DEwzYMr1OxW64J553Qg53x9nHc=
+  NodeupConfigHash: 2w1A4LxO8nGS/6w6JTCm4x8c9ZqJhNgtlRWyqVG+314=
 
   __EOF_KUBE_ENV
 
@@ -396,7 +402,7 @@ Resources.AWSEC2LaunchTemplatenodesminimalipv6examplecom.Properties.LaunchTempla
   cloudConfig:
     awsEBSCSIDriver:
       enabled: true
-      version: v1.5.0
+      version: v1.8.0
     manageStorageClasses: true
     nodeIPFamilies:
     - ipv6
@@ -404,12 +410,14 @@ Resources.AWSEC2LaunchTemplatenodesminimalipv6examplecom.Properties.LaunchTempla
   containerRuntime: containerd
   containerd:
     logLevel: info
-    version: 1.4.12
+    runc:
+      version: 1.1.3
+    version: 1.6.8
   docker:
     skipInstall: true
   kubeProxy:
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.21.0
+    image: registry.k8s.io/kube-proxy:v1.24.0
     logLevel: 2
   kubelet:
     anonymousAuth: false
@@ -425,9 +433,11 @@ Resources.AWSEC2LaunchTemplatenodesminimalipv6examplecom.Properties.LaunchTempla
       InTreePluginAWSUnregister: "true"
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
-    networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
+    protectKernelDefaults: true
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -436,7 +446,7 @@ Resources.AWSEC2LaunchTemplatenodesminimalipv6examplecom.Properties.LaunchTempla
   ConfigBase: memfs://clusters.example.com/minimal-ipv6.example.com
   InstanceGroupName: nodes
   InstanceGroupRole: Node
-  NodeupConfigHash: k3S4b5PZxxqX1r+HKj0sppDKa/fHxo0Ai6GTSeTF04E=
+  NodeupConfigHash: RBiMb6U6OpYXFTU8SbRacJwq5vl0D1zicQG1sPx076Y=
 
   __EOF_KUBE_ENV
 

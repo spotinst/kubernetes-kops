@@ -269,14 +269,10 @@ var gceZones = []string{
 
 var doZones = []string{
 	"nyc1",
-	"nyc2",
 	"nyc3",
 
-	"sfo1",
-	"sfo2",
 	"sfo3",
 
-	"ams2",
 	"ams3",
 
 	"tor1",
@@ -288,6 +284,15 @@ var doZones = []string{
 	"fra1",
 
 	"blr1",
+}
+
+var hetznerZones = []string{
+	// eu-central
+	"fsn1",
+	"nbg1",
+	"hel1",
+	// us-east
+	"ash",
 }
 
 var azureZones = []string{
@@ -391,6 +396,8 @@ func WellKnownZonesForCloud(matchCloud kops.CloudProviderID) []string {
 		return doZones
 	case kops.CloudProviderGCE:
 		return gceZones
+	case kops.CloudProviderHetzner:
+		return hetznerZones
 
 	default:
 		return nil

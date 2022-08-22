@@ -22,6 +22,42 @@ spec:
     enabled: true
 ```
 
+Though the AWS Load Balancer Controller can integrate the AWS WAF and
+Shield services with your Application Load Balancers (ALBs), kOps
+disables those capabilities by default.
+
+{{ kops_feature_table(kops_added_default='1.24') }}
+
+You can enable use of either or both of the WAF and WAF Classic
+services by including the following fields in the cluster spec:
+
+```yaml
+spec:
+  awsLoadBalancerController:
+    enabled: true
+    enableWAF: true
+    enableWAFv2: true
+```
+
+Note that the controller will only succeed in associating one WAF with
+a given ALB at a time, despite it accepting both the
+"alb.ingress.kubernetes.io/waf-acl-id" and
+"alb.ingress.kubernetes.io/wafv2-acl-arn" annotations on the same
+_Ingress_ object.
+
+You can enable use of Shield Advanced by including the following fields in the cluster spec:
+
+```yaml
+spec:
+  awsLoadBalancerController:
+    enabled: true
+    enableShield: true
+```
+
+Support for the WAF and Shield services in kOps is currently **beta**, meaning
+that the accepted configuration and the AWS resources involved may
+change.
+
 Read more in the [official documentation](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/).
 
 #### Cluster autoscaler
@@ -92,13 +128,29 @@ spec:
     managed: false
 ```
 
+##### DNS nameserver configuration for cert-manager pod
+{{ kops_feature_table(kops_added_default='1.23.3', k8s_min='1.16') }}
+
+Optional list of DNS nameserver IP addresses for the cert-manager pod to use.
+This is useful if you have a public and private DNS zone for the same domain to ensure that cert-manager can access ingress, or DNS01 challenge TXT records at all times.
+
+You can set pod DNS nameserver configuration for cert-manager like so:
+```yaml
+spec:
+  certManager:
+    enabled: true
+    nameservers:
+      - 1.1.1.1
+      - 8.8.8.8
+```
+
 
 Read more about cert-manager in the [official documentation](https://cert-manager.io/docs/)
 
 #### Karpenter
 {{ kops_feature_table(kops_added_default='1.24') }}
 
-The Karpenter addon enables Karpenter-managed InstanceGroups. 
+The Karpenter addon enables Karpenter-managed InstanceGroups.
 
 ```yaml
 spec:
@@ -168,6 +220,7 @@ spec:
 ```yaml
 spec:
   nodeTerminationHandler:
+    cpuRequest: 200m
     enabled: true
     enableSQSTerminationDraining: true
     managedASGTag: "aws-node-termination-handler/managed"
@@ -224,6 +277,28 @@ spec:
     memoryRequest: 32Mi
     cpuRequest: 10m
 ```
+
+#### Pod Identity Webhook
+
+{{ kops_feature_table(kops_added_default='1.23') }}
+
+When using [IAM roles for Service Accounts](/cluster_spec/#service-account-issuer-discovery-and-aws-iam-roles-for-service-accounts-irsa) (IRSA), Pods require an additinal token to authenticate with the AWS API. In addition, the SDK requires specific environment variables set to make use of these tokens. This addon will mutate Pods configured to use IRSA so that users do not need to do this themselves.
+
+All ServiceAccounts configured with AWS privileges in the Cluster spec will automatically be mutated to assume the configured role.
+
+
+```yaml
+spec:
+  certManager:
+    enabled: true
+  podIdentityWebhook:
+    enabled: true
+```
+
+The EKS annotations on ServiceAccounts are typically not necessary as kOps will configure the webhook with all ServiceAccount to role mapping configured in the Cluster spec. But if you need specific configuration, you may annotate the ServiceAccount, overriding the kOps configuration.
+
+Read more about Pod Identity Webhook in the [official documentation](https://github.com/aws/amazon-eks-pod-identity-webhook).
+
 #### Snapshot controller
 
 {{ kops_feature_table(kops_added_default='1.21', k8s_min='1.20') }}
@@ -246,7 +321,6 @@ spec:
     awsEBSCSIDriver:
       enabled: true
 ```
-
 
 ## Custom addons
 

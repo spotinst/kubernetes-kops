@@ -287,7 +287,7 @@ func TestPopulateCluster_NonMasqueradeCIDR_Required(t *testing.T) {
 
 func TestPopulateCluster_CloudProvider_Required(t *testing.T) {
 	cloud, c := buildMinimalCluster()
-	c.Spec.CloudProvider = ""
+	c.Spec.CloudProvider = kopsapi.CloudProviderSpec{}
 
 	expectErrorFromPopulateCluster(t, c, cloud, "cloudProvider")
 }
@@ -391,7 +391,7 @@ func TestPopulateCluster_DockerVersion(t *testing.T) {
 		},
 		{
 			KubernetesVersion: "1.21.0",
-			DockerVersion:     "20.10.9",
+			DockerVersion:     "20.10.17",
 		},
 	}
 

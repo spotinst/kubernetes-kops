@@ -23,6 +23,7 @@ type ECSCluster struct {
 	AutoScaler  *ECSAutoScaler `json:"autoScaler,omitempty"`
 	Strategy    *ECSStrategy   `json:"strategy,omitempty"`
 	Scheduling  *ECSScheduling `json:"scheduling,omitempty"`
+	Logging     *ECSLogging    `json:"logging,omitempty"`
 
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -49,6 +50,7 @@ type ECSStrategy struct {
 	DrainingTimeout          *int  `json:"drainingTimeout,omitempty"`
 	UtilizeReservedInstances *bool `json:"utilizeReservedInstances,omitempty"`
 	UtilizeCommitments       *bool `json:"utilizeCommitments,omitempty"`
+	SpotPercentage           *int  `json:"spotPercentage,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -57,6 +59,27 @@ type ECSStrategy struct {
 type ECSScheduling struct {
 	Tasks         []*ECSTask        `json:"tasks,omitempty"`
 	ShutdownHours *ECSShutdownHours `json:"shutdownHours,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSLogging struct {
+	Export *ECSExport `json:"export,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSExport struct {
+	S3 *ECSS3 `json:"s3,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type ECSS3 struct {
+	ID *string `json:"id,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -106,16 +129,18 @@ type ECSInstanceTypes struct {
 }
 
 type ECSLaunchSpecification struct {
-	AssociatePublicIPAddress *bool                    `json:"associatePublicIpAddress,omitempty"`
-	SecurityGroupIDs         []string                 `json:"securityGroupIds,omitempty"`
-	ImageID                  *string                  `json:"imageId,omitempty"`
-	KeyPair                  *string                  `json:"keyPair,omitempty"`
-	UserData                 *string                  `json:"userData,omitempty"`
-	IAMInstanceProfile       *ECSIAMInstanceProfile   `json:"iamInstanceProfile,omitempty"`
-	Tags                     []*Tag                   `json:"tags,omitempty"`
-	Monitoring               *bool                    `json:"monitoring,omitempty"`
-	EBSOptimized             *bool                    `json:"ebsOptimized,omitempty"`
-	BlockDeviceMappings      []*ECSBlockDeviceMapping `json:"blockDeviceMappings,omitempty"`
+	AssociatePublicIPAddress *bool                       `json:"associatePublicIpAddress,omitempty"`
+	SecurityGroupIDs         []string                    `json:"securityGroupIds,omitempty"`
+	ImageID                  *string                     `json:"imageId,omitempty"`
+	KeyPair                  *string                     `json:"keyPair,omitempty"`
+	UserData                 *string                     `json:"userData,omitempty"`
+	IAMInstanceProfile       *ECSIAMInstanceProfile      `json:"iamInstanceProfile,omitempty"`
+	Tags                     []*Tag                      `json:"tags,omitempty"`
+	Monitoring               *bool                       `json:"monitoring,omitempty"`
+	EBSOptimized             *bool                       `json:"ebsOptimized,omitempty"`
+	BlockDeviceMappings      []*ECSBlockDeviceMapping    `json:"blockDeviceMappings,omitempty"`
+	InstanceMetadataOptions  *ECSInstanceMetadataOptions `json:"instanceMetadataOptions,omitempty"`
+	UseAsTemplateOnly        *bool                       `json:"useAsTemplateOnly,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -139,12 +164,13 @@ type ECSIAMInstanceProfile struct {
 }
 
 type ECSAutoScaler struct {
-	IsEnabled      *bool                        `json:"isEnabled,omitempty"`
-	IsAutoConfig   *bool                        `json:"isAutoConfig,omitempty"`
-	Cooldown       *int                         `json:"cooldown,omitempty"`
-	Headroom       *ECSAutoScalerHeadroom       `json:"headroom,omitempty"`
-	ResourceLimits *ECSAutoScalerResourceLimits `json:"resourceLimits,omitempty"`
-	Down           *ECSAutoScalerDown           `json:"down,omitempty"`
+	IsEnabled              *bool                        `json:"isEnabled,omitempty"`
+	IsAutoConfig           *bool                        `json:"isAutoConfig,omitempty"`
+	Cooldown               *int                         `json:"cooldown,omitempty"`
+	Headroom               *ECSAutoScalerHeadroom       `json:"headroom,omitempty"`
+	ResourceLimits         *ECSAutoScalerResourceLimits `json:"resourceLimits,omitempty"`
+	Down                   *ECSAutoScalerDown           `json:"down,omitempty"`
+	AutoHeadroomPercentage *int                         `json:"autoHeadroomPercentage,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -219,11 +245,12 @@ type ECSRollClusterOutput struct {
 }
 
 type ECSRoll struct {
-	ClusterID           *string  `json:"clusterId,omitempty"`
-	Comment             *string  `json:"comment,omitempty"`
-	BatchSizePercentage *int     `json:"batchSizePercentage,omitempty"`
-	LaunchSpecIDs       []string `json:"launchSpecIds,omitempty"`
-	InstanceIDs         []string `json:"instanceIds,omitempty"`
+	ClusterID                 *string  `json:"clusterId,omitempty"`
+	Comment                   *string  `json:"comment,omitempty"`
+	BatchSizePercentage       *int     `json:"batchSizePercentage,omitempty"`
+	BatchMinHealthyPercentage *int     `json:"batchMinHealthyPercentage,omitempty"`
+	LaunchSpecIDs             []string `json:"launchSpecIds,omitempty"`
+	InstanceIDs               []string `json:"instanceIds,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -243,6 +270,14 @@ type ECSRollClusterStatus struct {
 type ECSProgress struct {
 	Unit  *string `json:"unit,omitempty"`
 	Value *int    `json:"value,omitempty"`
+}
+
+type ECSInstanceMetadataOptions struct {
+	HTTPTokens              *string `json:"httpTokens,omitempty"`
+	HTTPPutResponseHopLimit *int    `json:"httpPutResponseHopLimit,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
 }
 
 func ecsClusterFromJSON(in []byte) (*ECSCluster, error) {
@@ -565,6 +600,64 @@ func (o *ECSCluster) SetScheduling(v *ECSScheduling) *ECSCluster {
 	return o
 }
 
+func (o *ECSCluster) SetLogging(v *ECSLogging) *ECSCluster {
+	if o.Logging = v; o.Logging == nil {
+		o.nullFields = append(o.nullFields, "Logging")
+	}
+	return o
+}
+
+// endregion
+
+// region Logging
+
+func (o ECSLogging) MarshalJSON() ([]byte, error) {
+	type noMethod ECSLogging
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSLogging) SetExport(v *ECSExport) *ECSLogging {
+	if o.Export = v; o.Export == nil {
+		o.nullFields = append(o.nullFields, "Export")
+	}
+	return o
+}
+
+// endregion
+
+// region Export
+
+func (o ECSExport) MarshalJSON() ([]byte, error) {
+	type noMethod ECSExport
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSExport) SetS3(v *ECSS3) *ECSExport {
+	if o.S3 = v; o.S3 == nil {
+		o.nullFields = append(o.nullFields, "S3")
+	}
+	return o
+}
+
+// endregion
+
+// region S3
+
+func (o ECSS3) MarshalJSON() ([]byte, error) {
+	type noMethod ECSS3
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSS3) SetId(v *string) *ECSS3 {
+	if o.ID = v; o.ID == nil {
+		o.nullFields = append(o.nullFields, "ID")
+	}
+	return o
+}
+
 // endregion
 
 // region Scheduling
@@ -713,6 +806,13 @@ func (o *ECSStrategy) SetUtilizeCommitments(v *bool) *ECSStrategy {
 	return o
 }
 
+func (o *ECSStrategy) SetSpotPercentage(v *int) *ECSStrategy {
+	if o.SpotPercentage = v; o.SpotPercentage == nil {
+		o.nullFields = append(o.nullFields, "SpotPercentage")
+	}
+	return o
+}
+
 // endregion
 
 // region InstanceTypes
@@ -806,6 +906,20 @@ func (o *ECSLaunchSpecification) SetEBSOptimized(v *bool) *ECSLaunchSpecificatio
 func (o *ECSLaunchSpecification) SetBlockDeviceMappings(v []*ECSBlockDeviceMapping) *ECSLaunchSpecification {
 	if o.BlockDeviceMappings = v; o.BlockDeviceMappings == nil {
 		o.nullFields = append(o.nullFields, "BlockDeviceMappings")
+	}
+	return o
+}
+
+func (o *ECSLaunchSpecification) SetInstanceMetadataOptions(v *ECSInstanceMetadataOptions) *ECSLaunchSpecification {
+	if o.InstanceMetadataOptions = v; o.InstanceMetadataOptions == nil {
+		o.nullFields = append(o.nullFields, "InstanceMetadataOptions")
+	}
+	return o
+}
+
+func (o *ECSLaunchSpecification) SetUseAsTemplateOnly(v *bool) *ECSLaunchSpecification {
+	if o.UseAsTemplateOnly = v; o.UseAsTemplateOnly == nil {
+		o.nullFields = append(o.nullFields, "UseAsTemplateOnly")
 	}
 	return o
 }
@@ -917,6 +1031,13 @@ func (o *ECSAutoScaler) SetDown(v *ECSAutoScalerDown) *ECSAutoScaler {
 	return o
 }
 
+func (o *ECSAutoScaler) SetAutoHeadroomPercentage(v *int) *ECSAutoScaler {
+	if o.AutoHeadroomPercentage = v; o.AutoHeadroomPercentage == nil {
+		o.nullFields = append(o.nullFields, "AutoHeadroomPercentage")
+	}
+	return o
+}
+
 // endregion
 
 // region AutoScalerHeadroom
@@ -1013,6 +1134,13 @@ func (o *ECSRoll) SetBatchSizePercentage(v *int) *ECSRoll {
 	return o
 }
 
+func (o *ECSRoll) SetBatchMinHealthyPercentage(v *int) *ECSRoll {
+	if o.BatchMinHealthyPercentage = v; o.BatchMinHealthyPercentage == nil {
+		o.nullFields = append(o.nullFields, "BatchMinHealthyPercentage")
+	}
+	return o
+}
+
 func (o *ECSRoll) SetLaunchSpecIDs(v []string) *ECSRoll {
 	if o.LaunchSpecIDs = v; o.LaunchSpecIDs == nil {
 		o.nullFields = append(o.nullFields, "LaunchSpecIDs")
@@ -1023,6 +1151,30 @@ func (o *ECSRoll) SetLaunchSpecIDs(v []string) *ECSRoll {
 func (o *ECSRoll) SetInstanceIDs(v []string) *ECSRoll {
 	if o.InstanceIDs = v; o.InstanceIDs == nil {
 		o.nullFields = append(o.nullFields, "InstanceIDs")
+	}
+	return o
+}
+
+// endregion
+
+// region InstanceMetadataOptions
+
+func (o ECSInstanceMetadataOptions) MarshalJSON() ([]byte, error) {
+	type noMethod ECSInstanceMetadataOptions
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *ECSInstanceMetadataOptions) SetHTTPTokens(v *string) *ECSInstanceMetadataOptions {
+	if o.HTTPTokens = v; o.HTTPTokens == nil {
+		o.nullFields = append(o.nullFields, "HTTPTokens")
+	}
+	return o
+}
+
+func (o *ECSInstanceMetadataOptions) SetHTTPPutResponseHopLimit(v *int) *ECSInstanceMetadataOptions {
+	if o.HTTPPutResponseHopLimit = v; o.HTTPPutResponseHopLimit == nil {
+		o.nullFields = append(o.nullFields, "HTTPPutResponseHopLimit")
 	}
 	return o
 }

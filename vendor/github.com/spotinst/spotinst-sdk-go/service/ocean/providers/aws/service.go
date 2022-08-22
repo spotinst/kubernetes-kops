@@ -15,6 +15,7 @@ type Service interface {
 	serviceKubernetes
 	serviceECS
 	serviceCommon
+	serviceExtendedResourceDefinition
 }
 
 type serviceKubernetes interface {
@@ -43,6 +44,8 @@ type serviceKubernetes interface {
 	// Deprecated: Roll is obsolete, exists for backward compatibility only,
 	// and should not be used. Please use CreateRoll instead.
 	Roll(context.Context, *RollClusterInput) (*RollClusterOutput, error)
+
+	GetClusterAggregatedCosts(context.Context, *ClusterAggregatedCostInput) (*ClusterAggregatedCostOutput, error)
 }
 
 type serviceECS interface {
@@ -62,7 +65,19 @@ type serviceECS interface {
 }
 
 type serviceCommon interface {
+	ListOceanResourceSuggestions(context.Context, *ListOceanResourceSuggestionsInput) (*ListOceanResourceSuggestionsOutput, error)
+
+	// Deprecated: ListResourceSuggestions is obsolete, exists for backward compatibility only,
+	// and should not be used. Please use ListOceanResourceSuggestions instead.
 	ListResourceSuggestions(context.Context, *ListResourceSuggestionsInput) (*ListResourceSuggestionsOutput, error)
+}
+
+type serviceExtendedResourceDefinition interface {
+	ListExtendedResourceDefinition(context.Context, *ListExtendedResourceDefinitionsInput) (*ListExtendedResourceDefinitionsOutput, error)
+	CreateExtendedResourceDefinition(context.Context, *CreateExtendedResourceDefinitionInput) (*CreateExtendedResourceDefinitionOutput, error)
+	ReadExtendedResourceDefinition(context.Context, *ReadExtendedResourceDefinitionInput) (*ReadExtendedResourceDefinitionOutput, error)
+	UpdateExtendedResourceDefinition(context.Context, *UpdateExtendedResourceDefinitionInput) (*UpdateExtendedResourceDefinitionOutput, error)
+	DeleteExtendedResourceDefinition(context.Context, *DeleteExtendedResourceDefinitionInput) (*DeleteExtendedResourceDefinitionOutput, error)
 }
 
 type ServiceOp struct {

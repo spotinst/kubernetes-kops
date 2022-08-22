@@ -22,6 +22,7 @@ type VirtualNodeGroup struct {
 	AutoScale           *VirtualNodeGroupAutoScale           `json:"autoScale,omitempty"`
 	ResourceLimits      *VirtualNodeGroupResourceLimits      `json:"resourceLimits,omitempty"`
 	LaunchSpecification *VirtualNodeGroupLaunchSpecification `json:"launchSpecification,omitempty"`
+	Zones               []string                             `json:"zones,omitempty"`
 
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -39,7 +40,8 @@ type VirtualNodeGroupResourceLimits struct {
 }
 
 type VirtualNodeGroupAutoScale struct {
-	Headrooms []*VirtualNodeGroupHeadroom `json:"headrooms,omitempty"`
+	Headrooms              []*VirtualNodeGroupHeadroom `json:"headrooms,omitempty"`
+	AutoHeadroomPercentage *int                        `json:"autoHeadroomPercentage,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -323,6 +325,13 @@ func (o *VirtualNodeGroup) SetAutoScale(v *VirtualNodeGroupAutoScale) *VirtualNo
 	return o
 }
 
+func (o *VirtualNodeGroup) SetZones(v []string) *VirtualNodeGroup {
+	if o.Zones = v; o.Zones == nil {
+		o.nullFields = append(o.nullFields, "Zones")
+	}
+	return o
+}
+
 // endregion
 
 // region VirtualNodeGroupAutoScale
@@ -336,6 +345,13 @@ func (o VirtualNodeGroupAutoScale) MarshalJSON() ([]byte, error) {
 func (o *VirtualNodeGroupAutoScale) SetHeadrooms(v []*VirtualNodeGroupHeadroom) *VirtualNodeGroupAutoScale {
 	if o.Headrooms = v; o.Headrooms == nil {
 		o.nullFields = append(o.nullFields, "Headrooms")
+	}
+	return o
+}
+
+func (o *VirtualNodeGroupAutoScale) SetAutoHeadroomPercentage(v *int) *VirtualNodeGroupAutoScale {
+	if o.AutoHeadroomPercentage = v; o.AutoHeadroomPercentage == nil {
+		o.nullFields = append(o.nullFields, "AutoHeadroomPercentage")
 	}
 	return o
 }

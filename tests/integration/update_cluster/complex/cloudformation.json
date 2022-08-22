@@ -49,17 +49,7 @@
             "PropagateAtLaunch": true
           },
           {
-            "Key": "k8s.io/cluster-autoscaler/node-template/label/kubernetes.io/role",
-            "Value": "master",
-            "PropagateAtLaunch": true
-          },
-          {
             "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/control-plane",
-            "Value": "",
-            "PropagateAtLaunch": true
-          },
-          {
-            "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/master",
             "Value": "",
             "PropagateAtLaunch": true
           },
@@ -153,11 +143,6 @@
           {
             "Key": "foo/bar",
             "Value": "fib+baz",
-            "PropagateAtLaunch": true
-          },
-          {
-            "Key": "k8s.io/cluster-autoscaler/node-template/label/kubernetes.io/role",
-            "Value": "node",
             "PropagateAtLaunch": true
           },
           {
@@ -336,15 +321,7 @@
                   "Value": ""
                 },
                 {
-                  "Key": "k8s.io/cluster-autoscaler/node-template/label/kubernetes.io/role",
-                  "Value": "master"
-                },
-                {
                   "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/control-plane",
-                  "Value": ""
-                },
-                {
-                  "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/master",
                   "Value": ""
                 },
                 {
@@ -389,15 +366,7 @@
                   "Value": ""
                 },
                 {
-                  "Key": "k8s.io/cluster-autoscaler/node-template/label/kubernetes.io/role",
-                  "Value": "master"
-                },
-                {
                   "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/control-plane",
-                  "Value": ""
-                },
-                {
-                  "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/master",
                   "Value": ""
                 },
                 {
@@ -504,10 +473,6 @@
                   "Value": "fib+baz"
                 },
                 {
-                  "Key": "k8s.io/cluster-autoscaler/node-template/label/kubernetes.io/role",
-                  "Value": "node"
-                },
-                {
                   "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/node",
                   "Value": ""
                 },
@@ -543,10 +508,6 @@
                 {
                   "Key": "foo/bar",
                   "Value": "fib+baz"
-                },
-                {
-                  "Key": "k8s.io/cluster-autoscaler/node-template/label/kubernetes.io/role",
-                  "Value": "node"
                 },
                 {
                   "Key": "k8s.io/cluster-autoscaler/node-template/label/node-role.kubernetes.io/node",
@@ -673,6 +634,16 @@
         "TransitGatewayId": "tgw-123456"
       }
     },
+    "AWSEC2Routeuseast1aprivate19216811032": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "AWSEC2RouteTableprivateustest1acomplexexamplecom"
+        },
+        "DestinationCidrBlock": "192.168.1.10/32",
+        "TransitGatewayId": "tgw-0123456"
+      }
+    },
     "AWSEC2SecurityGroupEgressfrommasterscomplexexamplecomegressall0to00": {
       "Type": "AWS::EC2::SecurityGroupEgress",
       "Properties": {
@@ -719,6 +690,42 @@
         "ToPort": 0,
         "IpProtocol": "-1",
         "CidrIp": "0.0.0.0/0"
+      }
+    },
+    "AWSEC2SecurityGroupIngressfrom00000ingresstcp22to22masterscomplexexamplecom": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "AWSEC2SecurityGroupmasterscomplexexamplecom"
+        },
+        "FromPort": 22,
+        "ToPort": 22,
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": "pl-66666666"
+      }
+    },
+    "AWSEC2SecurityGroupIngressfrom00000ingresstcp22to22nodescomplexexamplecom": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "AWSEC2SecurityGroupnodescomplexexamplecom"
+        },
+        "FromPort": 22,
+        "ToPort": 22,
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": "pl-66666666"
+      }
+    },
+    "AWSEC2SecurityGroupIngressfrom00000ingresstcp443to443masterscomplexexamplecom": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "AWSEC2SecurityGroupmasterscomplexexamplecom"
+        },
+        "FromPort": 443,
+        "ToPort": 443,
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": "pl-44444444"
       }
     },
     "AWSEC2SecurityGroupIngressfrom111024ingresstcp443to443masterscomplexexamplecom": {
@@ -961,6 +968,18 @@
         "ToPort": 8443,
         "IpProtocol": "tcp",
         "CidrIp": "1.1.1.0/24"
+      }
+    },
+    "AWSEC2SecurityGroupIngresstcpapipl44444444": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "AWSEC2SecurityGroupmasterscomplexexamplecom"
+        },
+        "FromPort": 8443,
+        "ToPort": 8443,
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": "pl-44444444"
       }
     },
     "AWSEC2SecurityGroupapielbcomplexexamplecom": {
@@ -1680,39 +1699,6 @@
                 "StringEquals": {
                   "aws:RequestTag/KubernetesCluster": "complex.example.com",
                   "ec2:CreateAction": [
-                    "CreateSecurityGroup"
-                  ]
-                }
-              },
-              "Effect": "Allow",
-              "Resource": [
-                "arn:aws-test:ec2:*:*:security-group/*"
-              ]
-            },
-            {
-              "Action": [
-                "ec2:CreateTags",
-                "ec2:DeleteTags"
-              ],
-              "Condition": {
-                "Null": {
-                  "aws:RequestTag/KubernetesCluster": "true"
-                },
-                "StringEquals": {
-                  "aws:ResourceTag/KubernetesCluster": "complex.example.com"
-                }
-              },
-              "Effect": "Allow",
-              "Resource": [
-                "arn:aws-test:ec2:*:*:security-group/*"
-              ]
-            },
-            {
-              "Action": "ec2:CreateTags",
-              "Condition": {
-                "StringEquals": {
-                  "aws:RequestTag/KubernetesCluster": "complex.example.com",
-                  "ec2:CreateAction": [
                     "CreateVolume",
                     "CreateSnapshot"
                   ]
@@ -1744,18 +1730,44 @@
               ]
             },
             {
+              "Action": "ec2:CreateTags",
+              "Condition": {
+                "StringEquals": {
+                  "aws:RequestTag/KubernetesCluster": "complex.example.com",
+                  "ec2:CreateAction": [
+                    "CreateSecurityGroup"
+                  ]
+                }
+              },
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws-test:ec2:*:*:security-group/*"
+              ]
+            },
+            {
+              "Action": [
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+              ],
+              "Condition": {
+                "Null": {
+                  "aws:RequestTag/KubernetesCluster": "true"
+                },
+                "StringEquals": {
+                  "aws:ResourceTag/KubernetesCluster": "complex.example.com"
+                }
+              },
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws-test:ec2:*:*:security-group/*"
+              ]
+            },
+            {
               "Action": [
                 "autoscaling:DescribeAutoScalingGroups",
                 "autoscaling:DescribeAutoScalingInstances",
                 "autoscaling:DescribeLaunchConfigurations",
                 "autoscaling:DescribeTags",
-                "ec2:AttachVolume",
-                "ec2:AuthorizeSecurityGroupIngress",
-                "ec2:CreateSecurityGroup",
-                "ec2:CreateTags",
-                "ec2:DeleteRoute",
-                "ec2:DeleteSecurityGroup",
-                "ec2:DeleteVolume",
                 "ec2:DescribeAccountAttributes",
                 "ec2:DescribeInstanceTypes",
                 "ec2:DescribeInstances",
@@ -1768,19 +1780,12 @@
                 "ec2:DescribeVolumes",
                 "ec2:DescribeVolumesModifications",
                 "ec2:DescribeVpcs",
-                "ec2:DetachVolume",
-                "ec2:ModifyInstanceAttribute",
-                "ec2:ModifyVolume",
-                "elasticloadbalancing:AddTags",
-                "elasticloadbalancing:CreateListener",
-                "elasticloadbalancing:CreateTargetGroup",
                 "elasticloadbalancing:DescribeListeners",
                 "elasticloadbalancing:DescribeLoadBalancerAttributes",
                 "elasticloadbalancing:DescribeLoadBalancerPolicies",
                 "elasticloadbalancing:DescribeLoadBalancers",
                 "elasticloadbalancing:DescribeTargetGroups",
                 "elasticloadbalancing:DescribeTargetHealth",
-                "elasticloadbalancing:RegisterTargets",
                 "iam:GetServerCertificate",
                 "iam:ListServerCertificates",
                 "kms:DescribeKey",

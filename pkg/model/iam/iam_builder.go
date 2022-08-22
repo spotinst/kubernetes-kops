@@ -424,10 +424,15 @@ func (r *NodeRoleMaster) BuildAWSPolicy(b *PolicyBuilder) (*Policy, error) {
 			}
 		}
 
-		if b.Cluster.Spec.AWSLoadBalancerController != nil && fi.BoolValue(b.Cluster.Spec.AWSLoadBalancerController.Enabled) {
-			AddAWSLoadbalancerControllerPermissions(p)
+		if c := b.Cluster.Spec.AWSLoadBalancerController; c != nil && fi.BoolValue(b.Cluster.Spec.AWSLoadBalancerController.Enabled) {
+			AddAWSLoadbalancerControllerPermissions(p, c.EnableWAF, c.EnableWAFv2, c.EnableShield)
 		}
-		AddClusterAutoscalerPermissions(p)
+
+		var useStaticInstanceList bool
+		if ca := b.Cluster.Spec.ClusterAutoscaler; ca != nil && fi.BoolValue(ca.AWSUseStaticInstanceList) {
+			useStaticInstanceList = true
+		}
+		AddClusterAutoscalerPermissions(p, useStaticInstanceList)
 
 		nth := b.Cluster.Spec.NodeTerminationHandler
 		if nth != nil && fi.BoolValue(nth.Enabled) && fi.BoolValue(nth.EnableSQSTerminationDraining) {
@@ -950,35 +955,100 @@ func AddCCMPermissions(p *Policy, cloudRoutes bool) {
 	}
 }
 
-// AddAWSLoadbalancerControllerPermissions adds the permissions needed for the aws load balancer controller to the givnen policy
-func AddAWSLoadbalancerControllerPermissions(p *Policy) {
+// AddAWSLoadbalancerControllerPermissions adds the permissions needed for the AWS Load Balancer Controller to the givnen policy
+func AddAWSLoadbalancerControllerPermissions(p *Policy, enableWAF, enableWAFv2, enableShield bool) {
 	p.unconditionalAction.Insert(
-		"ec2:DescribeAvailabilityZones",
-		"ec2:DescribeNetworkInterfaces",
-		"elasticloadbalancing:DescribeTags",
-		"elasticloadbalancing:DescribeTargetGroupAttributes",
-		"elasticloadbalancing:DescribeRules",
-		"elasticloadbalancing:DescribeTargetHealth",
-		"elasticloadbalancing:DescribeListenerCertificates",
-		"elasticloadbalancing:CreateRule",
-		"acm:ListCertificates",
 		"acm:DescribeCertificate",
+		"acm:ListCertificates",
+
+		"ec2:DescribeAvailabilityZones",
+		"ec2:DescribeInstances",
+		"ec2:DescribeInternetGateways",
+		"ec2:DescribeNetworkInterfaces",
+		"ec2:DescribeSubnets",
+		"ec2:DescribeSecurityGroups",
+		"ec2:DescribeVpcs",
+		"ec2:DescribeAccountAttributes",
+
+		"elasticloadbalancing:DescribeListeners",
+		"elasticloadbalancing:DescribeListenerCertificates",
+		"elasticloadbalancing:DescribeLoadBalancers",
+		"elasticloadbalancing:DescribeLoadBalancerAttributes",
+		"elasticloadbalancing:DescribeRules",
+		"elasticloadbalancing:DescribeTags",
+		"elasticloadbalancing:DescribeTargetGroups",
+		"elasticloadbalancing:DescribeTargetGroupAttributes",
+		"elasticloadbalancing:DescribeTargetHealth",
 	)
+	if enableWAF {
+		p.unconditionalAction.Insert(
+			"elasticloadbalancing:SetWebACL",
+			"waf-regional:AssociateWebACL",
+			"waf-regional:DisassociateWebACL",
+			"waf-regional:GetWebACL",
+			"waf-regional:GetWebACLForResource",
+		)
+	}
+	if enableWAFv2 {
+		p.unconditionalAction.Insert(
+			"elasticloadbalancing:SetWebACL",
+			"wafv2:AssociateWebACL",
+			"wafv2:DisassociateWebACL",
+			"wafv2:GetWebACL",
+			"wafv2:GetWebACLForResource",
+		)
+	}
+
+	if enableShield {
+		p.unconditionalAction.Insert(
+			"shield:GetSubscriptionState",
+			"shield:DescribeProtection",
+			"shield:CreateProtection",
+			"shield:DeleteProtection",
+		)
+	}
+
 	p.clusterTaggedAction.Insert(
 		"ec2:AuthorizeSecurityGroupIngress", // aws.go
 		"ec2:DeleteSecurityGroup",           // aws.go
 		"ec2:RevokeSecurityGroupIngress",    // aws.go
 
-		"elasticloadbalancing:ModifyTargetGroupAttributes",
-		"elasticloadbalancing:ModifyRule",
-		"elasticloadbalancing:DeleteRule",
-
+		"elasticloadbalancing:AddListenerCertificates",
 		"elasticloadbalancing:AddTags",
+		"elasticloadbalancing:DeleteListener",
+		"elasticloadbalancing:DeleteLoadBalancer",
+		"elasticloadbalancing:DeleteRule",
+		"elasticloadbalancing:DeleteTargetGroup",
+		"elasticloadbalancing:DeregisterTargets",
+		"elasticloadbalancing:ModifyListener",
+		"elasticloadbalancing:ModifyLoadBalancerAttributes",
+		"elasticloadbalancing:ModifyRule",
+		"elasticloadbalancing:ModifyTargetGroup",
+		"elasticloadbalancing:ModifyTargetGroupAttributes",
+		"elasticloadbalancing:RegisterTargets",
+		"elasticloadbalancing:RemoveListenerCertificates",
 		"elasticloadbalancing:RemoveTags",
+		"elasticloadbalancing:SetIpAddressType",
+		"elasticloadbalancing:SetSecurityGroups",
+		"elasticloadbalancing:SetSubnets",
+	)
+	p.clusterTaggedCreateAction.Insert(
+		"elasticloadbalancing:CreateListener",
+		"elasticloadbalancing:CreateLoadBalancer",
+		"elasticloadbalancing:CreateRule",
+		"elasticloadbalancing:CreateTargetGroup",
+	)
+	p.AddEC2CreateAction(
+		[]string{
+			"CreateSecurityGroup",
+		},
+		[]string{
+			"security-group",
+		},
 	)
 }
 
-func AddClusterAutoscalerPermissions(p *Policy) {
+func AddClusterAutoscalerPermissions(p *Policy, useStaticInstanceList bool) {
 	p.clusterTaggedAction.Insert(
 		"autoscaling:SetDesiredCapacity",
 		"autoscaling:TerminateInstanceInAutoScalingGroup",
@@ -989,6 +1059,11 @@ func AddClusterAutoscalerPermissions(p *Policy) {
 		"autoscaling:DescribeLaunchConfigurations",
 		"ec2:DescribeLaunchTemplateVersions",
 	)
+	if !useStaticInstanceList {
+		p.unconditionalAction.Insert(
+			"ec2:DescribeInstanceTypes",
+		)
+	}
 }
 
 // AddAWSEBSCSIDriverPermissions appens policy statements that the AWS EBS CSI Driver needs to operate.
@@ -1068,6 +1143,14 @@ func AddDNSControllerPermissions(b *PolicyBuilder, p *Policy) {
 		Action:   stringorslice.Slice([]string{"route53:ListHostedZones", "route53:ListTagsForResource"}),
 		Resource: wildcard,
 	})
+}
+
+// AddKubeRouterPermissions adds IAM permissions used by kube-router
+// for disabling the source/destination check on EC2 instances.
+func AddKubeRouterPermissions(b *PolicyBuilder, p *Policy) {
+	p.clusterTaggedAction.Insert(
+		"ec2:ModifyInstanceAttribute",
+	)
 }
 
 func addKMSIAMPolicies(p *Policy, resource stringorslice.StringOrSlice) {
