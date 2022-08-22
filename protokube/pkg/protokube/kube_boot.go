@@ -37,8 +37,6 @@ type KubeBoot struct {
 	InternalDNSSuffix string
 	// InternalIP is the internal ip address of the node
 	InternalIP net.IP
-	// DNS is the dns provider
-	DNS DNSProvider
 	// Kubernetes holds a kubernetes client
 	Kubernetes *KubernetesContext
 	// Master indicates we are a master node
@@ -99,15 +97,4 @@ func (k *KubeBoot) syncOnce(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func pathFor(hostPath string) string {
-	if hostPath[0] != '/' {
-		klog.Fatalf("path was not absolute: %q", hostPath)
-	}
-	return RootFS + hostPath[1:]
-}
-
-func (k *KubeBoot) String() string {
-	return DebugString(k)
 }

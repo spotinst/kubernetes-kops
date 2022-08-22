@@ -22,10 +22,12 @@ import (
 
 	"k8s.io/kops/pkg/apis/kops"
 	"k8s.io/kops/pkg/assets"
+	"k8s.io/kops/pkg/featureflag"
 	"k8s.io/kops/util/pkg/vfs"
 )
 
 func TestImage(t *testing.T) {
+	featureflag.ParseFlags("-ImageDigest")
 	grid := []struct {
 		Component string
 		Cluster   *kops.Cluster
@@ -45,7 +47,7 @@ func TestImage(t *testing.T) {
 			VFS: map[string]string{
 				"memfs://v1.20.0-download/bin/linux/amd64/kube-apiserver.docker_tag": "1-20-0dockertag",
 			},
-			Expected: "k8s.gcr.io/kube-apiserver-amd64:1-20-0dockertag",
+			Expected: "registry.k8s.io/kube-apiserver-amd64:1-20-0dockertag",
 		},
 		{
 			Component: "kube-apiserver",
@@ -54,7 +56,7 @@ func TestImage(t *testing.T) {
 					KubernetesVersion: "1.20.0",
 				},
 			},
-			Expected: "k8s.gcr.io/kube-apiserver:v1.20.0",
+			Expected: "registry.k8s.io/kube-apiserver:v1.20.0",
 		},
 	}
 

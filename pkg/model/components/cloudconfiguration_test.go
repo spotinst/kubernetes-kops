@@ -94,9 +94,9 @@ func TestCloudConfigurationOptionsBuilder(t *testing.T) {
 	} {
 		t.Run(test.description, func(t *testing.T) {
 			spec := kopsapi.ClusterSpec{
-				CloudProvider: string(kopsapi.CloudProviderOpenstack),
-				CloudConfig: &kopsapi.CloudConfiguration{
-					Openstack: &kopsapi.OpenstackConfiguration{
+				CloudConfig: &kopsapi.CloudConfiguration{},
+				CloudProvider: kopsapi.CloudProviderSpec{
+					Openstack: &kopsapi.OpenstackSpec{
 						BlockStorage: &kopsapi.OpenstackBlockStorageConfig{},
 					},
 				},
@@ -105,7 +105,7 @@ func TestCloudConfigurationOptionsBuilder(t *testing.T) {
 				spec.CloudConfig.ManageStorageClasses = p
 			}
 			if p := test.openStackManageSCs; p != nil {
-				spec.CloudConfig.Openstack.BlockStorage.CreateStorageClass = p
+				spec.CloudProvider.Openstack.BlockStorage.CreateStorageClass = p
 			}
 			if err := ob.BuildOptions(&spec); err != nil {
 				t.Fatalf("failed to build options: %v", err)

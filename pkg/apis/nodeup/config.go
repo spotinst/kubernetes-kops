@@ -41,6 +41,8 @@ type Config struct {
 	ApiserverAdditionalIPs []string `json:",omitempty"`
 	// WarmPoolImages are the container images to pre-pull during instance pre-initialization
 	WarmPoolImages []string `json:"warmPoolImages,omitempty"`
+	// Packages specifies additional packages to be installed.
+	Packages []string `json:"packages,omitempty"`
 
 	// Manifests for running etcd
 	EtcdManifests []string `json:"etcdManifests,omitempty"`
@@ -153,7 +155,7 @@ func NewConfig(cluster *kops.Cluster, instanceGroup *kops.InstanceGroup) (*Confi
 	}
 
 	bootConfig := BootConfig{
-		CloudProvider:     cluster.Spec.CloudProvider,
+		CloudProvider:     string(cluster.Spec.GetCloudProvider()),
 		InstanceGroupName: instanceGroup.ObjectMeta.Name,
 		InstanceGroupRole: role,
 	}
@@ -216,7 +218,7 @@ func NewConfig(cluster *kops.Cluster, instanceGroup *kops.InstanceGroup) (*Confi
 }
 
 func UsesInstanceIDForNodeName(cluster *kops.Cluster) bool {
-	return cluster.Spec.ExternalCloudControllerManager != nil && cluster.IsKubernetesGTE("1.23") && kops.CloudProviderID(cluster.Spec.CloudProvider) == kops.CloudProviderAWS
+	return cluster.Spec.ExternalCloudControllerManager != nil && cluster.IsKubernetesGTE("1.22") && cluster.Spec.GetCloudProvider() == kops.CloudProviderAWS
 }
 
 func filterFileAssets(f []kops.FileAssetSpec, role kops.InstanceGroupRole) []kops.FileAssetSpec {

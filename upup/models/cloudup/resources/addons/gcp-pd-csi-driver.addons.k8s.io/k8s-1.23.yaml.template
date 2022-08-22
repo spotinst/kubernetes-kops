@@ -14,6 +14,7 @@ provisioner: pd.csi.storage.gke.io
 parameters:
   type: pd-standard
 volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
 {{ end }}
 
 ---
@@ -335,18 +336,41 @@ spec:
       labels:
         app: gcp-compute-persistent-disk-csi-driver
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: Exists
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
       # Host network must be used for interaction with Workload Identity in GKE
       # since it replaces GCE Metadata Server with GKE Metadata Server. Remove
       # this requirement when issue is resolved and before any exposure of
       # metrics ports
       hostNetwork: true
-      nodeSelector:
-        kubernetes.io/os: linux
+      # run controller in masters because nodes does not have enough permissions to provision / manage volumes
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - key: CriticalAddonsOnly
+        operator: Exists
+      nodeSelector: null
       serviceAccountName: csi-gce-pd-controller-sa
       priorityClassName: csi-gce-pd-controller
       containers:
         - name: csi-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.1.0
+          image: registry.k8s.io/sig-storage/csi-provisioner:v2.1.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -380,7 +404,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-attacher
-          image: k8s.gcr.io/sig-storage/csi-attacher:v3.1.0
+          image: registry.k8s.io/sig-storage/csi-attacher:v3.1.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -409,7 +433,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-resizer
-          image: k8s.gcr.io/sig-storage/csi-resizer:v1.1.0
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.1.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -438,7 +462,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-snapshotter
-          image: k8s.gcr.io/sig-storage/csi-snapshotter:v3.0.3
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v3.0.3
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -457,7 +481,7 @@ spec:
         - name: gce-pd-driver
           # Don't change base image without changing pdImagePlaceholder in
           # test/k8s-integration/main.go
-          image: k8s.gcr.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver:v1.3.4
+          image: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver:v1.3.4
           args:
             - "--v=5"
             - "--endpoint=unix:/csi/csi.sock"
@@ -504,7 +528,7 @@ spec:
         kubernetes.io/os: linux
       containers:
         - name: csi-driver-registrar
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.1.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.1.0
           args:
             - "--v=5"
             - "--csi-address=/csi/csi.sock"
@@ -522,7 +546,7 @@ spec:
         - name: gce-pd-driver
           # Don't change base image without changing pdImagePlaceholder in
           # test/k8s-integration/main.go
-          image: k8s.gcr.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver:v1.3.4
+          image: registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver:v1.3.4
           args:
             - "--v=5"
             - "--endpoint=unix:/csi/csi.sock"

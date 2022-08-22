@@ -156,18 +156,15 @@ func (t *ProtokubeBuilder) buildSystemdService() (*nodetasks.Service, error) {
 
 // ProtokubeFlags are the flags for protokube
 type ProtokubeFlags struct {
+	ClusterID         *string  `json:"clusterID,omitempty" flag:"cluster-id"`
 	Channels          []string `json:"channels,omitempty" flag:"channels"`
 	Cloud             *string  `json:"cloud,omitempty" flag:"cloud"`
 	Containerized     *bool    `json:"containerized,omitempty" flag:"containerized"`
 	DNSInternalSuffix *string  `json:"dnsInternalSuffix,omitempty" flag:"dns-internal-suffix"`
-	DNSProvider       *string  `json:"dnsProvider,omitempty" flag:"dns"`
+	Gossip            *bool    `json:"gossip,omitempty" flag:"gossip"`
 	LogLevel          *int32   `json:"logLevel,omitempty" flag:"v"`
 	Master            *bool    `json:"master,omitempty" flag:"master"`
 	Zone              []string `json:"zone,omitempty" flag:"zone"`
-
-	// RemoveDNSNames allows us to remove dns records, so that they can be managed elsewhere
-	// We use it e.g. for the switch to etcd-manager
-	RemoveDNSNames string `json:"removeDNSNames,omitempty" flag:"remove-dns-names"`
 
 	// BootstrapMasterNodeLabels applies the critical node-role labels to our node,
 	// which lets us bring up the controllers that can only run on masters, which are then
@@ -195,6 +192,8 @@ func (t *ProtokubeBuilder) ProtokubeFlags(k8sVersion semver.Version) (*Protokube
 		Master:        b(t.IsMaster),
 	}
 
+	f.ClusterID = fi.String(t.Cluster.ObjectMeta.Name)
+
 	zone := t.Cluster.Spec.DNSZone
 	if zone != "" {
 		if strings.Contains(zone, ".") {
@@ -212,7 +211,7 @@ func (t *ProtokubeBuilder) ProtokubeFlags(k8sVersion semver.Version) (*Protokube
 
 	if dns.IsGossipHostname(t.Cluster.Spec.MasterInternalName) {
 		klog.Warningf("MasterInternalName %q implies gossip DNS", t.Cluster.Spec.MasterInternalName)
-		f.DNSProvider = fi.String("gossip")
+		f.Gossip = fi.Bool(true)
 		if t.Cluster.Spec.GossipConfig != nil {
 			f.GossipProtocol = t.Cluster.Spec.GossipConfig.Protocol
 			f.GossipListen = t.Cluster.Spec.GossipConfig.Listen
@@ -233,19 +232,6 @@ func (t *ProtokubeBuilder) ProtokubeFlags(k8sVersion semver.Version) (*Protokube
 
 	if t.CloudProvider != "" {
 		f.Cloud = fi.String(string(t.CloudProvider))
-
-		if f.DNSProvider == nil {
-			switch t.CloudProvider {
-			case kops.CloudProviderAWS:
-				f.DNSProvider = fi.String("aws-route53")
-			case kops.CloudProviderDO:
-				f.DNSProvider = fi.String("digitalocean")
-			case kops.CloudProviderGCE:
-				f.DNSProvider = fi.String("google-clouddns")
-			default:
-				klog.Warningf("Unknown cloudprovider %q; won't set DNS provider", t.CloudProvider)
-			}
-		}
 	}
 
 	if f.DNSInternalSuffix == nil {
@@ -260,30 +246,6 @@ func (t *ProtokubeBuilder) ProtokubeFlags(k8sVersion semver.Version) (*Protokube
 			return nil, fmt.Errorf("error getting NodeName: %v", err)
 		}
 		f.NodeName = nodeName
-	}
-
-	// Remove DNS names since we're using etcd-manager
-	{
-		var names []string
-
-		// Mirroring the logic used to construct DNS names in protokube/pkg/protokube/etcd_cluster.go
-		suffix := fi.StringValue(f.DNSInternalSuffix)
-		if !strings.HasPrefix(suffix, ".") {
-			suffix = "." + suffix
-		}
-
-		for _, c := range t.Cluster.Spec.EtcdClusters {
-			clusterName := "etcd-" + c.Name
-			if clusterName == "etcd-main" {
-				clusterName = "etcd"
-			}
-			for _, m := range c.Members {
-				name := clusterName + "-" + m.Name + suffix
-				names = append(names, name)
-			}
-		}
-
-		f.RemoveDNSNames = strings.Join(names, ",")
 	}
 
 	return f, nil
@@ -329,6 +291,10 @@ func (t *ProtokubeBuilder) buildEnvFile() (*nodetasks.File, error) {
 
 	if t.CloudProvider == kops.CloudProviderDO && os.Getenv("DIGITALOCEAN_ACCESS_TOKEN") != "" {
 		envVars["DIGITALOCEAN_ACCESS_TOKEN"] = os.Getenv("DIGITALOCEAN_ACCESS_TOKEN")
+	}
+
+	if os.Getenv("HCLOUD_TOKEN") != "" {
+		envVars["HCLOUD_TOKEN"] = os.Getenv("HCLOUD_TOKEN")
 	}
 
 	if os.Getenv("OSS_REGION") != "" {

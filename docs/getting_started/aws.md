@@ -254,6 +254,18 @@ to revert or recover a previous state store.
 aws s3api put-bucket-versioning --bucket prefix-example-com-state-store  --versioning-configuration Status=Enabled
 ```
 
+In order for ServiceAccounts to use external permissions (aka IAM Roles for ServiceAccounts), you also need a bucket for hosting the OIDC documents.
+While you can reuse the bucket above if you grant it a public ACL, we do recommend a separate bucket for these files.
+
+The ACL must be public so that the AWS STS service can access them.
+
+```bash
+aws s3api create-bucket \
+    --bucket prefix-example-com-oidc-store \
+    --region us-east-1 \
+    --acl public-read
+```
+
 Information regarding cluster state store location must be set when using `kops` cli. See [state store](../state.md) for further information.
 
 ### Using S3 default bucket encryption
@@ -323,8 +335,10 @@ it. Make sure you have generated an SSH key pair before creating your cluster.
 
 ```bash
 kops create cluster \
+    --name=${NAME} \
+    --cloud=aws \
     --zones=us-west-2a \
-    ${NAME}
+    --discovery-store=s3://prefix-example-com-oidc-store/${NAME}/discovery
 ```
 
 All instances created by `kops` will be built within ASG (Auto Scaling Groups),
@@ -337,7 +351,7 @@ Now we have a cluster configuration, we can look at every aspect that defines
 our cluster by editing the description.
 
 ```bash
-kops edit cluster ${NAME}
+kops edit cluster --name ${NAME}
 ```
 
 This opens your editor (as defined by $EDITOR) and allows you to edit the
@@ -354,7 +368,7 @@ while.  Once it finishes you'll have to wait longer while the booted instances
 finish downloading Kubernetes components and reach a "ready" state.
 
 ```bash
-kops update cluster ${NAME} --yes
+kops update cluster --name ${NAME} --yes
 ```
 
 ### Use the Cluster

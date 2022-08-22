@@ -52,6 +52,7 @@ import (
 	"k8s.io/kops/pkg/model/components/kubeapiserver"
 	"k8s.io/kops/pkg/model/domodel"
 	"k8s.io/kops/pkg/model/gcemodel"
+	"k8s.io/kops/pkg/model/hetznermodel"
 	"k8s.io/kops/pkg/model/iam"
 	"k8s.io/kops/pkg/model/openstackmodel"
 	"k8s.io/kops/pkg/templates"
@@ -64,12 +65,14 @@ import (
 	"k8s.io/kops/upup/pkg/fi/cloudup/cloudformation"
 	"k8s.io/kops/upup/pkg/fi/cloudup/do"
 	"k8s.io/kops/upup/pkg/fi/cloudup/gce"
+	"k8s.io/kops/upup/pkg/fi/cloudup/hetzner"
 	"k8s.io/kops/upup/pkg/fi/cloudup/openstack"
 	"k8s.io/kops/upup/pkg/fi/cloudup/terraform"
 	"k8s.io/kops/upup/pkg/fi/cloudup/terraformWriter"
 	"k8s.io/kops/util/pkg/architectures"
 	"k8s.io/kops/util/pkg/hashing"
 	"k8s.io/kops/util/pkg/mirrors"
+	"k8s.io/kops/util/pkg/reflectutils"
 	"k8s.io/kops/util/pkg/vfs"
 )
 
@@ -393,16 +396,18 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 		InstanceGroups:  c.InstanceGroups,
 	}
 
-	switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+	switch cluster.Spec.GetCloudProvider() {
 	case kops.CloudProviderGCE:
 		{
 			gceCloud := cloud.(gce.GCECloud)
 			project = gceCloud.Project()
+		}
 
-			if !featureflag.AlphaAllowGCE.Enabled() {
-				return fmt.Errorf("GCE support is currently alpha, and is feature-gated.  export KOPS_FEATURE_FLAGS=AlphaAllowGCE")
+	case kops.CloudProviderHetzner:
+		{
+			if !featureflag.Hetzner.Enabled() {
+				return fmt.Errorf("Hetzner Cloud support is currently alpha, and is feature-gated.  export KOPS_FEATURE_FLAGS=Hetzner")
 			}
-
 		}
 
 	case kops.CloudProviderDO:
@@ -452,7 +457,7 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 			}
 		}
 	default:
-		return fmt.Errorf("unknown CloudProvider %q", cluster.Spec.CloudProvider)
+		return fmt.Errorf("unknown CloudProvider %q", cluster.Spec.GetCloudProvider())
 	}
 
 	modelContext.SSHPublicKeys = sshPublicKeys
@@ -529,7 +534,7 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 			&model.ConfigBuilder{KopsModelContext: modelContext, Lifecycle: clusterLifecycle},
 		)
 
-		switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+		switch cluster.Spec.GetCloudProvider() {
 		case kops.CloudProviderAWS:
 			awsModelContext := &awsmodel.AWSModelContext{
 				KopsModelContext: modelContext,
@@ -585,6 +590,17 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 			l.Builders = append(l.Builders,
 				&domodel.APILoadBalancerModelBuilder{DOModelContext: doModelContext, Lifecycle: securityLifecycle},
 				&domodel.DropletBuilder{DOModelContext: doModelContext, BootstrapScriptBuilder: bootstrapScriptBuilder, Lifecycle: clusterLifecycle},
+				&domodel.NetworkModelBuilder{DOModelContext: doModelContext, Lifecycle: networkLifecycle},
+			)
+		case kops.CloudProviderHetzner:
+			hetznerModelContext := &hetznermodel.HetznerModelContext{
+				KopsModelContext: modelContext,
+			}
+			l.Builders = append(l.Builders,
+				&hetznermodel.NetworkModelBuilder{HetznerModelContext: hetznerModelContext, Lifecycle: networkLifecycle},
+				&hetznermodel.ExternalAccessModelBuilder{HetznerModelContext: hetznerModelContext, Lifecycle: networkLifecycle},
+				&hetznermodel.LoadBalancerModelBuilder{HetznerModelContext: hetznerModelContext, Lifecycle: networkLifecycle},
+				&hetznermodel.ServerGroupModelBuilder{HetznerModelContext: hetznerModelContext, BootstrapScriptBuilder: bootstrapScriptBuilder, Lifecycle: clusterLifecycle},
 			)
 		case kops.CloudProviderGCE:
 			gceModelContext := &gcemodel.GCEModelContext{
@@ -632,7 +648,7 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 			)
 
 		default:
-			return fmt.Errorf("unknown cloudprovider %q", cluster.Spec.CloudProvider)
+			return fmt.Errorf("unknown cloudprovider %q", cluster.Spec.GetCloudProvider())
 		}
 	}
 	c.TaskMap, err = l.BuildTasks(c.LifecycleOverrides)
@@ -645,19 +661,21 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 
 	switch c.TargetName {
 	case TargetDirect:
-		switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+		switch cluster.Spec.GetCloudProvider() {
 		case kops.CloudProviderGCE:
 			target = gce.NewGCEAPITarget(cloud.(gce.GCECloud))
 		case kops.CloudProviderAWS:
 			target = awsup.NewAWSAPITarget(cloud.(awsup.AWSCloud))
 		case kops.CloudProviderDO:
 			target = do.NewDOAPITarget(cloud.(do.DOCloud))
+		case kops.CloudProviderHetzner:
+			target = hetzner.NewHetznerAPITarget(cloud.(hetzner.HetznerCloud))
 		case kops.CloudProviderOpenstack:
 			target = openstack.NewOpenstackAPITarget(cloud.(openstack.OpenstackCloud))
 		case kops.CloudProviderAzure:
 			target = azure.NewAzureAPITarget(cloud.(azure.AzureCloud))
 		default:
-			return fmt.Errorf("direct configuration not supported with CloudProvider:%q", cluster.Spec.CloudProvider)
+			return fmt.Errorf("direct configuration not supported with CloudProvider:%q", cluster.Spec.GetCloudProvider())
 		}
 
 	case TargetTerraform:
@@ -1032,6 +1050,18 @@ func (c *ApplyClusterCmd) addFileAssets(assetBuilder *assets.AssetBuilder) error
 		}
 		c.Assets[arch] = append(c.Assets[arch], mirrors.BuildMirroredAsset(containerRuntimeAssetUrl, containerRuntimeAssetHash))
 
+		if c.Cluster.Spec.ContainerRuntime == "containerd" {
+			var runcAssetUrl *url.URL
+			var runcAssetHash *hashing.Hash
+			runcAssetUrl, runcAssetHash, err = findRuncAsset(c.Cluster, assetBuilder, arch)
+			if err != nil {
+				return err
+			}
+			if runcAssetUrl != nil && runcAssetHash != nil {
+				c.Assets[arch] = append(c.Assets[arch], mirrors.BuildMirroredAsset(runcAssetUrl, runcAssetHash))
+			}
+		}
+
 		asset, err := NodeUpAsset(assetBuilder, arch)
 		if err != nil {
 			return err
@@ -1063,7 +1093,7 @@ func ChannelForCluster(c *kops.Cluster) (*kops.Channel, error) {
 // This is only needed currently on ContainerOS i.e. GCE, but we don't have a nice way to detect it yet
 func needsMounterAsset(c *kops.Cluster, instanceGroups []*kops.InstanceGroup) bool {
 	// TODO: Do real detection of ContainerOS (but this has to work with image names, and maybe even forked images)
-	switch kops.CloudProviderID(c.Spec.CloudProvider) {
+	switch c.Spec.GetCloudProvider() {
 	case kops.CloudProviderGCE:
 		return true
 	default:
@@ -1384,16 +1414,20 @@ func (n *nodeUpConfigBuilder) BuildConfig(ig *kops.InstanceGroup, apiserverAddit
 	config.Channels = n.channels
 	config.EtcdManifests = n.etcdManifests[role]
 
-	if cluster.Spec.ContainerRuntime == "containerd" {
-		config.ContainerdConfig = cluster.Spec.Containerd
+	if ig.Spec.Containerd != nil || cluster.Spec.ContainerRuntime == "containerd" {
+		config.ContainerdConfig = n.buildContainerdConfig(ig)
 	}
 
-	if cluster.Spec.Containerd != nil && cluster.Spec.Containerd.NvidiaGPU != nil {
-		config.NvidiaGPU = cluster.Spec.Containerd.NvidiaGPU
+	if (cluster.Spec.Containerd != nil && cluster.Spec.Containerd.NvidiaGPU != nil) || (ig.Spec.Containerd != nil && ig.Spec.Containerd.NvidiaGPU != nil) {
+		config.NvidiaGPU = n.buildNvidiaConfig(ig)
 	}
 
 	if ig.Spec.WarmPool != nil || cluster.Spec.WarmPool != nil {
 		config.WarmPoolImages = n.buildWarmPoolImages(ig)
+	}
+
+	if ig.Spec.Packages != nil {
+		config.Packages = ig.Spec.Packages
 	}
 
 	return config, bootConfig, nil
@@ -1418,6 +1452,33 @@ func loadCertificates(keysets map[string]*fi.Keyset, name string, config *nodeup
 	return nil
 }
 
+// buildNvidiaConfig builds nvidia configuration for instance group
+func (n *nodeUpConfigBuilder) buildNvidiaConfig(ig *kops.InstanceGroup) *kops.NvidiaGPUConfig {
+	config := &kops.NvidiaGPUConfig{}
+	if n.cluster.Spec.Containerd != nil && n.cluster.Spec.Containerd.NvidiaGPU != nil {
+		config = n.cluster.Spec.Containerd.NvidiaGPU
+	}
+
+	if ig.Spec.Containerd != nil && ig.Spec.Containerd.NvidiaGPU != nil {
+		reflectutils.JSONMergeStruct(&config, ig.Spec.Containerd.NvidiaGPU)
+	}
+
+	if config.DriverPackage == "" {
+		config.DriverPackage = kops.NvidiaDefaultDriverPackage
+	}
+
+	return config
+}
+
+// buildContainerdConfig builds containerd configuration for instance. Instance group configuration will override cluster configuration
+func (n *nodeUpConfigBuilder) buildContainerdConfig(ig *kops.InstanceGroup) *kops.ContainerdConfig {
+	config := n.cluster.Spec.Containerd.DeepCopy()
+	if ig.Spec.Containerd != nil {
+		reflectutils.JSONMergeStruct(&config, ig.Spec.Containerd)
+	}
+	return config
+}
+
 // buildWarmPoolImages returns a list of container images that should be pre-pulled during instance pre-initialization
 func (n *nodeUpConfigBuilder) buildWarmPoolImages(ig *kops.InstanceGroup) []string {
 	if ig == nil || ig.Spec.Role == kops.InstanceGroupRoleMaster {
@@ -1436,10 +1497,10 @@ func (n *nodeUpConfigBuilder) buildWarmPoolImages(ig *kops.InstanceGroup) []stri
 		//"docker.io/cilium/",
 		//"docker.io/cloudnativelabs/kube-router:",
 		//"docker.io/weaveworks/",
-		"k8s.gcr.io/kube-proxy:",
-		"k8s.gcr.io/provider-aws/",
-		"k8s.gcr.io/sig-storage/csi-node-driver-registrar:",
-		"k8s.gcr.io/sig-storage/livenessprobe:",
+		"registry.k8s.io/kube-proxy:",
+		"registry.k8s.io/provider-aws/",
+		"registry.k8s.io/sig-storage/csi-node-driver-registrar:",
+		"registry.k8s.io/sig-storage/livenessprobe:",
 		"quay.io/calico/",
 		"quay.io/cilium/",
 		"quay.io/coreos/flannel:",

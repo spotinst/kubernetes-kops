@@ -153,9 +153,9 @@ func (t *Tester) addProviderFlag() error {
 	}
 
 	provider := ""
-	switch cluster.Spec.CloudProvider {
+	switch cluster.Spec.LegacyCloudProvider {
 	case "aws", "gce":
-		provider = cluster.Spec.CloudProvider
+		provider = cluster.Spec.LegacyCloudProvider
 	case "digitalocean":
 	default:
 		klog.Warningf("unhandled cluster.spec.cloudProvider %q for determining ginkgo Provider", cluster.Spec.CloudProvider)
@@ -217,7 +217,7 @@ func (t *Tester) addRegionFlag() error {
 
 	// We don't explicitly set the provider's region in the spec so we need to extract it from vairous fields
 	var region string
-	switch cluster.Spec.CloudProvider {
+	switch cluster.Spec.LegacyCloudProvider {
 	case "aws":
 		zone := cluster.Spec.Subnets[0].Zone
 		region = zone[:len(zone)-1]
@@ -372,7 +372,9 @@ func (t *Tester) addNonBlockingTaintsFlag() {
 	if hasFlag(t.TestArgs, "non-blocking-taints") {
 		return
 	}
-	nbt := "node-role.kubernetes.io/master,node-role.kubernetes.io/api-server"
+	nbt := "node-role.kubernetes.io/master,"
+	nbt += "node-role.kubernetes.io/api-server,"
+	nbt += "node-role.kubernetes.io/control-plane"
 	klog.Infof("Setting --non-blocking-taints=%s", nbt)
 	t.TestArgs += fmt.Sprintf(" --non-blocking-taints=%v", nbt)
 }
@@ -434,6 +436,8 @@ func (t *Tester) execute() error {
 		return err
 	}
 	t.addNonBlockingTaintsFlag()
+
+	t.TestArgs += " --disable-log-dump"
 
 	return t.Test()
 }

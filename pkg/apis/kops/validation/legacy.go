@@ -55,41 +55,59 @@ func ValidateCluster(c *kops.Cluster, strict bool) field.ErrorList {
 	requiresSubnets := true
 	requiresNetworkCIDR := true
 	requiresSubnetCIDR := true
-	switch kops.CloudProviderID(c.Spec.CloudProvider) {
-	case "":
+
+	optionTaken := false
+	if c.Spec.CloudProvider.AWS != nil {
+		optionTaken = true
+
+	}
+	if c.Spec.CloudProvider.Azure != nil {
+		if optionTaken {
+			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("azure"), "only one cloudProvider option permitted"))
+		}
+		optionTaken = true
+	}
+	if c.Spec.CloudProvider.DO != nil {
+		if optionTaken {
+			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("do"), "only one cloudProvider option permitted"))
+		}
+		optionTaken = true
+		requiresSubnets = false
+		requiresSubnetCIDR = false
+		requiresNetworkCIDR = false
+	}
+	if c.Spec.CloudProvider.GCE != nil {
+		if optionTaken {
+			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("gce"), "only one cloudProvider option permitted"))
+		}
+		optionTaken = true
+		requiresNetworkCIDR = false
+		requiresSubnetCIDR = false
+		if c.Spec.NetworkCIDR != "" {
+			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("networkCIDR"), "networkCIDR should not be set on GCE"))
+		}
+	}
+	if c.Spec.CloudProvider.Hetzner != nil {
+		if optionTaken {
+			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("hetzner"), "only one cloudProvider option permitted"))
+		}
+		optionTaken = true
+		requiresSubnets = false
+		requiresSubnetCIDR = false
+	}
+	if c.Spec.CloudProvider.Openstack != nil {
+		if optionTaken {
+			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("openstack"), "only one cloudProvider option permitted"))
+		}
+		optionTaken = true
+		requiresNetworkCIDR = false
+		requiresSubnetCIDR = false
+	}
+	if !optionTaken {
 		allErrs = append(allErrs, field.Required(fieldSpec.Child("cloudProvider"), ""))
 		requiresSubnets = false
 		requiresSubnetCIDR = false
 		requiresNetworkCIDR = false
-
-	case kops.CloudProviderGCE:
-		requiresNetworkCIDR = false
-		if c.Spec.NetworkCIDR != "" {
-			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("networkCIDR"), "networkCIDR should not be set on GCE"))
-		}
-		requiresSubnetCIDR = false
-
-	case kops.CloudProviderDO:
-		requiresSubnets = false
-		requiresSubnetCIDR = false
-		requiresNetworkCIDR = false
-		if c.Spec.NetworkCIDR != "" {
-			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("networkCIDR"), "networkCIDR should not be set on DigitalOcean"))
-		}
-	case kops.CloudProviderAWS:
-	case kops.CloudProviderAzure:
-	case kops.CloudProviderOpenstack:
-		requiresNetworkCIDR = false
-		requiresSubnetCIDR = false
-
-	default:
-		allErrs = append(allErrs, field.NotSupported(fieldSpec.Child("cloudProvider"), c.Spec.CloudProvider, []string{
-			string(kops.CloudProviderGCE),
-			string(kops.CloudProviderDO),
-			string(kops.CloudProviderAzure),
-			string(kops.CloudProviderAWS),
-			string(kops.CloudProviderOpenstack),
-		}))
 	}
 
 	if requiresSubnets && len(c.Spec.Subnets) == 0 {
@@ -134,6 +152,16 @@ func ValidateCluster(c *kops.Cluster, strict bool) field.ErrorList {
 			_, networkCIDR, err = net.ParseCIDR(c.Spec.NetworkCIDR)
 			if err != nil {
 				allErrs = append(allErrs, field.Invalid(fieldSpec.Child("networkCIDR"), c.Spec.NetworkCIDR, "Cluster had an invalid networkCIDR"))
+			}
+			if c.Spec.GetCloudProvider() == kops.CloudProviderDO {
+				// verify if the NetworkCIDR is in a private range as per RFC1918
+				if !networkCIDR.IP.IsPrivate() {
+					allErrs = append(allErrs, field.Invalid(fieldSpec.Child("networkCIDR"), c.Spec.NetworkCIDR, "Cluster had a networkCIDR outside the private IP range"))
+				}
+				// verify if networkID is not specified. In case of DO, this is mutually exclusive.
+				if c.Spec.NetworkID != "" {
+					allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("networkCIDR"), "DO doesn't support specifying both NetworkID and NetworkCIDR together"))
+				}
 			}
 		}
 	}
@@ -292,12 +320,14 @@ func ValidateCluster(c *kops.Cluster, strict bool) field.ErrorList {
 	{
 
 		var k8sCloudProvider string
-		switch kops.CloudProviderID(c.Spec.CloudProvider) {
+		switch c.Spec.GetCloudProvider() {
 		case kops.CloudProviderAWS:
 			k8sCloudProvider = "aws"
 		case kops.CloudProviderGCE:
 			k8sCloudProvider = "gce"
 		case kops.CloudProviderDO:
+			k8sCloudProvider = "external"
+		case kops.CloudProviderHetzner:
 			k8sCloudProvider = "external"
 		case kops.CloudProviderOpenstack:
 			k8sCloudProvider = "openstack"
@@ -340,8 +370,8 @@ func ValidateCluster(c *kops.Cluster, strict bool) field.ErrorList {
 				if requiresSubnetCIDR && strict {
 					if !strings.Contains(c.Spec.NonMasqueradeCIDR, ":") || s.IPv6CIDR == "" {
 						allErrs = append(allErrs, field.Required(fieldSubnet.Child("cidr"), "subnet did not have a cidr set"))
-					} else if c.IsKubernetesLT("1.23") {
-						allErrs = append(allErrs, field.Required(fieldSubnet.Child("cidr"), "IPv6-only subnets require Kubernetes 1.23+"))
+					} else if c.IsKubernetesLT("1.22") {
+						allErrs = append(allErrs, field.Required(fieldSubnet.Child("cidr"), "IPv6-only subnets require Kubernetes 1.22+"))
 					}
 				}
 			} else {
@@ -361,7 +391,7 @@ func ValidateCluster(c *kops.Cluster, strict bool) field.ErrorList {
 		if !featureflag.VFSVaultSupport.Enabled() {
 			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("secretStore"), "vault VFS is an experimental feature; set `export KOPS_FEATURE_FLAGS=VFSVaultSupport`"))
 		}
-		if kops.CloudProviderID(c.Spec.CloudProvider) != kops.CloudProviderAWS {
+		if c.Spec.GetCloudProvider() != kops.CloudProviderAWS {
 			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("secretStore"), "Vault secret store is only available on AWS"))
 		}
 	}
@@ -369,7 +399,7 @@ func ValidateCluster(c *kops.Cluster, strict bool) field.ErrorList {
 		if !featureflag.VFSVaultSupport.Enabled() {
 			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("keyStore"), "vault VFS is an experimental feature; set `export KOPS_FEATURE_FLAGS=VFSVaultSupport`"))
 		}
-		if kops.CloudProviderID(c.Spec.CloudProvider) != kops.CloudProviderAWS {
+		if c.Spec.GetCloudProvider() != kops.CloudProviderAWS {
 			allErrs = append(allErrs, field.Forbidden(fieldSpec.Child("keyStore"), "Vault keystore is only available on AWS"))
 		}
 	}
@@ -466,7 +496,7 @@ func DeepValidate(c *kops.Cluster, groups []*kops.InstanceGroup, strict bool, cl
 		errs := CrossValidateInstanceGroup(g, c, cloud, strict)
 
 		// Additional cloud-specific validation rules
-		if kops.CloudProviderID(c.Spec.CloudProvider) != kops.CloudProviderAWS && len(g.Spec.Volumes) > 0 {
+		if c.Spec.GetCloudProvider() != kops.CloudProviderAWS && len(g.Spec.Volumes) > 0 {
 			errs = append(errs, field.Forbidden(field.NewPath("spec", "volumes"), "instancegroup volumes are only available with aws at present"))
 		}
 

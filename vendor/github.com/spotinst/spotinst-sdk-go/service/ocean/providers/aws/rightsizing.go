@@ -34,14 +34,43 @@ type ContainerResourceSuggestion struct {
 	RequestedMemory *float64 `json:"requestedMemory,omitempty"`
 }
 
-// ListResourceSuggestionsInput represents the input of `ListResourceSuggestions` function.
+type Filter struct {
+	Attribute  *Attribute `json:"attribute,omitempty"`
+	Namespaces []string   `json:"namespaces,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type Attribute struct {
+	Key      *string `json:"key,omitempty"`
+	Operator *string `json:"operator,omitempty"`
+	Type     *string `json:"type,omitempty"`
+	Value    *string `json:"value,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+// Deprecated: Use ListOceanResourceSuggestionsInput instead.
 type ListResourceSuggestionsInput struct {
 	OceanID   *string `json:"oceanId,omitempty"`
 	Namespace *string `json:"namespace,omitempty"`
 }
 
-// ListResourceSuggestionsOutput represents the output of `ListResourceSuggestions` function.
+// Deprecated: Use ListOceanResourceSuggestionsOutput instead.
 type ListResourceSuggestionsOutput struct {
+	Suggestions []*ResourceSuggestion `json:"suggestions,omitempty"`
+}
+
+// ListOceanResourceSuggestionsInput represents the input of `ListOceanResourceSuggestions` function.
+type ListOceanResourceSuggestionsInput struct {
+	OceanID *string `json:"oceanId,omitempty"`
+	Filter  *Filter `json:"filter,omitempty"`
+}
+
+// ListOceanResourceSuggestionsOutput represents the output of `ListOceanResourceSuggestions` function.
+type ListOceanResourceSuggestionsOutput struct {
 	Suggestions []*ResourceSuggestion `json:"suggestions,omitempty"`
 }
 
@@ -77,8 +106,37 @@ func resourceSuggestionsFromHTTPResponse(resp *http.Response) ([]*ResourceSugges
 	return resourceSuggestionsFromJSON(body)
 }
 
-// ListResourceSuggestions returns a list of right-sizing resource suggestions
+// ListOceanResourceSuggestions returns a list of right-sizing resource suggestions
 // for an Ocean cluster.
+func (s *ServiceOp) ListOceanResourceSuggestions(ctx context.Context, input *ListOceanResourceSuggestionsInput) (*ListOceanResourceSuggestionsOutput, error) {
+	path, err := uritemplates.Expand("/ocean/aws/k8s/cluster/{oceanId}/rightSizing/suggestion", uritemplates.Values{
+		"oceanId": spotinst.StringValue(input.OceanID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	r := client.NewRequest(http.MethodPost, path)
+
+	// We do NOT need the ID anymore, so let's drop it.
+	input.OceanID = nil
+	r.Obj = input
+
+	resp, err := client.RequireOK(s.Client.Do(ctx, r))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	rs, err := resourceSuggestionsFromHTTPResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListOceanResourceSuggestionsOutput{Suggestions: rs}, nil
+}
+
+// Deprecated: Use ListOceanResourceSuggestions instead.
 func (s *ServiceOp) ListResourceSuggestions(ctx context.Context, input *ListResourceSuggestionsInput) (*ListResourceSuggestionsOutput, error) {
 	path, err := uritemplates.Expand("/ocean/aws/k8s/cluster/{oceanId}/rightSizing/resourceSuggestion", uritemplates.Values{
 		"oceanId": spotinst.StringValue(input.OceanID),

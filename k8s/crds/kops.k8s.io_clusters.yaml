@@ -262,6 +262,18 @@ spec:
                 description: AWSLoadbalancerControllerConfig determines the AWS LB
                   controller configuration.
                 properties:
+                  enableShield:
+                    description: 'EnableShield specifies whether the controller can
+                      enable Shield Advanced. Default: false'
+                    type: boolean
+                  enableWAF:
+                    description: 'EnableWAF specifies whether the controller can use
+                      WAFs (Classic Regional). Default: false'
+                    type: boolean
+                  enableWAFv2:
+                    description: 'EnableWAFv2 specifies whether the controller can
+                      use WAFs (V2). Default: false'
+                    type: boolean
                   enabled:
                     description: 'Enabled enables the loadbalancer controller. Default:
                       false'
@@ -289,6 +301,12 @@ spec:
                       by kOps. The deployment of cert-manager is skipped if this is
                       set to false.
                     type: boolean
+                  nameservers:
+                    description: 'nameservers is a list of nameserver IP addresses
+                      to use instead of the pod defaults. Default: none'
+                    items:
+                      type: string
+                    type: array
                 type: object
               channel:
                 description: The Channel we are following
@@ -304,6 +322,12 @@ spec:
                         description: 'Enabled enables the AWS EBS CSI driver Default:
                           false'
                         type: boolean
+                      podAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: 'PodAnnotations are the annotations added to
+                          AWS EBS CSI node and controller Pods. Default: none'
+                        type: object
                       version:
                         description: 'Version is the container image tag used. Default:
                           The latest stable release which is compatible with your
@@ -455,6 +479,16 @@ spec:
                             items:
                               type: string
                             type: array
+                          internalNetworkNames:
+                            items:
+                              type: string
+                            type: array
+                          ipv6SupportDisabled:
+                            type: boolean
+                          publicNetworkNames:
+                            items:
+                              type: string
+                            type: array
                         type: object
                       router:
                         description: OpenstackRouter defines the config for a router
@@ -524,6 +558,20 @@ spec:
                     description: ConfigureCloudRoutes enables CIDRs allocated with
                       to be configured on the cloud provider.
                     type: boolean
+                  controllers:
+                    description: Controllers is a list of controllers to enable on
+                      the controller-manager
+                    items:
+                      type: string
+                    type: array
+                  cpuRequest:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: 'CPURequest of CloudControllerManager container.
+                      Default: 200m'
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   enableLeaderMigration:
                     description: EnableLeaderMigration enables controller leader migration.
                     type: boolean
@@ -647,6 +695,12 @@ spec:
                       ignore unschedulable pods until they are a certain "age", regardless
                       of the scan-interval Default: 0s'
                     type: string
+                  podAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: 'PodAnnotations are the annotations added to cluster
+                      autoscaler pod when they are created. Default: none'
+                    type: object
                   scaleDownDelayAfterAdd:
                     description: 'ScaleDownDelayAfterAdd determines the time after
                       scale up that scale down evaluation resumes Default: 10m0s'
@@ -736,6 +790,33 @@ spec:
                   root:
                     description: Root directory for persistent data (default "/var/lib/containerd").
                     type: string
+                  runc:
+                    description: Runc configures the runc runtime.
+                    properties:
+                      packages:
+                        description: Packages overrides the URL and hash for the packages.
+                        properties:
+                          hashAmd64:
+                            description: HashAmd64 overrides the hash for the AMD64
+                              package.
+                            type: string
+                          hashArm64:
+                            description: HashArm64 overrides the hash for the ARM64
+                              package.
+                            type: string
+                          urlAmd64:
+                            description: UrlAmd64 overrides the URL for the AMD64
+                              package.
+                            type: string
+                          urlArm64:
+                            description: UrlArm64 overrides the URL for the ARM64
+                              package.
+                            type: string
+                        type: object
+                      version:
+                        description: Version used to pick the runc package.
+                        type: string
+                    type: object
                   skipInstall:
                     description: SkipInstall prevents kOps from installing and modifying
                       containerd in any way (default "false").
@@ -1056,6 +1137,10 @@ spec:
                     manager:
                       description: Manager describes the manager configuration
                       properties:
+                        backupInterval:
+                          description: BackupInterval which is used for backups. The
+                            default is 15 minutes.
+                          type: string
                         discoveryPollInterval:
                           description: DiscoveryPollInterval which is used for discovering
                             other cluster members. The default is 60 seconds.
@@ -1161,6 +1246,9 @@ spec:
                     isBase64:
                       description: IsBase64 indicates the contents is base64 encoded
                       type: boolean
+                    mode:
+                      description: Mode is this file's mode and permission bits
+                      type: string
                     name:
                       description: Name is a shortened reference to the asset
                       type: string
@@ -2443,9 +2531,7 @@ spec:
                                         this field and the ones listed in the namespaces
                                         field. null selector and null or empty namespaces
                                         list means "this pod's namespace". An empty
-                                        selector ({}) matches all namespaces. This
-                                        field is beta-level and is only honored when
-                                        PodAffinityNamespaceSelector feature is enabled.
+                                        selector ({}) matches all namespaces.
                                       properties:
                                         matchExpressions:
                                           description: matchExpressions is a list
@@ -2502,7 +2588,7 @@ spec:
                                         listed in this field and the ones selected
                                         by namespaceSelector. null or empty namespaces
                                         list and null namespaceSelector means "this
-                                        pod's namespace"
+                                        pod's namespace".
                                       items:
                                         type: string
                                       type: array
@@ -2606,9 +2692,7 @@ spec:
                                     field and the ones listed in the namespaces field.
                                     null selector and null or empty namespaces list
                                     means "this pod's namespace". An empty selector
-                                    ({}) matches all namespaces. This field is beta-level
-                                    and is only honored when PodAffinityNamespaceSelector
-                                    feature is enabled.
+                                    ({}) matches all namespaces.
                                   properties:
                                     matchExpressions:
                                       description: matchExpressions is a list of label
@@ -2663,7 +2747,7 @@ spec:
                                     term is applied to the union of the namespaces
                                     listed in this field and the ones selected by
                                     namespaceSelector. null or empty namespaces list
-                                    and null namespaceSelector means "this pod's namespace"
+                                    and null namespaceSelector means "this pod's namespace".
                                   items:
                                     type: string
                                   type: array
@@ -2767,9 +2851,7 @@ spec:
                                         this field and the ones listed in the namespaces
                                         field. null selector and null or empty namespaces
                                         list means "this pod's namespace". An empty
-                                        selector ({}) matches all namespaces. This
-                                        field is beta-level and is only honored when
-                                        PodAffinityNamespaceSelector feature is enabled.
+                                        selector ({}) matches all namespaces.
                                       properties:
                                         matchExpressions:
                                           description: matchExpressions is a list
@@ -2826,7 +2908,7 @@ spec:
                                         listed in this field and the ones selected
                                         by namespaceSelector. null or empty namespaces
                                         list and null namespaceSelector means "this
-                                        pod's namespace"
+                                        pod's namespace".
                                       items:
                                         type: string
                                       type: array
@@ -2930,9 +3012,7 @@ spec:
                                     field and the ones listed in the namespaces field.
                                     null selector and null or empty namespaces list
                                     means "this pod's namespace". An empty selector
-                                    ({}) matches all namespaces. This field is beta-level
-                                    and is only honored when PodAffinityNamespaceSelector
-                                    feature is enabled.
+                                    ({}) matches all namespaces.
                                   properties:
                                     matchExpressions:
                                       description: matchExpressions is a list of label
@@ -2987,7 +3067,7 @@ spec:
                                     term is applied to the union of the namespaces
                                     listed in this field and the ones selected by
                                     namespaceSelector. null or empty namespaces list
-                                    and null namespaceSelector means "this pod's namespace"
+                                    and null namespaceSelector means "this pod's namespace".
                                   items:
                                     type: string
                                   type: array
@@ -3093,6 +3173,12 @@ spec:
                           5Mi.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                      podAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: 'PodAnnotations makes possible to add additional
+                          annotations to node-local-dns. Default: none'
+                        type: object
                     type: object
                   provider:
                     description: Provider indicates whether CoreDNS or kube-dns will
@@ -3732,6 +3818,15 @@ spec:
                       the default value on nodes that // run docker daemon with version  <
                       1.9 or an Aufs storage backend. // Issue #10959 has more details.'
                     type: boolean
+                  shutdownGracePeriod:
+                    description: 'ShutdownGracePeriod specifies the total duration
+                      that the node should delay the shutdown by. Default: 30s'
+                    type: string
+                  shutdownGracePeriodCriticalPods:
+                    description: 'ShutdownGracePeriodCriticalPods specifies the duration
+                      used to terminate critical pods during a node shutdown. Default:
+                      10s'
+                    type: string
                   streamingConnectionIdleTimeout:
                     description: StreamingConnectionIdleTimeout is the maximum time
                       a streaming connection can be idle before the connection is
@@ -4151,6 +4246,15 @@ spec:
                       the default value on nodes that // run docker daemon with version  <
                       1.9 or an Aufs storage backend. // Issue #10959 has more details.'
                     type: boolean
+                  shutdownGracePeriod:
+                    description: 'ShutdownGracePeriod specifies the total duration
+                      that the node should delay the shutdown by. Default: 30s'
+                    type: string
+                  shutdownGracePeriodCriticalPods:
+                    description: 'ShutdownGracePeriodCriticalPods specifies the duration
+                      used to terminate critical pods during a node shutdown. Default:
+                      10s'
+                    type: string
                   streamingConnectionIdleTimeout:
                     description: StreamingConnectionIdleTimeout is the maximum time
                       a streaming connection can be idle before the connection is
@@ -4845,6 +4949,12 @@ spec:
                           + operator container. (default: 128Mi)'
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
+                      metrics:
+                        description: Metrics is a list of metrics to add or remove
+                          from the default list of metrics the agent exposes.
+                        items:
+                          type: string
+                        type: array
                       monitorAggregation:
                         description: 'MonitorAggregation sets the level of packet
                           monitoring. Possible values are "low", "medium", or "maximum".
@@ -5211,6 +5321,11 @@ spec:
                     description: 'Enabled enables the node termination handler. Default:
                       true'
                     type: boolean
+                  excludeFromLoadBalancers:
+                    description: 'ExcludeFromLoadBalancers makes node termination
+                      handler will mark for exclusion from load balancers before node
+                      are cordoned. Default: true'
+                    type: boolean
                   managedASGTag:
                     description: ManagedASGTag is the tag used to determine which
                       nodes NTH can take action on
@@ -5226,6 +5341,9 @@ spec:
                   prometheusEnable:
                     description: EnablePrometheusMetrics enables the "/metrics" endpoint.
                     type: boolean
+                  version:
+                    description: Version is the container image tag used.
+                    type: string
                 type: object
               nonMasqueradeCIDR:
                 description: MasterIPRange                 string `json:",omitempty"`
@@ -5244,6 +5362,15 @@ spec:
               podCIDR:
                 description: PodCIDR is the CIDR from which we allocate IPs for pods
                 type: string
+              podIdentityWebhook:
+                description: PodIdentityWebhook determines the EKS Pod Identity Webhook
+                  configuration.
+                properties:
+                  enabled:
+                    type: boolean
+                  replicas:
+                    type: integer
+                type: object
               project:
                 description: Project is the cloud project we should use, required
                   on GCE
@@ -5338,6 +5465,19 @@ spec:
                 description: Configuration of subnets we are targeting
                 items:
                   properties:
+                    additionalRoutes:
+                      description: AdditionalRoutes to attach to the subnet's route
+                        table
+                      items:
+                        properties:
+                          cidr:
+                            description: CIDR destination of the route
+                            type: string
+                          target:
+                            description: Target of the route
+                            type: string
+                        type: object
+                      type: array
                     cidr:
                       description: CIDR is the IPv4 CIDR block assigned to the subnet.
                       type: string

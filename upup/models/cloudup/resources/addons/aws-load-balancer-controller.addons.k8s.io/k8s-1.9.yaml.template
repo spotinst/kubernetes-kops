@@ -736,11 +736,22 @@ spec:
         app.kubernetes.io/component: controller
         app.kubernetes.io/name: aws-load-balancer-controller
     spec:
+      nodeSelector: null
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: Exists
       containers:
       - args:
         - --cluster-name={{ ClusterName }}
-        - --enable-waf=false
-        - --enable-wafv2=false
+        - --enable-waf={{ .AWSLoadBalancerController.EnableWAF }}
+        - --enable-wafv2={{ .AWSLoadBalancerController.EnableWAFv2 }}
         - --enable-shield=false
         - --ingress-class=alb
         - "--default-tags={{ CloudLabels }}"
@@ -772,8 +783,6 @@ spec:
           name: cert
           readOnly: true
       priorityClassName: system-cluster-critical
-      nodeSelector:
-        node-role.kubernetes.io/master: ""
       securityContext:
         fsGroup: 1337
       serviceAccountName: aws-load-balancer-controller

@@ -58,6 +58,7 @@ import (
 	"k8s.io/kops/pkg/kubemanifest"
 	"k8s.io/kops/pkg/model"
 	"k8s.io/kops/pkg/model/components/kopscontroller"
+	"k8s.io/kops/pkg/model/iam"
 	"k8s.io/kops/pkg/resources/spotinst"
 	"k8s.io/kops/pkg/wellknownports"
 	"k8s.io/kops/upup/pkg/fi"
@@ -101,6 +102,7 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 	dest["contains"] = sprigTxtFuncMap["contains"]
 	dest["trimPrefix"] = sprigTxtFuncMap["trimPrefix"]
 	dest["semverCompare"] = sprigTxtFuncMap["semverCompare"]
+	dest["ternary"] = sprigTxtFuncMap["ternary"]
 
 	dest["ClusterName"] = tf.ClusterName
 	dest["WithDefaultBool"] = func(v *bool, defaultValue bool) bool {
@@ -110,6 +112,7 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 		return defaultValue
 	}
 
+	dest["GetCloudProvider"] = cluster.Spec.GetCloudProvider
 	dest["GetInstanceGroup"] = tf.GetInstanceGroup
 	dest["GetNodeInstanceGroups"] = tf.GetNodeInstanceGroups
 	dest["HasHighlyAvailableControlPlane"] = tf.HasHighlyAvailableControlPlane
@@ -155,6 +158,7 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 
 	// will return openstack external ccm image location for current kubernetes version
 	dest["OpenStackCCMTag"] = tf.OpenStackCCMTag
+	dest["OpenStackCSITag"] = tf.OpenStackCSITag
 	dest["ProxyEnv"] = tf.ProxyEnv
 
 	dest["KopsSystemEnv"] = tf.KopsSystemEnv
@@ -164,6 +168,10 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 
 	dest["DO_TOKEN"] = func() string {
 		return os.Getenv("DIGITALOCEAN_ACCESS_TOKEN")
+	}
+
+	dest["HCLOUD_TOKEN"] = func() string {
+		return os.Getenv("HCLOUD_TOKEN")
 	}
 
 	if featureflag.Spotinst.Enabled() {
@@ -179,7 +187,24 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 		c := cluster.Spec.Networking.AmazonVPC
 		dest["AmazonVpcEnvVars"] = func() map[string]string {
 			envVars := map[string]string{
-				"AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER": "false",
+				// Use defaults from the official AWS VPC CNI Helm chart:
+				// https://github.com/aws/amazon-vpc-cni-k8s/blob/master/charts/aws-vpc-cni/values.yaml
+				"AWS_VPC_CNI_NODE_PORT_SUPPORT":         "true",
+				"AWS_VPC_ENI_MTU":                       "9001",
+				"AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER":    "false",
+				"AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG":    "false",
+				"AWS_VPC_K8S_CNI_EXTERNALSNAT":          "false",
+				"AWS_VPC_K8S_CNI_LOG_FILE":              "/host/var/log/aws-routed-eni/ipamd.log",
+				"AWS_VPC_K8S_CNI_LOGLEVEL":              "DEBUG",
+				"AWS_VPC_K8S_CNI_RANDOMIZESNAT":         "prng",
+				"AWS_VPC_K8S_CNI_VETHPREFIX":            "eni",
+				"AWS_VPC_K8S_PLUGIN_LOG_FILE":           "/var/log/aws-routed-eni/plugin.log",
+				"AWS_VPC_K8S_PLUGIN_LOG_LEVEL":          "DEBUG",
+				"DISABLE_INTROSPECTION":                 "false",
+				"DISABLE_METRICS":                       "false",
+				"ENABLE_POD_ENI":                        "false",
+				"WARM_ENI_TARGET":                       "1",
+				"DISABLE_NETWORK_RESOURCE_PROVISIONING": "false",
 			}
 			for _, e := range c.Env {
 				envVars[e.Name] = e.Value
@@ -209,7 +234,7 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 			if c.IPIPMode != "" {
 				return c.IPIPMode
 			}
-			if kops.CloudProviderID(cluster.Spec.CloudProvider) == kops.CloudProviderOpenstack {
+			if cluster.Spec.GetCloudProvider() == kops.CloudProviderOpenstack {
 				return "Always"
 			}
 			return "CrossSubnet"
@@ -293,7 +318,7 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 
 	dest["ArchitectureOfAMI"] = tf.architectureOfAMI
 
-	dest["ParseTaint"] = parseTaint
+	dest["ParseTaint"] = util.ParseTaint
 
 	dest["UsesInstanceIDForNodeName"] = func() bool {
 		return nodeup.UsesInstanceIDForNodeName(tf.Cluster)
@@ -302,6 +327,15 @@ func (tf *TemplateFunctions) AddTo(dest template.FuncMap, secretStore fi.SecretS
 	dest["KarpenterInstanceTypes"] = func(ig kops.InstanceGroupSpec) ([]string, error) {
 		return karpenterInstanceTypes(tf.cloud.(awsup.AWSCloud), ig)
 	}
+
+	dest["PodIdentityWebhookConfigMapData"] = tf.podIdentityWebhookConfigMapData
+
+	dest["HasSnapshotController"] = func() bool {
+		sc := cluster.Spec.SnapshotController
+		return sc != nil && fi.BoolValue(sc.Enabled)
+	}
+
+	dest["IsKubernetesLT"] = tf.IsKubernetesLT
 
 	return nil
 }
@@ -357,6 +391,8 @@ func (tf *TemplateFunctions) ControlPlaneControllerReplicas(deployOnWorkersIfExt
 func (tf *TemplateFunctions) APIServerNodeRole() string {
 	if featureflag.APIServerNodes.Enabled() {
 		return "node-role.kubernetes.io/api-server"
+	} else if tf.Cluster.IsKubernetesGTE("1.24") {
+		return "node-role.kubernetes.io/control-plane"
 	}
 	return "node-role.kubernetes.io/master"
 }
@@ -395,8 +431,8 @@ func (tf *TemplateFunctions) CloudControllerConfigArgv() ([]string, error) {
 
 	// take the cloud provider value from clusterSpec if unset
 	if cluster.Spec.ExternalCloudControllerManager.CloudProvider == "" {
-		if cluster.Spec.CloudProvider != "" {
-			argv = append(argv, fmt.Sprintf("--cloud-provider=%s", cluster.Spec.CloudProvider))
+		if cluster.Spec.GetCloudProvider() != "" {
+			argv = append(argv, fmt.Sprintf("--cloud-provider=%s", cluster.Spec.GetCloudProvider()))
 		} else {
 			return nil, fmt.Errorf("Cloud Provider is not set")
 		}
@@ -417,8 +453,6 @@ func (tf *TemplateFunctions) DNSControllerArgv() ([]string, error) {
 	cluster := tf.Cluster
 
 	var argv []string
-
-	argv = append(argv, "/dns-controller")
 
 	// @check if the dns controller has custom configuration
 	if cluster.Spec.ExternalDNS == nil {
@@ -489,7 +523,7 @@ func (tf *TemplateFunctions) DNSControllerArgv() ([]string, error) {
 			argv = append(argv, fmt.Sprintf("--gossip-seed-secondary=127.0.0.1:%d", wellknownports.ProtokubeGossipMemberlist))
 		}
 	} else {
-		switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+		switch cluster.Spec.GetCloudProvider() {
 		case kops.CloudProviderAWS:
 			if strings.HasPrefix(os.Getenv("AWS_REGION"), "cn-") {
 				argv = append(argv, "--dns=gossip")
@@ -502,7 +536,7 @@ func (tf *TemplateFunctions) DNSControllerArgv() ([]string, error) {
 			argv = append(argv, "--dns=digitalocean")
 
 		default:
-			return nil, fmt.Errorf("unhandled cloudprovider %q", cluster.Spec.CloudProvider)
+			return nil, fmt.Errorf("unhandled cloudprovider %q", cluster.Spec.GetCloudProvider())
 		}
 	}
 
@@ -536,7 +570,7 @@ func (tf *TemplateFunctions) KopsControllerConfig() (string, error) {
 	cluster := tf.Cluster
 
 	config := &kopscontrollerconfig.Options{
-		Cloud:      cluster.Spec.CloudProvider,
+		Cloud:      string(cluster.Spec.GetCloudProvider()),
 		ConfigBase: cluster.Spec.ConfigBase,
 	}
 
@@ -568,7 +602,7 @@ func (tf *TemplateFunctions) KopsControllerConfig() (string, error) {
 			CertNames:             certNames,
 		}
 
-		switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+		switch cluster.Spec.GetCloudProvider() {
 		case kops.CloudProviderAWS:
 			nodesRoles := sets.String{}
 			for _, ig := range tf.InstanceGroups {
@@ -600,7 +634,7 @@ func (tf *TemplateFunctions) KopsControllerConfig() (string, error) {
 				Region:     tf.Region,
 			}
 
-			if cluster.Spec.ExternalCloudControllerManager != nil && cluster.IsKubernetesGTE("1.23") {
+			if cluster.Spec.ExternalCloudControllerManager != nil && cluster.IsKubernetesGTE("1.22") {
 				config.Server.UseInstanceIDForNodeName = true
 			}
 
@@ -614,7 +648,7 @@ func (tf *TemplateFunctions) KopsControllerConfig() (string, error) {
 				MaxTimeSkew: 300,
 			}
 		default:
-			return "", fmt.Errorf("unsupported cloud provider %s", cluster.Spec.CloudProvider)
+			return "", fmt.Errorf("unsupported cloud provider %s", cluster.Spec.GetCloudProvider())
 		}
 	}
 
@@ -641,8 +675,6 @@ func (tf *TemplateFunctions) KopsControllerConfig() (string, error) {
 func (tf *TemplateFunctions) KopsControllerArgv() ([]string, error) {
 	var argv []string
 
-	argv = append(argv, "/kops-controller")
-
 	// Verbose, but not excessive logging
 	argv = append(argv, "--v=2")
 
@@ -657,9 +689,9 @@ func (tf *TemplateFunctions) ExternalDNSArgv() ([]string, error) {
 
 	var argv []string
 
-	cloudProvider := cluster.Spec.CloudProvider
+	cloudProvider := cluster.Spec.GetCloudProvider()
 
-	switch kops.CloudProviderID(cloudProvider) {
+	switch cloudProvider {
 	case kops.CloudProviderAWS:
 		argv = append(argv, "--provider=aws")
 	case kops.CloudProviderGCE:
@@ -667,7 +699,7 @@ func (tf *TemplateFunctions) ExternalDNSArgv() ([]string, error) {
 		argv = append(argv, "--provider=google")
 		argv = append(argv, "--google-project="+project)
 	default:
-		return nil, fmt.Errorf("unhandled cloudprovider %q", cluster.Spec.CloudProvider)
+		return nil, fmt.Errorf("unhandled cloudprovider %q", cluster.Spec.GetCloudProvider())
 	}
 
 	argv = append(argv, "--events")
@@ -734,9 +766,29 @@ func (tf *TemplateFunctions) OpenStackCCMTag() string {
 			tag = "1.13.1"
 		} else if parsed.Minor == 23 {
 			// The bugfix release, see https://github.com/kubernetes/cloud-provider-openstack/releases
-			tag = "1.23.1"
+			tag = "v1.23.1"
+		} else if parsed.Minor == 24 {
+			tag = "v1.24.1"
 		} else {
 			// otherwise we use always .0 ccm image, if needed that can be overrided using clusterspec
+			tag = fmt.Sprintf("v%d.%d.0", parsed.Major, parsed.Minor)
+		}
+	}
+	return tag
+}
+
+// OpenStackCSI returns OpenStack csi current image
+// with tag specified to k8s version
+func (tf *TemplateFunctions) OpenStackCSITag() string {
+	var tag string
+	parsed, err := util.ParseKubernetesVersion(tf.Cluster.Spec.KubernetesVersion)
+	if err != nil {
+		tag = "latest"
+	} else {
+		if parsed.Minor == 24 {
+			tag = "v1.24.1"
+		} else {
+			// otherwise we use always .0 csi image, if needed that can be overrided using cloud config spec
 			tag = fmt.Sprintf("v%d.%d.0", parsed.Major, parsed.Minor)
 		}
 	}
@@ -763,40 +815,29 @@ func (tf *TemplateFunctions) architectureOfAMI(amiID string) string {
 	return "arm64"
 }
 
-// parseTaint takes a string and returns a map of its value
-// it mimics the function from https://github.com/kubernetes/kubernetes/blob/master/pkg/util/taints/taints.go
-// but returns a map instead of a v1.Taint
-func parseTaint(st string) (map[string]string, error) {
-	taint := make(map[string]string)
+type podIdentityWebhookMapping struct {
+	RoleARN         string
+	Audience        string
+	UseRegionalSTS  bool
+	TokenExpiration int64
+}
 
-	var key string
-	var value string
-	var effect string
-
-	parts := strings.Split(st, ":")
-	switch len(parts) {
-	case 1:
-		key = parts[0]
-	case 2:
-		effect = parts[1]
-
-		partsKV := strings.Split(parts[0], "=")
-		if len(partsKV) > 2 {
-			return taint, fmt.Errorf("invalid taint spec: %v", st)
+func (tf *TemplateFunctions) podIdentityWebhookConfigMapData() (string, error) {
+	sas := tf.Cluster.Spec.IAM.ServiceAccountExternalPermissions
+	mappings := make(map[string]podIdentityWebhookMapping)
+	for _, sa := range sas {
+		if sa.AWS == nil {
+			continue
 		}
-		key = partsKV[0]
-		if len(partsKV) == 2 {
-			value = partsKV[1]
+		key := sa.Namespace + "/" + sa.Name
+		mappings[key] = podIdentityWebhookMapping{
+			RoleARN:        fmt.Sprintf("arn:%s:iam::%s:role/%s", tf.AWSPartition, tf.AWSAccountID, iam.IAMNameForServiceAccountRole(sa.Name, sa.Namespace, tf.ClusterName())),
+			Audience:       "amazonaws.com",
+			UseRegionalSTS: true,
 		}
-	default:
-		return taint, fmt.Errorf("invalid taint spec: %v", st)
 	}
-
-	taint["key"] = key
-	taint["value"] = value
-	taint["effect"] = effect
-
-	return taint, nil
+	jsonBytes, err := json.Marshal(mappings)
+	return fmt.Sprintf("%q", jsonBytes), err
 }
 
 func karpenterInstanceTypes(cloud awsup.AWSCloud, ig kops.InstanceGroupSpec) ([]string, error) {
