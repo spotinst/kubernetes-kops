@@ -669,7 +669,7 @@ func RunCreateCluster(ctx context.Context, f *util.Factory, out io.Writer, c *Cr
 			return err
 		}
 		fullGroup.AddInstanceGroupNodeLabel()
-		if api.CloudProviderID(cluster.Spec.CloudProvider) == api.CloudProviderGCE {
+		if cluster.Spec.GetCloudProvider() == api.CloudProviderGCE {
 			fullGroup.Spec.NodeLabels["cloud.google.com/metadata-proxy-ready"] = "true"
 		}
 		fullInstanceGroups = append(fullInstanceGroups, fullGroup)
@@ -899,7 +899,7 @@ func completeKubernetesVersion(cmd *cobra.Command, args []string, toComplete str
 	tooNewVersion.Pre = nil
 	tooNewVersion.Build = nil
 
-	repo, err := name.NewRepository("k8s.gcr.io/kube-apiserver")
+	repo, err := name.NewRepository("registry.k8s.io/kube-apiserver")
 	if err != nil {
 		return commandutils.CompletionError("parsing kube-apiserver repo", err)
 	}
@@ -985,7 +985,7 @@ func completeNetworking(options *CreateClusterOptions) func(cmd *cobra.Command, 
 				completions = append(completions, "amazonvpc")
 			}
 
-			if featureflag.AlphaAllowGCE.Enabled() && (options.CloudProvider == "gce" || options.CloudProvider == "") {
+			if options.CloudProvider == "gce" || options.CloudProvider == "" {
 				completions = append(completions, "gce")
 			}
 		}

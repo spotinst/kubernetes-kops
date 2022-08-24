@@ -29,6 +29,7 @@ import (
 	"k8s.io/kops/upup/pkg/fi/cloudup/azure"
 	"k8s.io/kops/upup/pkg/fi/cloudup/do"
 	"k8s.io/kops/upup/pkg/fi/cloudup/gce"
+	"k8s.io/kops/upup/pkg/fi/cloudup/hetzner"
 	"k8s.io/kops/upup/pkg/fi/cloudup/openstack"
 )
 
@@ -38,7 +39,7 @@ func BuildCloud(cluster *kops.Cluster) (fi.Cloud, error) {
 	region := ""
 	project := ""
 
-	switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+	switch cluster.Spec.GetCloudProvider() {
 	case kops.CloudProviderGCE:
 		{
 			for _, subnet := range cluster.Spec.Subnets {
@@ -108,6 +109,21 @@ func BuildCloud(cluster *kops.Cluster) (fi.Cloud, error) {
 			cloud = doCloud
 		}
 
+	case kops.CloudProviderHetzner:
+		{
+			region, err := hetzner.FindRegion(cluster)
+			if err != nil {
+				return nil, err
+			}
+
+			hetznerCloud, err := hetzner.NewHetznerCloud(region)
+			if err != nil {
+				return nil, fmt.Errorf("error initializing hetzner cloud: %s", err)
+			}
+
+			cloud = hetznerCloud
+		}
+
 	case kops.CloudProviderOpenstack:
 		{
 			cloudTags := map[string]string{openstack.TagClusterName: cluster.ObjectMeta.Name}
@@ -138,7 +154,7 @@ func BuildCloud(cluster *kops.Cluster) (fi.Cloud, error) {
 
 			cloudTags := map[string]string{azure.TagClusterName: cluster.ObjectMeta.Name}
 
-			azureCloud, err := azure.NewAzureCloud(cluster.Spec.CloudConfig.Azure.SubscriptionID, region, cloudTags)
+			azureCloud, err := azure.NewAzureCloud(cluster.Spec.CloudProvider.Azure.SubscriptionID, region, cloudTags)
 			if err != nil {
 				return nil, err
 			}
@@ -146,7 +162,7 @@ func BuildCloud(cluster *kops.Cluster) (fi.Cloud, error) {
 			cloud = azureCloud
 		}
 	default:
-		return nil, fmt.Errorf("unknown CloudProvider %q", cluster.Spec.CloudProvider)
+		return nil, fmt.Errorf("unknown CloudProvider %q", cluster.Spec.GetCloudProvider())
 	}
 	return cloud, nil
 }

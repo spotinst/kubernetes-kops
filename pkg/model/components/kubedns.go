@@ -74,7 +74,7 @@ func (b *KubeDnsOptionsBuilder) BuildOptions(o interface{}) error {
 		clusterSpec.KubeDNS.MemoryLimit = &defaultMemoryLimit
 	}
 
-	if clusterSpec.IsIPv6Only() && kops.CloudProviderID(clusterSpec.CloudProvider) == kops.CloudProviderAWS {
+	if clusterSpec.IsIPv6Only() && clusterSpec.GetCloudProvider() == kops.CloudProviderAWS {
 		if len(clusterSpec.KubeDNS.UpstreamNameservers) == 0 {
 			clusterSpec.KubeDNS.UpstreamNameservers = []string{"fd00:ec2::253"}
 		}
@@ -110,7 +110,7 @@ func (b *KubeDnsOptionsBuilder) BuildOptions(o interface{}) error {
 	}
 
 	if nodeLocalDNS.Image == nil {
-		nodeLocalDNS.Image = fi.String("k8s.gcr.io/dns/k8s-dns-node-cache:1.21.3")
+		nodeLocalDNS.Image = fi.String("registry.k8s.io/dns/k8s-dns-node-cache:1.21.3")
 	}
 
 	return nil

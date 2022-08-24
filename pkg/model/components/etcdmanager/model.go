@@ -38,6 +38,7 @@ import (
 	"k8s.io/kops/upup/pkg/fi/cloudup/azure"
 	"k8s.io/kops/upup/pkg/fi/cloudup/do"
 	"k8s.io/kops/upup/pkg/fi/cloudup/gce"
+	"k8s.io/kops/upup/pkg/fi/cloudup/hetzner"
 	"k8s.io/kops/upup/pkg/fi/cloudup/openstack"
 	"k8s.io/kops/upup/pkg/fi/fitasks"
 	"k8s.io/kops/util/pkg/env"
@@ -178,8 +179,8 @@ metadata:
   namespace: kube-system
 spec:
   containers:
-  - image: k8s.gcr.io/etcdadm/etcd-manager:v3.0.20220203
-    name: etcd-manager
+  - name: etcd-manager
+    image: registry.k8s.io/etcdadm/etcd-manager:v3.0.20220727
     resources:
       requests:
         cpu: 100m
@@ -347,8 +348,12 @@ func (b *EtcdManagerBuilder) buildPod(etcdCluster kops.EtcdClusterSpec) (*v1.Pod
 		config.LogLevel = int(*etcdCluster.Manager.LogLevel)
 	}
 
+	if etcdCluster.Manager != nil && etcdCluster.Manager.BackupInterval != nil {
+		config.BackupInterval = fi.String(etcdCluster.Manager.BackupInterval.Duration.String())
+	}
+
 	if etcdCluster.Manager != nil && etcdCluster.Manager.DiscoveryPollInterval != nil {
-		config.DiscoveryPollInterval = etcdCluster.Manager.DiscoveryPollInterval
+		config.DiscoveryPollInterval = fi.String(etcdCluster.Manager.DiscoveryPollInterval.Duration.String())
 	}
 
 	{
@@ -371,7 +376,7 @@ func (b *EtcdManagerBuilder) buildPod(etcdCluster kops.EtcdClusterSpec) (*v1.Pod
 	}
 
 	{
-		switch kops.CloudProviderID(b.Cluster.Spec.CloudProvider) {
+		switch b.Cluster.Spec.GetCloudProvider() {
 		case kops.CloudProviderAWS:
 			config.VolumeProvider = "aws"
 
@@ -416,6 +421,14 @@ func (b *EtcdManagerBuilder) buildPod(etcdCluster kops.EtcdClusterSpec) (*v1.Pod
 			}
 			config.VolumeNameTag = do.TagNameEtcdClusterPrefix + etcdCluster.Name
 
+		case kops.CloudProviderHetzner:
+			config.VolumeProvider = "hetzner"
+
+			config.VolumeTag = []string{
+				fmt.Sprintf("%s=%s", hetzner.TagKubernetesClusterName, b.Cluster.Name),
+				fmt.Sprintf("%s=%s", hetzner.TagKubernetesVolumeRole, etcdCluster.Name),
+			}
+
 		case kops.CloudProviderOpenstack:
 			config.VolumeProvider = "openstack"
 
@@ -427,7 +440,7 @@ func (b *EtcdManagerBuilder) buildPod(etcdCluster kops.EtcdClusterSpec) (*v1.Pod
 			config.VolumeNameTag = openstack.TagNameEtcdClusterPrefix + etcdCluster.Name
 
 		default:
-			return nil, fmt.Errorf("CloudProvider %q not supported with etcd-manager", b.Cluster.Spec.CloudProvider)
+			return nil, fmt.Errorf("CloudProvider %q not supported with etcd-manager", b.Cluster.Spec.GetCloudProvider())
 		}
 	}
 
@@ -521,6 +534,7 @@ type config struct {
 	QuarantineClientUrls  string   `flag:"quarantine-client-urls"`
 	ClusterName           string   `flag:"cluster-name"`
 	BackupStore           string   `flag:"backup-store"`
+	BackupInterval        *string  `flag:"backup-interval"`
 	DataDir               string   `flag:"data-dir"`
 	VolumeProvider        string   `flag:"volume-provider"`
 	VolumeTag             []string `flag:"volume-tag,repeat"`

@@ -24,6 +24,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/kops/pkg/apis/kops"
@@ -46,6 +47,18 @@ func awsValidateCluster(c *kops.Cluster) field.ErrorList {
 
 	if c.Spec.Authentication != nil && c.Spec.Authentication.AWS != nil {
 		allErrs = append(allErrs, awsValidateIAMAuthenticator(field.NewPath("spec", "authentication", "aws"), c.Spec.Authentication.AWS)...)
+	}
+
+	for i, subnet := range c.Spec.Subnets {
+		f := field.NewPath("spec", "subnets").Index(i)
+		if subnet.AdditionalRoutes != nil {
+			if len(subnet.ProviderID) > 0 {
+				allErrs = append(allErrs, field.Invalid(f, subnet, "additional routes cannot be added if the subnet is shared"))
+			} else if subnet.Type != kops.SubnetTypePrivate {
+				allErrs = append(allErrs, field.Invalid(f, subnet, "additional routes can only be added on private subnets"))
+			}
+			allErrs = append(allErrs, awsValidateAdditionalRoutes(f.Child("additionalRoutes"), subnet.AdditionalRoutes, c.Spec.NetworkCIDR)...)
+		}
 	}
 
 	return allErrs
@@ -86,6 +99,21 @@ func awsValidateInstanceGroup(ig *kops.InstanceGroup, cloud awsup.AWSCloud) fiel
 
 	if ig.Spec.CPUCredits != nil {
 		allErrs = append(allErrs, awsValidateCPUCredits(field.NewPath("spec"), &ig.Spec, cloud)...)
+	}
+
+	if ig.Spec.MaxInstanceLifetime != nil {
+		allErrs = append(allErrs, awsValidateMaximumInstanceLifetime(field.NewPath(ig.GetName(), "spec"), ig.Spec.MaxInstanceLifetime)...)
+	}
+
+	return allErrs
+}
+
+func awsValidateMaximumInstanceLifetime(fieldPath *field.Path, maxInstanceLifetime *metav1.Duration) field.ErrorList {
+	allErrs := field.ErrorList{}
+	const minMaxInstanceLifetime = 86400
+	lifetimeSec := int64(maxInstanceLifetime.Seconds())
+	if lifetimeSec != 0 && lifetimeSec < minMaxInstanceLifetime {
+		allErrs = append(allErrs, field.Invalid(fieldPath.Child("maxInstanceLifetime"), maxInstanceLifetime, fmt.Sprintf("max instance lifetime must be greater than %d or equal to 0", int64(minMaxInstanceLifetime))))
 	}
 
 	return allErrs
@@ -346,4 +374,49 @@ func hasAWSEBSCSIDriver(c kops.ClusterSpec) bool {
 	}
 
 	return *c.CloudConfig.AWSEBSCSIDriver.Enabled
+}
+
+func awsValidateAdditionalRoutes(fieldPath *field.Path, routes []kops.RouteSpec, cidr string) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	_, clusterNet, errClusterNet := net.ParseCIDR(cidr)
+	if errClusterNet != nil {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "networkCIDR"), cidr, "Invalid cluster cidr"))
+	} else {
+		for i, r := range routes {
+			f := fieldPath.Index(i)
+
+			// Check if target is a known type
+			if !strings.HasPrefix(r.Target, "pcx-") &&
+				!strings.HasPrefix(r.Target, "i-") &&
+				!strings.HasPrefix(r.Target, "nat-") &&
+				!strings.HasPrefix(r.Target, "tgw-") &&
+				!strings.HasPrefix(r.Target, "igw-") &&
+				!strings.HasPrefix(r.Target, "eigw-") {
+				allErrs = append(allErrs, field.Invalid(f.Child("target"), r, "unknown target type for route"))
+			}
+
+			ipRoute, _, e := net.ParseCIDR(r.CIDR)
+			if e != nil {
+				allErrs = append(allErrs, field.Invalid(f.Child("cidr"), r, "invalid cidr"))
+			} else if clusterNet.Contains(ipRoute) && strings.HasPrefix(r.Target, "pcx-") {
+				allErrs = append(allErrs, field.Forbidden(f.Child("target"), "target is more specific than cluster CIDR block. This route can target only an interface or an instance."))
+			}
+		}
+	}
+
+	// Check for duplicated CIDR
+	{
+		cidrs := sets.NewString()
+		cidrs.Insert(cidr)
+		for i := range routes {
+			rCidr := routes[i].CIDR
+			if cidrs.Has(rCidr) {
+				allErrs = append(allErrs, field.Duplicate(fieldPath.Index(i).Child("cidr"), rCidr))
+			}
+			cidrs.Insert(rCidr)
+		}
+	}
+
+	return allErrs
 }

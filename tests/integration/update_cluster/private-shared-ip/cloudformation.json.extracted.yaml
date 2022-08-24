@@ -132,7 +132,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersprivatesharedipexamplecom.Pro
   containerRuntime: containerd
   containerd:
     logLevel: info
-    version: 1.4.12
+    version: 1.4.13
   docker:
     skipInstall: true
   encryptionConfig: null
@@ -164,7 +164,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersprivatesharedipexamplecom.Pro
     - https://127.0.0.1:4001
     etcdServersOverrides:
     - /events#https://127.0.0.1:4002
-    image: k8s.gcr.io/kube-apiserver:v1.21.0
+    image: registry.k8s.io/kube-apiserver:v1.21.0
     kubeletPreferredAddressTypes:
     - InternalIP
     - Hostname
@@ -190,7 +190,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersprivatesharedipexamplecom.Pro
     clusterCIDR: 100.96.0.0/11
     clusterName: private-shared-ip.example.com
     configureCloudRoutes: false
-    image: k8s.gcr.io/kube-controller-manager:v1.21.0
+    image: registry.k8s.io/kube-controller-manager:v1.21.0
     leaderElection:
       leaderElect: true
     logLevel: 2
@@ -198,10 +198,10 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersprivatesharedipexamplecom.Pro
   kubeProxy:
     clusterCIDR: 100.96.0.0/11
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.21.0
+    image: registry.k8s.io/kube-proxy:v1.21.0
     logLevel: 2
   kubeScheduler:
-    image: k8s.gcr.io/kube-scheduler:v1.21.0
+    image: registry.k8s.io/kube-scheduler:v1.21.0
     leaderElection:
       leaderElect: true
     logLevel: 2
@@ -217,8 +217,10 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersprivatesharedipexamplecom.Pro
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
   masterKubelet:
     anonymousAuth: false
     cgroupDriver: systemd
@@ -231,9 +233,11 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersprivatesharedipexamplecom.Pro
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
     registerSchedulable: false
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -242,7 +246,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amastersprivatesharedipexamplecom.Pro
   ConfigBase: memfs://clusters.example.com/private-shared-ip.example.com
   InstanceGroupName: master-us-test-1a
   InstanceGroupRole: Master
-  NodeupConfigHash: GHHB13CVSLSlviAHaioPwlq93TDJ6bLTuv2FN13tMqQ=
+  NodeupConfigHash: 7G+MLDSsVg/OqvtphhrnOerDecLr/dfjfhFN5PfZ4f8=
 
   __EOF_KUBE_ENV
 
@@ -381,13 +385,13 @@ Resources.AWSEC2LaunchTemplatenodesprivatesharedipexamplecom.Properties.LaunchTe
   containerRuntime: containerd
   containerd:
     logLevel: info
-    version: 1.4.12
+    version: 1.4.13
   docker:
     skipInstall: true
   kubeProxy:
     clusterCIDR: 100.96.0.0/11
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.21.0
+    image: registry.k8s.io/kube-proxy:v1.21.0
     logLevel: 2
   kubelet:
     anonymousAuth: false
@@ -401,8 +405,10 @@ Resources.AWSEC2LaunchTemplatenodesprivatesharedipexamplecom.Properties.LaunchTe
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -411,7 +417,7 @@ Resources.AWSEC2LaunchTemplatenodesprivatesharedipexamplecom.Properties.LaunchTe
   ConfigBase: memfs://clusters.example.com/private-shared-ip.example.com
   InstanceGroupName: nodes
   InstanceGroupRole: Node
-  NodeupConfigHash: iTRC7mQVdkkKHCa/4o/wGyvkxdapMoRDTDLw4vSUrQA=
+  NodeupConfigHash: Ppa+wSJM38tcYifoyKh+UF35FWPw/HF62XcC/KdCHsc=
 
   __EOF_KUBE_ENV
 

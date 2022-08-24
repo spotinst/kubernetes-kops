@@ -126,18 +126,20 @@ cat > conf/cluster_spec.yaml << '__EOF_CLUSTER_SPEC'
 cloudConfig:
   awsEBSCSIDriver:
     enabled: true
-    version: v1.5.0
+    version: v1.8.0
   manageStorageClasses: true
 containerRuntime: containerd
 containerd:
   logLevel: info
-  version: 1.6.0-rc.3
+  runc:
+    version: 1.1.3
+  version: 1.6.8
 docker:
   skipInstall: true
 kubeProxy:
   clusterCIDR: 100.96.0.0/11
   cpuRequest: 100m
-  image: k8s.gcr.io/kube-proxy:v1.24.0-alpha.1
+  image: registry.k8s.io/kube-proxy:v1.24.0-alpha.1
   logLevel: 2
 kubelet:
   anonymousAuth: false
@@ -153,9 +155,11 @@ kubelet:
     InTreePluginAWSUnregister: "true"
   kubeconfigPath: /var/lib/kubelet/kubeconfig
   logLevel: 2
-  podInfraContainerImage: k8s.gcr.io/pause:3.6
+  podInfraContainerImage: registry.k8s.io/pause:3.6
   podManifestPath: /etc/kubernetes/manifests
   protectKernelDefaults: true
+  shutdownGracePeriod: 30s
+  shutdownGracePeriodCriticalPods: 10s
 
 __EOF_CLUSTER_SPEC
 
@@ -164,7 +168,7 @@ CloudProvider: aws
 ConfigBase: memfs://tests/minimal.example.com
 InstanceGroupName: nodes
 InstanceGroupRole: Node
-NodeupConfigHash: lr2857M9lRJ1qv8gkW+sovSiCA4qZOO2P67SI1Q37rw=
+NodeupConfigHash: EBNw0oi7LCUNV8Xjpjs40wyDIcKC7Up3hUOR2nBiQso=
 
 __EOF_KUBE_ENV
 

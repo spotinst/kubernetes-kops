@@ -6,21 +6,15 @@ spec:
   addons:
   - id: k8s-1.16
     manifest: kops-controller.addons.k8s.io/k8s-1.16.yaml
-    manifestHash: 775bbe55c21e48e24bf2ed86b80f5be033072025d5256d3b71858a29eb5384cb
+    manifestHash: db994a90b869613f2fe69ed196a3f88b9fb256c4a8177bb4254e1fdf4faab5a3
     name: kops-controller.addons.k8s.io
     needsRollingUpdate: control-plane
     selector:
       k8s-addon: kops-controller.addons.k8s.io
     version: 9.99.0
-  - manifest: core.addons.k8s.io/v1.4.0.yaml
-    manifestHash: 18233793a8442224d052e44891e737c67ccfb4e051e95216392319653f4cb0e5
-    name: core.addons.k8s.io
-    selector:
-      k8s-addon: core.addons.k8s.io
-    version: 9.99.0
   - id: k8s-1.12
     manifest: kube-dns.addons.k8s.io/k8s-1.12.yaml
-    manifestHash: 86f35e6bc4ffa375038449e4fba4b7c9c7d7aa731d3713b7103389d08661a72c
+    manifestHash: 2a63dfc21d569d42bb6812309e6e12b1457ca4fb9ec8e49521d02d821d731fef
     name: kube-dns.addons.k8s.io
     selector:
       k8s-addon: kube-dns.addons.k8s.io
@@ -40,14 +34,14 @@ spec:
     version: 9.99.0
   - id: k8s-1.12
     manifest: dns-controller.addons.k8s.io/k8s-1.12.yaml
-    manifestHash: ac3d2238b9a073b6d2e28d1668aabb35704ad01e96d586147006e074c8efb0f8
+    manifestHash: d5c02aad5ffe8c96a5cc57dc867864b46e37459ad9d5dbf2c1536c322ca072d9
     name: dns-controller.addons.k8s.io
     selector:
       k8s-addon: dns-controller.addons.k8s.io
     version: 9.99.0
   - id: k8s-1.11
     manifest: metrics-server.addons.k8s.io/k8s-1.11.yaml
-    manifestHash: 93c0127182da9877f996b5328d2ed6d8a835f2867fd1d0972333cc66bbc4423f
+    manifestHash: 11c1aee62e84644780c05cd8f7d0bd9a99bc9f0b45a43ab796b51ee335f5ecf6
     name: metrics-server.addons.k8s.io
     needsPKI: true
     selector:
@@ -55,7 +49,7 @@ spec:
     version: 9.99.0
   - id: k8s-1.16
     manifest: certmanager.io/k8s-1.16.yaml
-    manifestHash: 0ad47440355c822d443ae607d7a052e93eaa024d60f69e18d925785b7ec3b406
+    manifestHash: 2b1fc2ca18c196c00252385cd9b7dc3f7f6dbb0c669089f9b9e1962279a433c4
     name: certmanager.io
     selector: null
     version: 9.99.0
@@ -67,8 +61,8 @@ spec:
       k8s-addon: storage-aws.addons.k8s.io
     version: 9.99.0
   - id: k8s-1.16
-    manifest: networking.cilium.io/k8s-1.16-v1.10.yaml
-    manifestHash: b98df037f3556a2b6e3233c01e9b07c7423b803e5ad1f92276ef8df6e52f9ce6
+    manifest: networking.cilium.io/k8s-1.16-v1.11.yaml
+    manifestHash: c36bf98b69107c123dffc67ad70a023401b5fa4cc7d384a184e6a46b8637ada4
     name: networking.cilium.io
     needsRollingUpdate: all
     selector:

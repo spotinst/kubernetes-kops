@@ -9,16 +9,19 @@ env:
   GOPROXY: https://proxy.golang.org
   GOPATH: ${{ github.workspace }}/go
 
+permissions:
+  contents: read
+
 jobs:
   build-linux-amd64:
     runs-on: ubuntu-20.04
     steps:
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@b22fbbc2921299758641fab08929b4ac52b32923
         with:
-          go-version: 1.17.5
+          go-version: 1.18.4
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@629c2de402a417ea7690ca6ce3f33229e27606a5 # v2 https://api.github.com/repos/actions/checkout/git/tags/629c2de402a417ea7690ca6ce3f33229e27606a5
         with:
           path: ${{ env.GOPATH }}/src/k8s.io/kops
 
@@ -28,14 +31,14 @@ jobs:
           make all examples test
 
   build-macos-amd64:
-    runs-on: macos-10.15
+    runs-on: macos-latest
     steps:
     - name: Set up go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@b22fbbc2921299758641fab08929b4ac52b32923
       with:
-        go-version: 1.17.5
+        go-version: 1.18.4
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@629c2de402a417ea7690ca6ce3f33229e27606a5 # v2 https://api.github.com/repos/actions/checkout/git/tags/629c2de402a417ea7690ca6ce3f33229e27606a5
       with:
         path: ${{ env.GOPATH }}/src/k8s.io/kops
 
@@ -48,11 +51,11 @@ jobs:
     runs-on: windows-2019
     steps:
     - name: Set up go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@b22fbbc2921299758641fab08929b4ac52b32923
       with:
-        go-version: 1.17.5
+        go-version: 1.18.4
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@629c2de402a417ea7690ca6ce3f33229e27606a5 # v2 https://api.github.com/repos/actions/checkout/git/tags/629c2de402a417ea7690ca6ce3f33229e27606a5
       with:
         path: ${{ env.GOPATH }}/src/k8s.io/kops
 
@@ -65,11 +68,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@b22fbbc2921299758641fab08929b4ac52b32923
         with:
-          go-version: 1.17.5
+          go-version: 1.18.4
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@629c2de402a417ea7690ca6ce3f33229e27606a5 # v2 https://api.github.com/repos/actions/checkout/git/tags/629c2de402a417ea7690ca6ce3f33229e27606a5
         with:
           path: ${{ env.GOPATH }}/src/k8s.io/kops
 

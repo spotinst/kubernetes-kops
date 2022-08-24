@@ -19,12 +19,14 @@ package openstack
 import (
 	"fmt"
 
+	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/listeners"
 	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/loadbalancers"
 	"github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/monitors"
 	v2pools "github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/pools"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog/v2"
 	"k8s.io/kops/util/pkg/vfs"
 )
 
@@ -300,11 +302,36 @@ func getLBStats(c OpenstackCloud, loadbalancerID string) (stats *loadbalancers.S
 	return stats, nil
 }
 
-func (c *openstackCloud) GetPool(poolID string, memberID string) (member *v2pools.Member, err error) {
-	return getPool(c, poolID, memberID)
+func (c *openstackCloud) GetPool(poolID string) (pool *v2pools.Pool, err error) {
+	return getPool(c, poolID)
 }
 
-func getPool(c OpenstackCloud, poolID string, memberID string) (member *v2pools.Member, err error) {
+func getPool(c OpenstackCloud, poolID string) (pool *v2pools.Pool, err error) {
+	if c.LoadBalancerClient() == nil {
+		return nil, fmt.Errorf("loadbalancer support not available in this deployment")
+	}
+
+	done, err := vfs.RetryWithBackoff(readBackoff, func() (bool, error) {
+		pool, err = v2pools.Get(c.LoadBalancerClient(), poolID).Extract()
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	})
+	if !done {
+		if err == nil {
+			err = wait.ErrWaitTimeout
+		}
+		return pool, err
+	}
+	return pool, nil
+}
+
+func (c *openstackCloud) GetPoolMember(poolID string, memberID string) (member *v2pools.Member, err error) {
+	return getPoolMember(c, poolID, memberID)
+}
+
+func getPoolMember(c OpenstackCloud, poolID string, memberID string) (member *v2pools.Member, err error) {
 	if c.LoadBalancerClient() == nil {
 		return nil, fmt.Errorf("loadbalancer support not available in this deployment")
 	}
@@ -337,6 +364,16 @@ func updateMemberInPool(c OpenstackCloud, poolID string, memberID string, opts v
 	done, err := vfs.RetryWithBackoff(writeBackoff, func() (bool, error) {
 		association, err = v2pools.UpdateMember(c.LoadBalancerClient(), poolID, memberID, opts).Extract()
 		if err != nil {
+			// member not found anymore
+			if isNotFound(err) {
+				return true, nil
+			}
+			// pool is currently in immutable state, try to retry
+			errCode, ok := err.(gophercloud.ErrDefault409)
+			if ok {
+				klog.Infof("got error %v retrying...", errCode)
+				return false, nil
+			}
 			return false, fmt.Errorf("failed to update pool membership: %v", err)
 		}
 		return true, nil

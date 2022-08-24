@@ -24,9 +24,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"k8s.io/kops/pkg/apis/kops"
+	"k8s.io/kops/pkg/apis/kops/util"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/cloudup/awsup"
 )
@@ -157,6 +159,20 @@ func ValidateInstanceGroup(g *kops.InstanceGroup, cloud fi.Cloud, strict bool) f
 
 	allErrs = append(allErrs, IsValidValue(field.NewPath("spec", "updatePolicy"), g.Spec.UpdatePolicy, []string{kops.UpdatePolicyAutomatic, kops.UpdatePolicyExternal})...)
 
+	taintKeys := sets.NewString()
+	for i, taint := range g.Spec.Taints {
+		path := field.NewPath("spec", "taints").Index(i)
+		_, err := util.ParseTaint(taint)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(path, taint, "invalid taint value"))
+		}
+		if taintKeys.Has(taint) {
+			allErrs = append(allErrs, field.Duplicate(path, taint))
+		} else {
+			taintKeys.Insert(taint)
+		}
+	}
+
 	return allErrs
 }
 
@@ -201,7 +217,7 @@ func CrossValidateInstanceGroup(g *kops.InstanceGroup, cluster *kops.Cluster, cl
 		allErrs = append(allErrs, ValidateMasterInstanceGroup(g, cluster)...)
 	}
 
-	if g.Spec.Role == kops.InstanceGroupRoleAPIServer && kops.CloudProviderID(cluster.Spec.CloudProvider) != kops.CloudProviderAWS {
+	if g.Spec.Role == kops.InstanceGroupRoleAPIServer && cluster.Spec.GetCloudProvider() != kops.CloudProviderAWS {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", "role"), "Apiserver role only supported on AWS"))
 	}
 
@@ -220,7 +236,7 @@ func CrossValidateInstanceGroup(g *kops.InstanceGroup, cluster *kops.Cluster, cl
 		}
 	}
 
-	if kops.CloudProviderID(cluster.Spec.CloudProvider) == kops.CloudProviderAWS {
+	if cluster.Spec.GetCloudProvider() == kops.CloudProviderAWS {
 		if g.Spec.RootVolumeType != nil {
 			allErrs = append(allErrs, IsValidValue(field.NewPath("spec", "rootVolumeType"), g.Spec.RootVolumeType, []string{"standard", "gp3", "gp2", "io1", "io2"})...)
 		}
@@ -228,6 +244,10 @@ func CrossValidateInstanceGroup(g *kops.InstanceGroup, cluster *kops.Cluster, cl
 		if g.Spec.WarmPool != nil {
 			allErrs = append(allErrs, field.Forbidden(field.NewPath("spec", "warmPool"), "warm pool only supported on AWS"))
 		}
+	}
+
+	if g.Spec.Containerd != nil {
+		allErrs = append(allErrs, validateContainerdConfig(&cluster.Spec, g.Spec.Containerd, field.NewPath("spec", "containerd"), false)...)
 	}
 
 	{

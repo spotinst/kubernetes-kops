@@ -31,6 +31,9 @@ const (
 	GceLabelNameInstanceGroup     = "k8s-io-instance-group"
 	GceLabelNameRolePrefix        = "k8s-io-role-"
 	GceLabelNameEtcdClusterPrefix = "k8s-io-etcd-"
+	ControlPlane                  = "control-plane"
+	Bastion                       = "bastion"
+	Node                          = "node"
 )
 
 // EncodeGCELabel encodes a string into an RFC1035 compatible value, suitable for use as GCE label key or value
@@ -64,5 +67,5 @@ func DecodeGCELabel(s string) (string, error) {
 
 // TagForRole return the instance (network) tag used for instances with the given role.
 func TagForRole(clusterName string, role kops.InstanceGroupRole) string {
-	return SafeClusterName(clusterName) + "-" + GceLabelNameRolePrefix + strings.ToLower(string(role))
+	return ClusterPrefixedName(GceLabelNameRolePrefix+strings.ToLower(string(role)), clusterName, 63)
 }

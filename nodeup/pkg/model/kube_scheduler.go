@@ -27,6 +27,7 @@ import (
 	"k8s.io/kops/pkg/flagbuilder"
 	"k8s.io/kops/pkg/k8scodecs"
 	"k8s.io/kops/pkg/kubemanifest"
+	"k8s.io/kops/pkg/model/components"
 	"k8s.io/kops/pkg/rbac"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/nodeup/nodetasks"
@@ -192,7 +193,7 @@ func (b *KubeSchedulerBuilder) buildPod(kubeScheduler *kops.KubeSchedulerConfig)
 		flags = append(flags, "--"+flag+"kubeconfig="+defaultKubeConfig)
 	}
 
-	if kubeScheduler.UsePolicyConfigMap != nil {
+	if fi.BoolValue(kubeScheduler.UsePolicyConfigMap) {
 		flags = append(flags, "--policy-configmap=scheduler-policy", "--policy-configmap-namespace=kube-system")
 	}
 
@@ -214,6 +215,9 @@ func (b *KubeSchedulerBuilder) buildPod(kubeScheduler *kops.KubeSchedulerConfig)
 	}
 
 	image := kubeScheduler.Image
+	if components.IsBaseURL(b.Cluster.Spec.KubernetesVersion) {
+		image = strings.Replace(image, "registry.k8s.io", "k8s.gcr.io", 1)
+	}
 	if b.Architecture != architectures.ArchitectureAmd64 {
 		image = strings.Replace(image, "-amd64", "-"+string(b.Architecture), 1)
 	}
@@ -260,11 +264,17 @@ func (b *KubeSchedulerBuilder) buildPod(kubeScheduler *kops.KubeSchedulerConfig)
 		container.Args = append(container.Args, sortedStrings(flags)...)
 	} else {
 		container.Command = []string{"/usr/local/bin/kube-scheduler"}
-		container.Args = append(
-			sortedStrings(flags),
-			"--logtostderr=false", // https://github.com/kubernetes/klog/issues/60
-			"--alsologtostderr",
-			"--log-file=/var/log/kube-scheduler.log")
+		if kubeScheduler.LogFormat != "" && kubeScheduler.LogFormat != "text" {
+			// When logging-format is not text, some flags are not accepted.
+			// https://github.com/kubernetes/kops/issues/14100
+			container.Args = sortedStrings(flags)
+		} else {
+			container.Args = append(
+				sortedStrings(flags),
+				"--logtostderr=false", // https://github.com/kubernetes/klog/issues/60
+				"--alsologtostderr",
+				"--log-file=/var/log/kube-scheduler.log")
+		}
 	}
 
 	if kubeScheduler.MaxPersistentVolumes != nil {

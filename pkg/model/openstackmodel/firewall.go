@@ -50,12 +50,17 @@ type FirewallModelBuilder struct {
 var _ fi.ModelBuilder = &FirewallModelBuilder{}
 
 func (b *FirewallModelBuilder) usesOctavia() bool {
-	if b.Cluster.Spec.CloudConfig != nil &&
-		b.Cluster.Spec.CloudConfig.Openstack != nil &&
-		b.Cluster.Spec.CloudConfig.Openstack.Loadbalancer != nil {
-		return fi.BoolValue(b.Cluster.Spec.CloudConfig.Openstack.Loadbalancer.UseOctavia)
+	if b.Cluster.Spec.CloudProvider.Openstack.Loadbalancer != nil {
+		return fi.BoolValue(b.Cluster.Spec.CloudProvider.Openstack.Loadbalancer.UseOctavia)
 	}
 	return false
+}
+
+func (b *FirewallModelBuilder) getOctaviaProvider() string {
+	if b.Cluster.Spec.CloudProvider.Openstack.Loadbalancer != nil {
+		return fi.StringValue(b.Cluster.Spec.CloudProvider.Openstack.Loadbalancer.Provider)
+	}
+	return ""
 }
 
 // addDirectionalGroupRule - create a rule on the source group to the dest group provided a securityGroupRuleTask
@@ -270,15 +275,33 @@ func (b *FirewallModelBuilder) addHTTPSRules(c *fi.ModelBuilderContext, sgMap ma
 
 		// FIXME: Octavia port traffic appears to be denied though its port is in lbSG
 		if b.usesOctavia() {
-			b.addDirectionalGroupRule(c, masterSG, nil, &openstacktasks.SecurityGroupRule{
-				Lifecycle:      b.Lifecycle,
-				Direction:      s(string(rules.DirIngress)),
-				Protocol:       s(IPProtocolTCP),
-				EtherType:      s(IPV4),
-				PortRangeMin:   i(443),
-				PortRangeMax:   i(443),
-				RemoteIPPrefix: s(b.Cluster.Spec.NetworkCIDR),
-			})
+			if b.getOctaviaProvider() == "ovn" {
+				for _, apiAccess := range b.Cluster.Spec.KubernetesAPIAccess {
+					etherType := IPV4
+					if !net.IsIPv4CIDRString(apiAccess) {
+						etherType = IPV6
+					}
+					b.addDirectionalGroupRule(c, masterSG, nil, &openstacktasks.SecurityGroupRule{
+						Lifecycle:      b.Lifecycle,
+						Direction:      s(string(rules.DirIngress)),
+						Protocol:       s(IPProtocolTCP),
+						EtherType:      s(etherType),
+						PortRangeMin:   i(443),
+						PortRangeMax:   i(443),
+						RemoteIPPrefix: s(apiAccess),
+					})
+				}
+			} else {
+				b.addDirectionalGroupRule(c, masterSG, nil, &openstacktasks.SecurityGroupRule{
+					Lifecycle:      b.Lifecycle,
+					Direction:      s(string(rules.DirIngress)),
+					Protocol:       s(IPProtocolTCP),
+					EtherType:      s(IPV4),
+					PortRangeMin:   i(443),
+					PortRangeMax:   i(443),
+					RemoteIPPrefix: s(b.Cluster.Spec.NetworkCIDR),
+				})
+			}
 		}
 
 	} else {
