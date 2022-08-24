@@ -27,25 +27,15 @@ LOCAL=$(BUILD)/local
 ARTIFACTS?=$(BUILD)/artifacts
 DIST=$(BUILD)/dist
 IMAGES=$(DIST)/images
-CHANNELS=$(LOCAL)/channels
-NODEUP=$(LOCAL)/nodeup
-PROTOKUBE=$(LOCAL)/protokube
 UPLOAD=$(BUILD)/upload
-BAZELBUILD=$(KOPS_ROOT)/.bazelbuild
-BAZELDIST=$(BAZELBUILD)/dist
-BAZELIMAGES=$(BAZELDIST)/images
-BAZELUPLOAD=$(BAZELBUILD)/upload
 UID:=$(shell id -u)
 GID:=$(shell id -g)
-BAZEL?=bazelisk
-BAZEL_OPTIONS?=
-BAZEL_CONFIG?=
 API_OPTIONS?=
 GCFLAGS?=
-BAZEL_BIN=.bazel-bin
+OSARCH=$(shell go env GOOS)/$(shell go env GOARCH)
 
 # CODEGEN_VERSION is the version of k8s.io/code-generator to use
-CODEGEN_VERSION=v0.22.2
+CODEGEN_VERSION=v0.24.0
 
 
 UPLOAD_CMD=$(KOPS_ROOT)/hack/upload ${UPLOAD_ARGS}
@@ -53,7 +43,7 @@ UPLOAD_CMD=$(KOPS_ROOT)/hack/upload ${UPLOAD_ARGS}
 # Unexport environment variables that can affect tests and are not used in builds
 unexport AWS_ACCESS_KEY_ID AWS_REGION AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN CNI_VERSION_URL DNS_IGNORE_NS_CHECK DNSCONTROLLER_IMAGE DO_ACCESS_TOKEN GOOGLE_APPLICATION_CREDENTIALS
 unexport KOPS_BASE_URL KOPS_CLUSTER_NAME KOPS_RUN_OBSOLETE_VERSION KOPS_STATE_STORE KOPS_STATE_S3_ACL KUBE_API_VERSIONS NODEUP_URL OPENSTACK_CREDENTIAL_FILE SKIP_PACKAGE_UPDATE
-unexport SKIP_REGION_CHECK S3_ACCESS_KEY_ID S3_ENDPOINT S3_REGION S3_SECRET_ACCESS_KEY
+unexport SKIP_REGION_CHECK S3_ACCESS_KEY_ID S3_ENDPOINT S3_REGION S3_SECRET_ACCESS_KEY HCLOUD_TOKEN
 
 
 VERSION=$(shell tools/get_version.sh | grep VERSION | awk '{print $$2}')
@@ -62,21 +52,25 @@ KOPS_RELEASE_VERSION:=$(shell grep 'KOPS_RELEASE_VERSION\s*=' version.go | awk '
 KOPS_CI_VERSION:=$(shell grep 'KOPS_CI_VERSION\s*=' version.go | awk '{print $$3}' | sed -e 's_"__g')
 
 # kops local location
-KOPS                 = ${LOCAL}/kops
+KOPS=${DIST}/$(shell go env GOOS)/$(shell go env GOARCH)/kops
 
 GITSHA := $(shell cd ${KOPS_ROOT}; git describe --always)
 
 # We lock the versions of our controllers also
 # We need to keep in sync with:
 #   upup/models/cloudup/resources/addons/dns-controller/
-DNS_CONTROLLER_TAG=1.24.0-alpha.2
+DNS_CONTROLLER_TAG=1.24.1
 DNS_CONTROLLER_PUSH_TAG=$(shell tools/get_workspace_status.sh | grep STABLE_DNS_CONTROLLER_TAG | awk '{print $$2}')
 #   upup/models/cloudup/resources/addons/kops-controller.addons.k8s.io/
-KOPS_CONTROLLER_TAG=1.24.0-alpha.2
+KOPS_CONTROLLER_TAG=1.24.1
 KOPS_CONTROLLER_PUSH_TAG=$(shell tools/get_workspace_status.sh | grep STABLE_KOPS_CONTROLLER_TAG | awk '{print $$2}')
 #   pkg/model/components/kubeapiserver/model.go
-KUBE_APISERVER_HEALTHCHECK_TAG=1.24.0-alpha.2
+KUBE_APISERVER_HEALTHCHECK_TAG=1.24.1
 KUBE_APISERVER_HEALTHCHECK_PUSH_TAG=$(shell tools/get_workspace_status.sh | grep STABLE_KUBE_APISERVER_HEALTHCHECK_TAG | awk '{print $$2}')
+
+CGO_ENABLED=0
+export CGO_ENABLED
+BUILDFLAGS="-trimpath"
 
 
 # Go exports:
@@ -96,20 +90,22 @@ ifdef DEBUGGABLE
 endif
 
 .PHONY: kops-install # Install kops to local $GOPATH/bin
-kops-install:
-	go install ${GCFLAGS} ${EXTRA_BUILDFLAGS} ${LDFLAGS}"-X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA} ${EXTRA_LDFLAGS}" k8s.io/kops/cmd/kops/
+kops-install: kops
+	cp ${DIST}/$(shell go env GOOS)/$(shell go env GOARCH)/kops* $(shell go env GOBIN)
 
-.PHONY: channels-install # Install channels to local $GOPATH/bin
-channels-install: ${CHANNELS}
-	cp ${CHANNELS} ${GOPATH_1ST}/bin
+.phony: channels-install # install channels to local $gopath/bin
+channels-install: channels
+	cp ${DIST}/${OSARCH}/channels ${GOPATH_1ST}/bin
+
+.phony: nodeup-install # install channels to local $gopath/bin
+nodeup-install: nodeup
+	cp ${DIST}/${OSARCH}/channels ${GOPATH_1ST}/bin
 
 .PHONY: all-install # Install all kops project binaries
-all-install: all kops-install channels-install
-	cp ${NODEUP} ${GOPATH_1ST}/bin
-	cp ${PROTOKUBE} ${GOPATH_1ST}/bin
+all-install: all kops-install channels-install nodeup-install
 
 .PHONY: all
-all: ${KOPS} ${PROTOKUBE} ${NODEUP} ${CHANNELS}
+all: kops protokube nodeup channels ko-kops-controller-export ko-dns-controller-export ko-kube-apiserver-healthcheck-export
 
 include tests/e2e/e2e.mk
 
@@ -143,19 +139,11 @@ help: # Show this help
 .PHONY: clean
 clean:
 	if test -e ${BUILD}; then rm -rfv ${BUILD}; fi
-	${BAZEL} clean
 	rm -rf tests/integration/update_cluster/*/.terraform
-
-.PHONY: kops
-kops: ${KOPS}
-
-.PHONY: ${KOPS}
-${KOPS}:
-	go build ${GCFLAGS} ${EXTRA_BUILDFLAGS} ${LDFLAGS}"-X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA} ${EXTRA_LDFLAGS}" -o $@ k8s.io/kops/cmd/kops/
 
 .PHONY: codegen
 codegen:
-	go build -o ${KOPS_ROOT}/_output/bin k8s.io/kops/upup/tools/generators/...
+	go build -o ${KOPS_ROOT}/_output/bin/ k8s.io/kops/upup/tools/generators/...
 	${KOPS_ROOT}/_output/bin/fitask \
 		--input-dirs k8s.io/kops/upup/pkg/fi/... \
 		--go-header-file hack/boilerplate/boilerplate.generatego.txt \
@@ -163,7 +151,7 @@ codegen:
 
 .PHONY: verify-codegen
 verify-codegen:
-	go build -o ${KOPS_ROOT}/_output/bin k8s.io/kops/upup/tools/generators/...
+	go build -o ${KOPS_ROOT}/_output/bin/ k8s.io/kops/upup/tools/generators/...
 	${KOPS_ROOT}/_output/bin/fitask --verify-only \
 		--input-dirs k8s.io/kops/upup/pkg/fi/... \
 		--go-header-file hack/boilerplate/boilerplate.generatego.txt \
@@ -185,111 +173,101 @@ test:
 test-windows:
 	go test -v $(go list ./... | grep -v /nodeup/)
 
-.PHONY: ${DIST}/linux/amd64/nodeup ${DIST}/linux/arm64/nodeup
-${DIST}/linux/amd64/nodeup ${DIST}/linux/arm64/nodeup: ${DIST}/linux/%/nodeup:
-	mkdir -p ${DIST}
-	GOOS=linux GOARCH=$* go build ${GCFLAGS} -a ${EXTRA_BUILDFLAGS} -o $@ ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/nodeup
 
-.PHONY: crossbuild-nodeup-amd64 crossbuild-nodeup-arm64
-crossbuild-nodeup-amd64 crossbuild-nodeup-arm64: crossbuild-nodeup-%: ${DIST}/linux/%/nodeup
+.PHONY: kops
+kops: crossbuild-kops-$(shell go env GOOS)-$(shell go env GOARCH)
 
-.PHONY: crossbuild-nodeup
-crossbuild-nodeup: crossbuild-nodeup-amd64 crossbuild-nodeup-arm64
+.PHONY: crossbuild-kops-linux-amd64 crossbuild-kops-linux-arm64
+crossbuild-kops-linux-amd64 crossbuild-kops-linux-arm64: crossbuild-kops-linux-%:
+	mkdir -p ${DIST}/linux/$*
+	GOOS=linux GOARCH=$* go build ${GCFLAGS} ${BUILDFLAGS} ${EXTRA_BUILDFLAGS} -o ${DIST}/linux/$*/kops ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/kops
 
-.PHONY: ${DIST}/darwin/amd64/kops ${DIST}/darwin/arm64/kops
-${DIST}/darwin/amd64/kops ${DIST}/darwin/arm64/kops: ${DIST}/darwin/%/kops:
-	mkdir -p ${DIST}
-	GOOS=darwin GOARCH=$* go build ${GCFLAGS} -a ${EXTRA_BUILDFLAGS} -o $@ ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/kops
+.PHONY: crossbuild-kops-darwin-amd64 crossbuild-kops-darwin-arm64
+crossbuild-kops-darwin-amd64 crossbuild-kops-darwin-arm64: crossbuild-kops-darwin-%:
+	mkdir -p ${DIST}/darwin/$*
+	GOOS=darwin GOARCH=$* go build ${GCFLAGS} ${BUILDFLAGS} ${EXTRA_BUILDFLAGS} -o ${DIST}/darwin/$*/kops ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/kops
 
-.PHONY: ${DIST}/linux/amd64/kops ${DIST}/linux/arm64/kops
-${DIST}/linux/amd64/kops ${DIST}/linux/arm64/kops: ${DIST}/linux/%/kops:
-	mkdir -p ${DIST}
-	GOOS=linux GOARCH=$* go build ${GCFLAGS} -a ${EXTRA_BUILDFLAGS} -o $@ ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/kops
 
-.PHONY: ${DIST}/windows/amd64/kops.exe
-${DIST}/windows/amd64/kops.exe:
-	mkdir -p ${DIST}
-	GOOS=windows GOARCH=amd64 go build ${GCFLAGS} -a ${EXTRA_BUILDFLAGS} -o $@ ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/kops
+.PHONY: crossbuild-kops-windows-amd64
+crossbuild-kops-windows-amd64:
+	mkdir -p ${DIST}/windows/amd64
+	GOOS=windows GOARCH=amd64 go build ${GCFLAGS} ${BUILDFLAGS} ${EXTRA_BUILDFLAGS} -o ${DIST}/windows/amd64/kops.exe ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/kops
 
 .PHONY: crossbuild
-crossbuild: ${DIST}/windows/amd64/kops.exe ${DIST}/darwin/amd64/kops ${DIST}/darwin/arm64/kops ${DIST}/linux/amd64/kops ${DIST}/linux/arm64/kops
+crossbuild: crossbuild-kops
+
+.PHONY: crossbuild-kops
+crossbuild: crossbuild-kops-linux-amd64 crossbuild-kops-linux-arm64 crossbuild-kops-darwin-amd64 crossbuild-kops-darwin-arm64 crossbuild-kops-windows-amd64
+
+.PHONY: nodeup-amd64 nodeup-arm64
+nodeup-amd64 nodeup-arm64: nodeup-%:
+	mkdir -p ${DIST}/linux/$*
+	GOOS=linux GOARCH=$* go build ${GCFLAGS} ${BUILDFLAGS} ${EXTRA_BUILDFLAGS} -o ${DIST}/linux/$*/nodeup ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/cmd/nodeup
+
+.PHONY: nodeup
+nodeup: nodeup-amd64
+
+.PHONY: crossbuild-nodeup
+crossbuild-nodeup: nodeup-amd64 nodeup-arm64
+
+.PHONY: protokube-amd64 protokube-arm64
+protokube-amd64 protokube-arm64: protokube-%:
+	mkdir -p ${DIST}/linux/$*
+	GOOS=linux GOARCH=$* go build -tags=peer_name_alternative,peer_name_hash ${GCFLAGS} ${BUILDFLAGS} ${EXTRA_BUILDFLAGS} -o ${DIST}/linux/$*/protokube ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/protokube/cmd/protokube
+
+.PHONY: protokube
+protokube: protokube-amd64
+
+.PHONY: crossbuild-protokube
+crossbuild-protokube: protokube-amd64 protokube-arm64
+
+.PHONY: channels-amd64 channels-arm64
+channels-amd64 channels-arm64: channels-%:
+	mkdir -p ${DIST}/linux/$*
+	GOOS=linux GOARCH=$* go build ${GCFLAGS} ${BUILDFLAGS} ${EXTRA_BUILDFLAGS} -o ${DIST}/linux/$*/channels ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" k8s.io/kops/channels/cmd/channels
+
+.PHONY: channels
+channels: channels-amd64
+
+.PHONY: crossbuild-channels
+crossbuild-channels: channels-amd64 channels-arm64
 
 .PHONY: upload
-upload: bazel-version-dist # Upload kops to S3
+upload: version-dist # Upload kops to S3
 	aws s3 sync --acl public-read ${UPLOAD}/ ${S3_BUCKET}
-
-# oss-upload builds kops and uploads to OSS
-.PHONY: oss-upload
-oss-upload: bazel-version-dist
-	@echo "== Uploading kops =="
-	aliyun oss cp --acl public-read -r -f --include "*" ${UPLOAD}/ ${OSS_BUCKET}
 
 # gcs-upload builds kops and uploads to GCS
 .PHONY: gcs-upload
-gcs-upload: bazel-version-dist
+gcs-upload: gsutil version-dist
 	@echo "== Uploading kops =="
-	gsutil -h "Cache-Control:private, max-age=0, no-transform" -m cp -n -r ${BAZELUPLOAD}/kops/* ${GCS_LOCATION}
+	gsutil -h "Cache-Control:private, max-age=0, no-transform" -m cp -n -r ${UPLOAD}/kops/* ${GCS_LOCATION}
 
 # gcs-upload-tag runs gcs-upload to upload, then uploads a version-marker to LATEST_FILE
 .PHONY: gcs-upload-and-tag
-gcs-upload-and-tag: gcs-upload
-	echo "${GCS_URL}${VERSION}" > ${BAZELUPLOAD}/latest.txt
-	gsutil -h "Cache-Control:private, max-age=0, no-transform" cp ${BAZELUPLOAD}/latest.txt ${GCS_LOCATION}${LATEST_FILE}
-
-.PHONY: bazel-version-ci
-bazel-version-ci: bazel-version-dist-linux-amd64 bazel-version-dist-linux-arm64
-	rm -rf ${BAZELUPLOAD}
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/images/
-	cp ${BAZEL_BIN}/cmd/kops/linux-amd64/kops ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/kops
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/kops ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/kops.sha256
-	cp ${BAZEL_BIN}/cmd/nodeup/linux-amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup.sha256
-	cp ${BAZEL_BIN}/cmd/nodeup/linux-arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup.sha256
-	cp -fp ${BAZEL_BIN}/channels/cmd/channels/linux-amd64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels.sha256
-	cp -fp ${BAZEL_BIN}/channels/cmd/channels/linux-arm64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels.sha256
-	cp -fp ${BAZEL_BIN}/protokube/cmd/protokube/linux-amd64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube.sha256
-	cp -fp ${BAZEL_BIN}/protokube/cmd/protokube/linux-arm64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube.sha256
-	cp ${BAZELIMAGES}/kops-controller-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-amd64.tar.gz
-	cp ${BAZELIMAGES}/kops-controller-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-amd64.tar.gz.sha256
-	cp ${BAZELIMAGES}/kops-controller-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-arm64.tar.gz
-	cp ${BAZELIMAGES}/kops-controller-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-arm64.tar.gz.sha256
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-amd64.tar.gz
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-amd64.tar.gz.sha256
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-arm64.tar.gz
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-arm64.tar.gz.sha256
-	cp ${BAZELIMAGES}/dns-controller-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-amd64.tar.gz
-	cp ${BAZELIMAGES}/dns-controller-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-amd64.tar.gz.sha256
-	cp ${BAZELIMAGES}/dns-controller-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-arm64.tar.gz
-	cp ${BAZELIMAGES}/dns-controller-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-arm64.tar.gz.sha256
-	cp -fr ${BAZELUPLOAD}/kops/${VERSION}/* ${BAZELDIST}/
+gcs-upload-and-tag: gsutil gcs-upload
+	echo "${GCS_URL}${VERSION}" > ${UPLOAD}/latest.txt
+	gsutil -h "Cache-Control:private, max-age=0, no-transform" cp ${UPLOAD}/latest.txt ${GCS_LOCATION}${LATEST_FILE}
 
 # gcs-publish-ci is the entry point for CI testing
 # In CI testing, always upload the CI version.
 .PHONY: gcs-publish-ci
 gcs-publish-ci: VERSION := ${KOPS_CI_VERSION}+${GITSHA}
-gcs-publish-ci: bazel-version-ci
+gcs-publish-ci: gsutil version-dist-ci
 	@echo "== Uploading kops =="
-	gsutil -h "Cache-Control:private, max-age=0, no-transform" -m cp -n -r ${BAZELUPLOAD}/kops/* ${GCS_LOCATION}
+	gsutil -h "Cache-Control:private, max-age=0, no-transform" -m cp -n -r ${UPLOAD}/kops/* ${GCS_LOCATION}
 	echo "VERSION: ${VERSION}"
-	echo "${GCS_URL}/${VERSION}" > ${BAZELUPLOAD}/${LATEST_FILE}
-	gsutil -h "Cache-Control:private, max-age=0, no-transform" cp ${BAZELUPLOAD}/${LATEST_FILE} ${GCS_LOCATION}
+	echo "${GCS_URL}/${VERSION}" > ${UPLOAD}/${LATEST_FILE}
+	gsutil -h "Cache-Control:private, max-age=0, no-transform" cp ${UPLOAD}/${LATEST_FILE} ${GCS_LOCATION}
 
 .PHONY: gen-cli-docs
-gen-cli-docs: ${KOPS} # Regenerate CLI docs
+gen-cli-docs: kops # Regenerate CLI docs
 	KOPS_STATE_STORE= \
 	KOPS_FEATURE_FLAGS= \
-	${KOPS} gen-cli-docs --out docs/cli
+	${DIST}/${OSARCH}/kops gen-cli-docs --out docs/cli
 
 .PHONY: push-amd64 push-arm64
-push-amd64 push-arm64: push-%: crossbuild-nodeup-%
-	scp -C .build/dist/linux/$*/nodeup  ${TARGET}:/tmp/
+push-amd64 push-arm64: push-%: nodeup-%
+	scp -C ${DIST}/linux/$*/nodeup  ${TARGET}:/tmp/
 
 .PHONY: push-gce-dry-amd64 push-gce-dry-arm64
 push-gce-dry-amd64 push-gce-dry-arm64: push-gce-dry-%: push-%
@@ -309,61 +287,37 @@ push-gce-run-amd64 push-gce-run-arm64: push-gce-run-%: push-%
 push-aws-run-amd64 push-aws-run-arm64: push-aws-run-%: push-%
 	ssh -t ${TARGET} sudo /tmp/nodeup --conf=/opt/kops/conf/kube_env.yaml --v=8
 
-${PROTOKUBE}:
-	go build ${GCFLAGS} ${EXTRA_BUILDFLAGS} -o $@ -tags 'peer_name_alternative peer_name_hash' k8s.io/kops/protokube/cmd/protokube
-
-.PHONY: protokube
-protokube: ${PROTOKUBE}
-
-.PHONY: nodeup
-nodeup: ${NODEUP}
-
 .PHONY: ${NODEUP}
 ${NODEUP}:
 	go build ${GCFLAGS} ${EXTRA_BUILDFLAGS} ${LDFLAGS}"${EXTRA_LDFLAGS} -X k8s.io/kops.Version=${VERSION} -X k8s.io/kops.GitVersion=${GITSHA}" -o $@ k8s.io/kops/cmd/nodeup
 
-.PHONY: bazel-crossbuild-dns-controller
-bazel-crossbuild-dns-controller:
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //dns-controller/...
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //dns-controller/...
-
-
 .PHONY: dns-controller-push
-dns-controller-push: bazelisk
-	DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX} DNS_CONTROLLER_TAG=${DNS_CONTROLLER_PUSH_TAG} ${BAZEL} run --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //dns-controller/cmd/dns-controller:push-image-amd64
-	DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX} DNS_CONTROLLER_TAG=${DNS_CONTROLLER_PUSH_TAG} ${BAZEL} run --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //dns-controller/cmd/dns-controller:push-image-arm64
+dns-controller-push: ko-dns-controller-push
 
-.PHONY: dns-controller-manifest
-dns-controller-manifest:
-	docker manifest create --amend ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}dns-controller:${DNS_CONTROLLER_PUSH_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}dns-controller:${DNS_CONTROLLER_PUSH_TAG}-amd64
-	docker manifest create --amend ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}dns-controller:${DNS_CONTROLLER_PUSH_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}dns-controller:${DNS_CONTROLLER_PUSH_TAG}-arm64
-	docker manifest push --purge ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}dns-controller:${DNS_CONTROLLER_PUSH_TAG}
+.PHONY: ko-dns-controller-push
+ko-dns-controller-push: ko
+	KO_DOCKER_REPO="${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}dns-controller" GOFLAGS="-tags=peer_name_alternative,peer_name_hash" ko build --tags ${DNS_CONTROLLER_PUSH_TAG} --platform=linux/amd64,linux/arm64 --bare ./dns-controller/cmd/dns-controller/
 
 # --------------------------------------------------
 # development targets
 
-.PHONY: gomod-prereqs
-gomod-prereqs:
-	(which ${BAZEL} > /dev/null) || (echo "gomod requires that ${BAZEL} is installed"; exit 1)
-
 .PHONY: gomod
-gomod: bazelisk gomod-prereqs
+gomod:
 	go mod tidy
 	go mod vendor
-	# Switch weavemesh to use peer_name_hash - bazel rule-go doesn't support build tags yet
-	rm vendor/github.com/weaveworks/mesh/peer_name_mac.go
-	sed -i.bak -e 's/peer_name_hash/!peer_name_mac/g' vendor/github.com/weaveworks/mesh/peer_name_hash.go
-	# Remove all bazel build files that were vendored and regenerate (we assume they are go-gettable)
-	find vendor/ -name "BUILD" -delete
-	find vendor/ -name "BUILD.bazel" -delete
-	make gazelle
 	cd tests/e2e; go mod tidy
 	cd hack; go mod tidy
 
+.PHONY: goget
+goget:
+	go get $(shell go list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -mod=mod -m all)
+
+.PHONY: depup
+depup: goget gomod gen-cli-docs
 
 .PHONY: gofmt
 gofmt:
-	find $(KOPS_ROOT) -name "*.go" | grep -v vendor | xargs ${BAZEL} run @go_sdk//:bin/gofmt -- -w -s
+	find $(KOPS_ROOT) -name "*.go" | grep -v vendor | xargs gofmt -w -s
 
 .PHONY: goimports
 goimports:
@@ -389,7 +343,7 @@ verify-boilerplate:
 	hack/verify-boilerplate.sh
 
 .PHONY: verify-gofmt
-verify-gofmt: bazelisk
+verify-gofmt:
 	hack/verify-gofmt.sh
 
 .PHONY: verify-gomod
@@ -402,7 +356,7 @@ verify-misspelling:
 	hack/verify-spelling.sh
 
 .PHONY: verify-gendocs
-verify-gendocs: ${KOPS}
+verify-gendocs: kops
 	@TMP_DOCS="$$(mktemp -d)"; \
 	'${KOPS}' gen-cli-docs --out "$$TMP_DOCS"; \
 	\
@@ -412,10 +366,6 @@ verify-gendocs: ${KOPS}
 	     exit 1; \
 	fi
 	@echo "cli docs up-to-date"
-
-.PHONY: verify-bazel
-verify-bazel:
-	hack/verify-bazel.sh
 
 .PHONY: verify-golangci-lint
 verify-golangci-lint:
@@ -440,29 +390,13 @@ verify-hashes:
 # ci target is for developers, it aims to cover all the CI jobs
 # verify-gendocs will call kops target
 .PHONY: ci
-ci: govet verify-gofmt verify-crds verify-gomod verify-goimports verify-boilerplate verify-bazel verify-versions verify-misspelling verify-shellcheck verify-golangci-lint verify-terraform nodeup examples test | verify-gendocs verify-apimachinery verify-codegen
+ci: govet verify-gofmt verify-crds verify-gomod verify-goimports verify-boilerplate verify-versions verify-misspelling verify-shellcheck verify-golangci-lint verify-terraform nodeup examples test | verify-gendocs verify-apimachinery verify-codegen
 	echo "Done!"
 
-# we skip tasks that rely on bazel and are covered by other jobs
-# verify-gofmt: uses bazel, covered by pull-kops-verify
+# we skip tasks that are covered by other jobs
 .PHONY: quick-ci
-quick-ci: verify-crds verify-goimports govet verify-boilerplate verify-bazel verify-versions verify-misspelling verify-shellcheck | verify-gendocs verify-apimachinery verify-codegen
+quick-ci: verify-crds verify-goimports govet verify-boilerplate verify-versions verify-misspelling verify-shellcheck | verify-gendocs verify-apimachinery verify-codegen
 	echo "Done!"
-
-.PHONY: pr
-pr:
-	@echo "Test passed!"
-	@echo "Feel free to open your pr at https://github.com/kubernetes/kops/compare"
-
-# --------------------------------------------------
-# channel tool
-
-.PHONY: channels
-channels: ${CHANNELS}
-
-.PHONY: ${CHANNELS}
-${CHANNELS}:
-	go build ${GCFLAGS} ${EXTRA_BUILDFLAGS} -o $@ ${LDFLAGS}"-X k8s.io/kops.Version=${VERSION} ${EXTRA_LDFLAGS}" k8s.io/kops/channels/cmd/channels
 
 # --------------------------------------------------
 # release tasks
@@ -492,37 +426,54 @@ apimachinery: apimachinery-codegen goimports
 apimachinery-codegen: apimachinery-codegen-conversion apimachinery-codegen-deepcopy apimachinery-codegen-defaulter apimachinery-codegen-client
 
 .PHONY: apimachinery-codegen-conversion
+apimachinery-codegen-conversion: export GOPATH=
 apimachinery-codegen-conversion:
-	go run k8s.io/code-generator/cmd/conversion-gen@${CODEGEN_VERSION} ${API_OPTIONS} --skip-unsafe=true --input-dirs ./pkg/apis/kops/v1alpha2 --v=0  --output-file-base=zz_generated.conversion \
+	go run k8s.io/code-generator/cmd/conversion-gen@${CODEGEN_VERSION} --skip-unsafe=true --v=0 --input-dirs ./pkg/apis/kops/v1alpha2 \
+		 --output-base=./ --output-file-base=zz_generated.conversion \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
 	grep 'requires manual conversion' ${KOPS_ROOT}/pkg/apis/kops/v1alpha2/zz_generated.conversion.go ; [ $$? -eq 1 ]
-	go run k8s.io/code-generator/cmd/conversion-gen@${CODEGEN_VERSION} ${API_OPTIONS} --skip-unsafe=true --input-dirs ./pkg/apis/kops/v1alpha3 --v=0  --output-file-base=zz_generated.conversion \
+	go run k8s.io/code-generator/cmd/conversion-gen@${CODEGEN_VERSION} --skip-unsafe=true --v=0 --input-dirs ./pkg/apis/kops/v1alpha3 \
+		 --output-base=./ --output-file-base=zz_generated.conversion \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
 	grep 'requires manual conversion' ${KOPS_ROOT}/pkg/apis/kops/v1alpha3/zz_generated.conversion.go ; [ $$? -eq 1 ]
 
 .PHONY: apimachinery-codegen-deepcopy
+apimachinery-codegen-deepcopy: export GOPATH=
 apimachinery-codegen-deepcopy:
-	go run k8s.io/code-generator/cmd/deepcopy-gen@${CODEGEN_VERSION} ${API_OPTIONS} --input-dirs ./pkg/apis/kops --v=0  --output-file-base=zz_generated.deepcopy \
+	go run k8s.io/code-generator/cmd/deepcopy-gen@${CODEGEN_VERSION} --v=0 --input-dirs ./pkg/apis/kops \
+		 --output-base=./ --output-file-base=zz_generated.deepcopy \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
-	go run k8s.io/code-generator/cmd/deepcopy-gen@${CODEGEN_VERSION} ${API_OPTIONS} --input-dirs ./pkg/apis/kops/v1alpha2 --v=0  --output-file-base=zz_generated.deepcopy \
+	go run k8s.io/code-generator/cmd/deepcopy-gen@${CODEGEN_VERSION} --v=0 --input-dirs ./pkg/apis/kops/v1alpha2 \
+		 --output-base=./ --output-file-base=zz_generated.deepcopy \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
-	go run k8s.io/code-generator/cmd/deepcopy-gen@${CODEGEN_VERSION} ${API_OPTIONS} --input-dirs ./pkg/apis/kops/v1alpha3 --v=0  --output-file-base=zz_generated.deepcopy \
+	go run k8s.io/code-generator/cmd/deepcopy-gen@${CODEGEN_VERSION} --v=0 --input-dirs ./pkg/apis/kops/v1alpha3 \
+		 --output-base=./ --output-file-base=zz_generated.deepcopy \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
 
 .PHONY: apimachinery-codegen-defaulter
+apimachinery-codegen-defaulter: export GOPATH=
 apimachinery-codegen-defaulter:
-	go run k8s.io/code-generator/cmd/defaulter-gen@${CODEGEN_VERSION} ${API_OPTIONS} --input-dirs ./pkg/apis/kops/v1alpha2 --v=0  --output-file-base=zz_generated.defaults \
+	go run k8s.io/code-generator/cmd/defaulter-gen@${CODEGEN_VERSION} --v=0 --input-dirs ./pkg/apis/kops/v1alpha2 \
+		 --output-base=./ --output-file-base=zz_generated.defaults \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
-	go run k8s.io/code-generator/cmd/defaulter-gen@${CODEGEN_VERSION} ${API_OPTIONS} --input-dirs ./pkg/apis/kops/v1alpha3 --v=0  --output-file-base=zz_generated.defaults \
+	go run k8s.io/code-generator/cmd/defaulter-gen@${CODEGEN_VERSION} --v=0 --input-dirs ./pkg/apis/kops/v1alpha3 \
+		 --output-base=./ --output-file-base=zz_generated.defaults \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
 
 .PHONY: apimachinery-codegen-client
+apimachinery-codegen-client: export GOPATH=
+apimachinery-codegen-client: TMPDIR := $(shell mktemp -d)
 apimachinery-codegen-client:
-	# Hack: doesn't seem to be a way to output to the current directory - wants to insert the full package path
-	go run k8s.io/code-generator/cmd/client-gen@${CODEGEN_VERSION} ${API_OPTIONS} --input-base=k8s.io/kops/pkg/apis --input-dirs=. --input="kops/,kops/v1alpha2,kops/v1alpha3" --output-package=k8s.io/kops/pkg/client/clientset_generated/ --output-base=../../ \
+	go run k8s.io/code-generator/cmd/client-gen@${CODEGEN_VERSION} --v=0 \
+		 --input-base=k8s.io/kops/pkg/apis --input-dirs=. --input="kops/,kops/v1alpha2,kops/v1alpha3" \
+		 --output-package=k8s.io/kops/pkg/client/clientset_generated/ --output-base=$(TMPDIR) \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
-	go run k8s.io/code-generator/cmd/client-gen@${CODEGEN_VERSION} ${API_OPTIONS} --clientset-name="clientset" --input-base=k8s.io/kops/pkg/apis --input-dirs=. --input="kops/,kops/v1alpha2,kops/v1alpha3" --output-package=k8s.io/kops/pkg/client/clientset_generated/  --output-base=../../ \
+	go run k8s.io/code-generator/cmd/client-gen@${CODEGEN_VERSION} --v=0 --clientset-name="clientset" \
+		 --input-base=k8s.io/kops/pkg/apis --input-dirs=. --input="kops/,kops/v1alpha2,kops/v1alpha3" \
+		 --output-package=k8s.io/kops/pkg/client/clientset_generated/ --output-base=$(TMPDIR) \
 		 --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
+	cp -r $(TMPDIR)/k8s.io/kops/pkg .
+	rm -rf $(TMPDIR)
 
 .PHONY: verify-apimachinery
 verify-apimachinery:
@@ -539,86 +490,13 @@ verify-crds:
 verify-versions:
 	hack/verify-versions.sh
 
-# -----------------------------------------------------
-# bazel targets
+.PHONY: gsutil
+gsutil:
+	hack/install-gsutil.sh
 
-.PHONY: bazel-test
-bazel-test: bazelisk
-	${BAZEL} ${BAZEL_OPTIONS} test ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --test_output=errors -- //... -//vendor/...
-
-.PHONY: bazel-build
-bazel-build: bazelisk
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure //cmd/... //pkg/... //channels/... //nodeup/... //protokube/... //dns-controller/... //util/...
-
-.PHONY: bazel-build-cli
-bazel-build-cli: bazelisk
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure //cmd/kops/...
-
-.PHONY: bazel-build-kops-darwin-amd64 bazel-build-kops-darwin-arm64
-bazel-build-kops-darwin-amd64 bazel-build-kops-darwin-arm64: bazel-build-kops-darwin-%:
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:darwin_$* //cmd/kops/...
-
-.PHONY: bazel-build-kops-linux-amd64 bazel-build-kops-linux-arm64
-bazel-build-kops-linux-amd64 bazel-build-kops-linux-arm64: bazel-build-kops-linux-%:
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_$* //cmd/kops/...
-
-.PHONY: bazel-build-kops-windows-amd64
-bazel-build-kops-windows-amd64:
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64 //cmd/kops/...
-
-.PHONY: bazel-crossbuild-kops
-bazel-crossbuild-kops: bazel-build-kops-darwin-amd64 bazel-build-kops-darwin-arm64 bazel-build-kops-linux-amd64 bazel-build-kops-linux-arm64 bazel-build-kops-windows-amd64
-	echo "Done cross-building kops"
-
-.PHONY: bazel-build-nodeup-linux-amd64 bazel-build-nodeup-linux-arm64
-bazel-build-nodeup-linux-amd64 bazel-build-nodeup-linux-arm64: bazel-build-nodeup-linux-%:
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_$* //cmd/nodeup/...
-
-.PHONY: bazel-crossbuild-nodeup
-bazel-crossbuild-nodeup: bazel-build-nodeup-linux-amd64 bazel-build-nodeup-linux-arm64
-	echo "Done cross-building nodeup"
-
-.PHONY: bazel-build-protokube-linux-amd64 bazel-build-protokube-linux-arm64
-bazel-build-protokube-linux-amd64 bazel-build-protokube-linux-arm64: bazel-build-protokube-linux-%:
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_$* //protokube/...
-
-.PHONY: bazel-crossbuild-protokube
-bazel-crossbuild-protokube: bazel-build-protokube-linux-amd64 bazel-build-protokube-linux-arm64
-	echo "Done cross-building protokube"
-
-.PHONY: bazel-build-channels-linux-amd64 bazel-build-channels-linux-arm64
-bazel-build-channels-linux-amd64 bazel-build-channels-linux-arm64: bazel-build-channels-linux-%:
-	${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_$* //channels/...
-
-.PHONY: bazel-crossbuild-channels
-bazel-crossbuild-channels: bazel-build-channels-linux-amd64 bazel-build-channels-linux-arm64
-	echo "Done cross-building channels"
-
-.PHONY: bazel-push
-# Will always push a linux-based build up to the server
-bazel-push: bazel-build-nodeup-linux-amd64
-	ssh ${TARGET} touch /tmp/nodeup
-	ssh ${TARGET} chmod +w /tmp/nodeup
-	scp -C ${BAZEL_BIN}/cmd/nodeup/linux-amd64/nodeup  ${TARGET}:/tmp/
-
-.PHONY: bazel-push-gce-run
-bazel-push-gce-run: bazel-push
-	ssh ${TARGET} sudo cp /tmp/nodeup /var/lib/toolbox/kubernetes-install/nodeup
-	ssh ${TARGET} sudo SKIP_PACKAGE_UPDATE=1 /var/lib/toolbox/kubernetes-install/nodeup --conf=/var/lib/toolbox/kubernetes-install/kube_env.yaml --v=8
-
-# -t is for CentOS http://unix.stackexchange.com/questions/122616/why-do-i-need-a-tty-to-run-sudo-if-i-can-sudo-without-a-password
-.PHONY: bazel-push-aws-run
-bazel-push-aws-run: bazel-push
-	ssh ${TARGET} chmod +x /tmp/nodeup
-	ssh -t ${TARGET} sudo SKIP_PACKAGE_UPDATE=1 /tmp/nodeup --conf=/opt/kops/conf/kube_env.yaml --v=8
-
-.PHONY: bazelisk
-bazelisk:
-	hack/install-bazelisk.sh
-
-.PHONY: gazelle
-gazelle:
-	hack/update-bazel.sh
+.PHONY: ko
+ko:
+	hack/install-ko.sh
 
 .PHONY: check-markdown-links
 check-markdown-links:
@@ -631,99 +509,70 @@ check-markdown-links:
 
 #-----------------------------------------------------------
 
-.PHONY: bazel-kube-apiserver-healthcheck-export-linux-amd64 bazel-kube-apiserver-healthcheck-export-linux-arm64
-bazel-kube-apiserver-healthcheck-export-linux-amd64 bazel-kube-apiserver-healthcheck-export-linux-arm64: bazel-kube-apiserver-healthcheck-export-linux-%:
-	mkdir -p ${BAZELIMAGES}
-	DOCKER_REGISTRY="" DOCKER_IMAGE_PREFIX="k8s.gcr.io/kops/" KUBE_APISERVER_HEALTHCHECK_TAG=${KUBE_APISERVER_HEALTHCHECK_TAG} ${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_$* //cmd/kube-apiserver-healthcheck:image-bundle-$*.tar.gz.sha256
-	cp -fp ${BAZEL_BIN}/cmd/kube-apiserver-healthcheck/image-bundle-$*.tar.gz ${BAZELIMAGES}/kube-apiserver-healthcheck-$*.tar.gz
-	cp -fp ${BAZEL_BIN}/cmd/kube-apiserver-healthcheck/image-bundle-$*.tar.gz.sha256 ${BAZELIMAGES}/kube-apiserver-healthcheck-$*.tar.gz.sha256
+.PHONY: ko-kops-controller-export-linux-amd64 ko-kops-controller-export-linux-arm64
+ko-kops-controller-export-linux-amd64 ko-kops-controller-export-linux-arm64: ko-kops-controller-export-linux-%: ko
+	mkdir -p ${IMAGES}
+	KO_DOCKER_REPO="registry.k8s.io/kops" ko build --tags ${KOPS_CONTROLLER_TAG} --platform=linux/$* -B --push=false --tarball=${IMAGES}/kops-controller-$*.tar ./cmd/kops-controller/
+	gzip -f ${IMAGES}/kops-controller-$*.tar
+	tools/sha256 ${IMAGES}/kops-controller-$*.tar.gz ${IMAGES}/kops-controller-$*.tar.gz.sha256
 
-.PHONY: bazel-kube-apiserver-healthcheck-export
-bazel-kube-apiserver-healthcheck-export: bazel-kube-apiserver-healthcheck-export-linux-amd64 bazel-kube-apiserver-healthcheck-export-linux-arm64
-	echo "Done exporting kube-apiserver-healthcheck images"
-
-.PHONY: bazel-kops-controller-export-linux-amd64 bazel-kops-controller-export-linux-arm64
-bazel-kops-controller-export-linux-amd64 bazel-kops-controller-export-linux-arm64: bazel-kops-controller-export-linux-%:
-	mkdir -p ${BAZELIMAGES}
-	DOCKER_REGISTRY="" DOCKER_IMAGE_PREFIX="k8s.gcr.io/kops/" KOPS_CONTROLLER_TAG=${KOPS_CONTROLLER_TAG} ${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_$* //cmd/kops-controller:image-bundle-$*.tar.gz.sha256
-	cp -fp ${BAZEL_BIN}/cmd/kops-controller/image-bundle-$*.tar.gz ${BAZELIMAGES}/kops-controller-$*.tar.gz
-	cp -fp ${BAZEL_BIN}/cmd/kops-controller/image-bundle-$*.tar.gz.sha256 ${BAZELIMAGES}/kops-controller-$*.tar.gz.sha256
-
-.PHONY: bazel-kops-controller-export
-bazel-kops-controller-export: bazel-kops-controller-export-linux-amd64 bazel-kops-controller-export-linux-arm64
+.PHONY: ko-kops-controller-export
+ko-kops-controller-export: ko-kops-controller-export-linux-amd64 ko-kops-controller-export-linux-arm64
 	echo "Done exporting kops-controller images"
 
-.PHONY: bazel-dns-controller-export-linux-amd64 bazel-dns-controller-export-linux-arm64
-bazel-dns-controller-export-linux-amd64 bazel-dns-controller-export-linux-arm64: bazel-dns-controller-export-linux-%:
-	mkdir -p ${BAZELIMAGES}
-	DOCKER_REGISTRY="" DOCKER_IMAGE_PREFIX="k8s.gcr.io/kops/" DNS_CONTROLLER_TAG=${DNS_CONTROLLER_TAG} ${BAZEL} ${BAZEL_OPTIONS} build ${BAZEL_CONFIG} --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_$* //dns-controller/cmd/dns-controller:image-bundle-$*.tar.gz.sha256
-	cp -fp ${BAZEL_BIN}/dns-controller/cmd/dns-controller/image-bundle-$*.tar.gz ${BAZELIMAGES}/dns-controller-$*.tar.gz
-	cp -fp ${BAZEL_BIN}/dns-controller/cmd/dns-controller/image-bundle-$*.tar.gz.sha256 ${BAZELIMAGES}/dns-controller-$*.tar.gz.sha256
+.PHONY: ko-kube-apiserver-healthcheck-export-linux-amd64 ko-kube-apiserver-healthcheck-export-linux-arm64
+ko-kube-apiserver-healthcheck-export-linux-amd64 ko-kube-apiserver-healthcheck-export-linux-arm64: ko-kube-apiserver-healthcheck-export-linux-%: ko
+	mkdir -p ${IMAGES}
+	KO_DOCKER_REPO="registry.k8s.io/kops" ko build --tags ${KUBE_APISERVER_HEALTHCHECK_TAG} --platform=linux/$* -B --push=false --tarball=${IMAGES}/kube-apiserver-healthcheck-$*.tar ./cmd/kube-apiserver-healthcheck
+	gzip -f ${IMAGES}/kube-apiserver-healthcheck-$*.tar
+	tools/sha256 ${IMAGES}/kube-apiserver-healthcheck-$*.tar.gz ${IMAGES}/kube-apiserver-healthcheck-$*.tar.gz.sha256
 
-.PHONY: bazel-dns-controller-export
-bazel-dns-controller-export:
+.PHONY: ko-kube-apiserver-healthcheck-export
+ko-kube-apiserver-healthcheck-export: ko-kube-apiserver-healthcheck-export-linux-amd64 ko-kube-apiserver-healthcheck-export-linux-arm64
+	echo "Done exporting kube-apiserver-healthcheck images"
+
+.PHONY: ko-dns-controller-export-linux-amd64 ko-dns-controller-export-linux-arm64
+ko-dns-controller-export-linux-amd64 ko-dns-controller-export-linux-arm64: ko-dns-controller-export-linux-%: ko
+	mkdir -p ${IMAGES}
+	KO_DOCKER_REPO="registry.k8s.io/kops" GOFLAGS="-tags=peer_name_alternative,peer_name_hash" ko build --tags ${DNS_CONTROLLER_TAG} --platform=linux/$* -B --push=false --tarball=${IMAGES}/dns-controller-$*.tar ./dns-controller/cmd/dns-controller
+	gzip -f ${IMAGES}/dns-controller-$*.tar
+	tools/sha256 ${IMAGES}/dns-controller-$*.tar.gz ${IMAGES}/dns-controller-$*.tar.gz.sha256
+
+.PHONY: ko-dns-controller-export
+ko-dns-controller-export: ko-dns-controller-export-linux-amd64 ko-dns-controller-export-linux-arm64
 	echo "Done exporting dns-controller images"
 
-.PHONY: bazel-version-dist-linux-amd64 bazel-version-dist-linux-arm64
-bazel-version-dist-linux-amd64 bazel-version-dist-linux-arm64: bazel-version-dist-linux-%: bazelisk bazel-build-kops-linux-% bazel-build-nodeup-linux-% bazel-kops-controller-export-linux-% bazel-kube-apiserver-healthcheck-export-linux-% bazel-dns-controller-export-linux-% bazel-build-protokube-linux-% bazel-build-channels-linux-%
-	echo "Done building dist for $*"
+.PHONY: version-dist
+version-dist: dev-version-dist-amd64 dev-version-dist-arm64 crossbuild
+	mkdir -p ${UPLOAD}/kops/${VERSION}/linux/amd64/
+	mkdir -p ${UPLOAD}/kops/${VERSION}/linux/arm64/
+	mkdir -p ${UPLOAD}/kops/${VERSION}/darwin/amd64/
+	mkdir -p ${UPLOAD}/kops/${VERSION}/darwin/arm64/
+	mkdir -p ${UPLOAD}/kops/${VERSION}/windows/amd64/
+	cp ${DIST}/linux/amd64/kops ${UPLOAD}/kops/${VERSION}/linux/amd64/kops
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/linux/amd64/kops ${UPLOAD}/kops/${VERSION}/linux/amd64/kops.sha256
+	cp ${DIST}/linux/arm64/kops ${UPLOAD}/kops/${VERSION}/linux/arm64/kops
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/linux/arm64/kops ${UPLOAD}/kops/${VERSION}/linux/arm64/kops.sha256
+	cp ${DIST}/darwin/amd64/kops ${UPLOAD}/kops/${VERSION}/darwin/amd64/kops
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/darwin/amd64/kops ${UPLOAD}/kops/${VERSION}/darwin/amd64/kops.sha256
+	cp ${DIST}/darwin/arm64/kops ${UPLOAD}/kops/${VERSION}/darwin/arm64/kops
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/darwin/arm64/kops ${UPLOAD}/kops/${VERSION}/darwin/arm64/kops.sha256
+	cp ${DIST}/windows/amd64/kops.exe ${UPLOAD}/kops/${VERSION}/windows/amd64/kops.exe
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/windows/amd64/kops.exe ${UPLOAD}/kops/${VERSION}/windows/amd64/kops.exe.sha256
 
-.PHONY: bazel-version-dist
-bazel-version-dist: bazel-version-dist-linux-amd64 bazel-version-dist-linux-arm64 bazel-build-kops-darwin-amd64 bazel-build-kops-darwin-arm64 bazel-build-kops-windows-amd64
-	rm -rf ${BAZELUPLOAD}
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/darwin/amd64/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/darwin/arm64/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/windows/amd64/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/images/
-	cp ${BAZEL_BIN}/cmd/nodeup/linux-amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup.sha256
-	cp ${BAZEL_BIN}/cmd/nodeup/linux-arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup.sha256
-	cp -fp ${BAZEL_BIN}/channels/cmd/channels/linux-amd64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels.sha256
-	cp -fp ${BAZEL_BIN}/channels/cmd/channels/linux-arm64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels.sha256
-	cp -fp ${BAZEL_BIN}/protokube/cmd/protokube/linux-amd64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube.sha256
-	cp -fp ${BAZEL_BIN}/protokube/cmd/protokube/linux-arm64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube.sha256
-	cp ${BAZELIMAGES}/kops-controller-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-amd64.tar.gz
-	cp ${BAZELIMAGES}/kops-controller-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-amd64.tar.gz.sha256
-	cp ${BAZELIMAGES}/kops-controller-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-arm64.tar.gz
-	cp ${BAZELIMAGES}/kops-controller-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-arm64.tar.gz.sha256
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-amd64.tar.gz
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-amd64.tar.gz.sha256
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-arm64.tar.gz
-	cp ${BAZELIMAGES}/kube-apiserver-healthcheck-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-arm64.tar.gz.sha256
-	cp ${BAZELIMAGES}/dns-controller-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-amd64.tar.gz
-	cp ${BAZELIMAGES}/dns-controller-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-amd64.tar.gz.sha256
-	cp ${BAZELIMAGES}/dns-controller-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-arm64.tar.gz
-	cp ${BAZELIMAGES}/dns-controller-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-arm64.tar.gz.sha256
-	cp ${BAZEL_BIN}/cmd/kops/linux-amd64/kops ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/kops
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/kops ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/kops.sha256
-	cp ${BAZEL_BIN}/cmd/kops/linux-arm64/kops ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/kops
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/kops ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/kops.sha256
-	cp ${BAZEL_BIN}/cmd/kops/darwin-amd64/kops ${BAZELUPLOAD}/kops/${VERSION}/darwin/amd64/kops
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/darwin/amd64/kops ${BAZELUPLOAD}/kops/${VERSION}/darwin/amd64/kops.sha256
-	cp ${BAZEL_BIN}/cmd/kops/darwin-arm64/kops ${BAZELUPLOAD}/kops/${VERSION}/darwin/arm64/kops
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/darwin/arm64/kops ${BAZELUPLOAD}/kops/${VERSION}/darwin/arm64/kops.sha256
-	cp ${BAZEL_BIN}/cmd/kops/windows-amd64/kops ${BAZELUPLOAD}/kops/${VERSION}/windows/amd64/kops.exe
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/windows/amd64/kops.exe ${BAZELUPLOAD}/kops/${VERSION}/windows/amd64/kops.exe.sha256
-	tar cfvz ${BAZELUPLOAD}/kops/${VERSION}/images/images.tar.gz -C ${BAZELIMAGES} --exclude "*.sha256" .
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/images.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/images.tar.gz.sha256
-	cp -fr ${BAZELUPLOAD}/kops/${VERSION}/* ${BAZELDIST}/
+# This target skips arm64 and windows kops binary since CI does not use them
+.PHONY: version-dist-ci
+version-dist-ci: dev-version-dist-amd64 dev-version-dist-arm64 crossbuild-kops-linux-amd64
+	mkdir -p ${UPLOAD}/kops/${VERSION}/linux/amd64/
+	cp ${DIST}/linux/amd64/kops ${UPLOAD}/kops/${VERSION}/linux/amd64/kops
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/linux/amd64/kops ${UPLOAD}/kops/${VERSION}/linux/amd64/kops.sha256
 
-.PHONY: bazel-upload
-bazel-upload: bazel-version-dist # Upload kops to S3
-	aws s3 sync --acl public-read ${BAZELUPLOAD}/ ${S3_BUCKET}
 
 # prow-postsubmit is run by the prow postsubmit job
 # It uploads a build to a staging directory, which in theory we can publish as a release
 .PHONY: prow-postsubmit
-prow-postsubmit: bazel-version-dist
-	${UPLOAD_CMD} ${BAZELUPLOAD}/kops/${VERSION}/ ${UPLOAD_DEST}/${VERSION}/
+prow-postsubmit: version-dist
+	${UPLOAD_CMD} ${UPLOAD}/kops/${VERSION}/ ${UPLOAD_DEST}/${VERSION}/
 
 #-----------------------------------------------------------
 # static html documentation
@@ -746,101 +595,117 @@ build-docs-netlify:
 #-----------------------------------------------------------
 # development targets
 
-# dev-upload-nodeup uploads nodeup to GCS
+# dev-upload-nodeup uploads nodeup
+.PHONY: version-dist-nodeup version-dist-nodeup-amd64 version-dist-nodeup-arm64
+version-dist-nodeup: version-dist-nodeup-amd64 version-dist-nodeup-arm64
+
+version-dist-nodeup-amd64 version-dist-nodeup-arm64: version-dist-nodeup-%: nodeup-%
+	mkdir -p ${UPLOAD}/kops/${VERSION}/linux/$*/
+	cp -fp ${DIST}/linux/$*/nodeup ${UPLOAD}/kops/${VERSION}/linux/$*/nodeup
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/linux/$*/nodeup ${UPLOAD}/kops/${VERSION}/linux/$*/nodeup.sha256
+
 .PHONY: dev-upload-nodeup
-dev-upload-nodeup: bazel-crossbuild-nodeup
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/
-	cp -fp ${BAZEL_BIN}/cmd/nodeup/linux-amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup.sha256
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/
-	cp -fp ${BAZEL_BIN}/cmd/nodeup/linux-arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+dev-upload-nodeup: version-dist-nodeup
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
 
-.PHONY: dev-upload-nodeup-amd64
-dev-upload-nodeup-amd64: bazel-build-nodeup-linux-amd64
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/
-	cp -fp ${BAZEL_BIN}/cmd/nodeup/linux-amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/nodeup.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+.PHONY: dev-upload-nodeup-amd64 dev-upload-nodeup-arm64
+dev-upload-nodeup-amd64 dev-upload-nodeup-arm64: dev-upload-nodeup-%: version-dist-nodeup-%
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
 
-.PHONY: dev-upload-nodeup-arm64
-dev-upload-nodeup-arm64: bazel-build-nodeup-linux-arm64
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/
-	cp -fp ${BAZEL_BIN}/cmd/nodeup/linux-arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/nodeup.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+# dev-upload-protokube uploads protokube
+.PHONY: version-dist-protokube version-dist-protokube-amd64 version-dist-protokube-arm64
+version-dist-protokube: version-dist-protokube-amd64 version-dist-protokube-arm64
 
-# dev-upload-protokube uploads protokube to GCS
+version-dist-protokube-amd64 version-dist-protokube-arm64: version-dist-protokube-%: protokube-%
+	mkdir -p ${UPLOAD}/kops/${VERSION}/linux/$*/
+	cp -fp ${DIST}/linux/$*/protokube ${UPLOAD}/kops/${VERSION}/linux/$*/protokube
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/linux/$*/protokube ${UPLOAD}/kops/${VERSION}/linux/$*/protokube.sha256
+
 .PHONY: dev-upload-protokube
-dev-upload-protokube: bazel-crossbuild-protokube # Upload kops to GCS
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/
-	cp -fp ${BAZEL_BIN}/protokube/cmd/protokube/linux-amd64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/protokube.sha256
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/
-	cp -fp ${BAZEL_BIN}/protokube/cmd/protokube/linux-arm64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/protokube.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+dev-upload-protokube: version-dist-protokube
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
 
-# dev-upload-channels uploads channels to GCS
+.PHONY: dev-upload-protokube-amd64 dev-upload-protokube-arm64
+dev-upload-protokube-amd64 dev-upload-protokube-arm64: dev-upload-protokube-%: version-dist-protokube-%
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
+
+# dev-upload-channels uploads channels
+.PHONY: version-dist-channels version-dist-channels-amd64 version-dist-channels-arm64
+version-dist-channels: version-dist-channels-amd64 version-dist-channels-arm64
+
+version-dist-channels-amd64 version-dist-channels-arm64: version-dist-channels-%: channels-%
+	mkdir -p ${UPLOAD}/kops/${VERSION}/linux/$*/
+	cp -fp ${DIST}/linux/$*/channels ${UPLOAD}/kops/${VERSION}/linux/$*/channels
+	tools/sha256 ${UPLOAD}/kops/${VERSION}/linux/$*/channels ${UPLOAD}/kops/${VERSION}/linux/$*/channels.sha256
+
 .PHONY: dev-upload-channels
-dev-upload-channels: bazel-crossbuild-channels
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/
-	cp -fp ${BAZEL_BIN}/channels/cmd/channels/linux-amd64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/amd64/channels.sha256
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/
-	cp -fp ${BAZEL_BIN}/channels/cmd/channels/linux-arm64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/arm64/channels.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+dev-upload-channels: version-dist-channels
+	${UPLOAD_CMD} ${PLOAD}/ ${UPLOAD_DEST}
 
-# dev-upload-kops-controller uploads kops-controller to GCS
+.PHONY: dev-upload-channels-amd64 dev-upload-channels-arm64
+dev-upload-channels-amd64 dev-upload-channels-arm64: dev-upload-channels-%: version-dist-channels-%
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
+
+# dev-upload-kops-controller uploads kops-controller
+.PHONY: version-dist-kops-controller version-dist-kops-controller-amd64 version-dist-kops-controller-arm64
+version-dist-kops-controller: version-dist-kops-controller-amd64 version-dist-kops-controller-arm64
+
+version-dist-kops-controller-amd64 version-dist-kops-controller-arm64: version-dist-kops-controller-%: ko-kops-controller-export-linux-%
+	mkdir -p ${UPLOAD}/kops/${VERSION}/images/
+	cp -fp ${IMAGES}/kops-controller-$*.tar.gz ${UPLOAD}/kops/${VERSION}/images/kops-controller-$*.tar.gz
+	cp -fp ${IMAGES}/kops-controller-$*.tar.gz.sha256 ${UPLOAD}/kops/${VERSION}/images/kops-controller-$*.tar.gz.sha256
+
 .PHONY: dev-upload-kops-controller
-dev-upload-kops-controller: bazel-kops-controller-export # Upload kops to GCS
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/images/
-	cp -fp ${BAZELIMAGES}/kops-controller-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-amd64.tar.gz
-	cp -fp ${BAZELIMAGES}/kops-controller-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-amd64.tar.gz.sha256
-	cp -fp ${BAZELIMAGES}/kops-controller-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-arm64.tar.gz
-	cp -fp ${BAZELIMAGES}/kops-controller-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-arm64.tar.gz.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+dev-upload-kops-controller: version-dist-kops-controller
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
 
-# dev-upload-dns-controller uploads dns-controller to GCS
-.PHONY: dev-upload-dns-controller
-dev-upload-dns-controller: bazel-dns-controller-export # Upload kops to GCS
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/images/
-	cp -fp ${BAZELIMAGES}/dns-controller-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-amd64.tar.gz
-	cp -fp ${BAZELIMAGES}/dns-controller-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-amd64.tar.gz.sha256
-	cp -fp ${BAZELIMAGES}/dns-controller-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-arm64.tar.gz
-	cp -fp ${BAZELIMAGES}/dns-controller-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-arm64.tar.gz.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+.PHONY: dev-upload-kops-controller-amd64 dev-upload-kops-controller-arm64
+dev-upload-kops-controller-amd64 dev-upload-kops-controller-arm64: dev-upload-kops-controller-%: version-dist-kops-controller-%
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
 
-# dev-upload-kube-apiserver-healthcheck uploads kube-apiserver-healthcheck to GCS
+# dev-upload-kube-apiserver-healthcheck uploads kube-apiserver-healthcheck
+.PHONY: version-dist-kube-apiserver-healthcheck version-dist-kube-apiserver-healthcheck-amd64 version-dist-kube-apiserver-healthcheck-arm64
+version-dist-kube-apiserver-healthcheck: version-dist-kube-apiserver-healthcheck-amd64 version-dist-kube-apiserver-healthcheck-arm64
+
+version-dist-kube-apiserver-healthcheck-amd64 version-dist-kube-apiserver-healthcheck-arm64: version-dist-kube-apiserver-healthcheck-%: ko-kube-apiserver-healthcheck-export-linux-%
+	mkdir -p ${UPLOAD}/kops/${VERSION}/images/
+	cp -fp ${IMAGES}/kube-apiserver-healthcheck-$*.tar.gz ${UPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-$*.tar.gz
+	cp -fp ${IMAGES}/kube-apiserver-healthcheck-$*.tar.gz.sha256 ${UPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-$*.tar.gz.sha256
+
 .PHONY: dev-upload-kube-apiserver-healthcheck
-dev-upload-kube-apiserver-healthcheck: bazel-kube-apiserver-healthcheck-export # Upload kops to GCS
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/images/
-	cp -fp ${BAZELIMAGES}/kube-apiserver-healthcheck-amd64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-amd64.tar.gz
-	cp -fp ${BAZELIMAGES}/kube-apiserver-healthcheck-amd64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-amd64.tar.gz.sha256
-	cp -fp ${BAZELIMAGES}/kube-apiserver-healthcheck-arm64.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-arm64.tar.gz
-	cp -fp ${BAZELIMAGES}/kube-apiserver-healthcheck-arm64.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-arm64.tar.gz.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+dev-upload-kube-apiserver-healthcheck: version-dist-kube-apiserver-healthcheck
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
+
+.PHONY: dev-upload-kube-apiserver-healthcheck-amd64 dev-upload-kube-apiserver-healthcheck-arm64
+dev-upload-kube-apiserver-healthcheck-amd64 dev-upload-kube-apiserver-healthcheck-arm64: dev-upload-kube-apiserver-healthcheck-%: version-dist-kube-apiserver-healthcheck-%
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
+
+# dev-upload-dns-controller uploads dns-controller
+.PHONY: version-dist-dns-controller version-dist-dns-controller-amd64 version-dist-dns-controller-arm64
+version-dist-dns-controller: version-dist-dns-controller-amd64 version-dist-dns-controller-arm64
+
+version-dist-dns-controller-amd64 version-dist-dns-controller-arm64: version-dist-dns-controller-%: ko-dns-controller-export-linux-%
+	mkdir -p ${UPLOAD}/kops/${VERSION}/images/
+	cp -fp ${IMAGES}/dns-controller-$*.tar.gz ${UPLOAD}/kops/${VERSION}/images/dns-controller-$*.tar.gz
+	cp -fp ${IMAGES}/dns-controller-$*.tar.gz.sha256 ${UPLOAD}/kops/${VERSION}/images/dns-controller-$*.tar.gz.sha256
+
+.PHONY: dev-upload-dns-controller
+dev-upload-dns-controller: version-dist-dns-controller
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
+
+.PHONY: dev-upload-dns-controller-amd64 dev-upload-dns-controller-arm64
+dev-upload-dns-controller-amd64 dev-upload-dns-controller-arm64: dev-upload-dns-controller-%: version-dist-dns-controller-%
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
 
 # dev-upload-linux-amd64 does a faster build and uploads to GCS / S3
+.PHONY: dev-version-dist dev-version-dist-amd64 dev-version-dist-arm64
+dev-version-dist: dev-version-dist-amd64 dev-version-dist-arm64
+
+dev-version-dist-amd64 dev-version-dist-arm64: dev-version-dist-%: version-dist-nodeup-% version-dist-channels-% version-dist-protokube-% version-dist-kops-controller-% version-dist-kube-apiserver-healthcheck-% version-dist-dns-controller-%
+
 .PHONY: dev-upload-linux-amd64 dev-upload-linux-arm64
-dev-upload-linux-amd64 dev-upload-linux-arm64: dev-upload-linux-%: bazel-build-nodeup-linux-% bazel-kops-controller-export-linux-% bazel-kube-apiserver-healthcheck-export-linux-% bazel-dns-controller-export-linux-% bazel-build-protokube-linux-% bazel-build-channels-linux-%
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/images/
-	mkdir -p ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/
-	cp -fp ${BAZEL_BIN}/cmd/nodeup/linux-$*/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/nodeup
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/nodeup ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/nodeup.sha256
-	cp -fp ${BAZEL_BIN}/channels/cmd/channels/linux-$*/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/channels
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/channels ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/channels.sha256
-	cp -fp ${BAZEL_BIN}/protokube/cmd/protokube/linux-$*/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/protokube
-	tools/sha256 ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/protokube ${BAZELUPLOAD}/kops/${VERSION}/linux/$*/protokube.sha256
-	cp -fp ${BAZELIMAGES}/kops-controller-$*.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-$*.tar.gz
-	cp -fp ${BAZELIMAGES}/kops-controller-$*.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kops-controller-$*.tar.gz.sha256
-	cp -fp ${BAZELIMAGES}/dns-controller-$*.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-$*.tar.gz
-	cp -fp ${BAZELIMAGES}/dns-controller-$*.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/dns-controller-$*.tar.gz.sha256
-	cp -fp ${BAZELIMAGES}/kube-apiserver-healthcheck-$*.tar.gz ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-$*.tar.gz
-	cp -fp ${BAZELIMAGES}/kube-apiserver-healthcheck-$*.tar.gz.sha256 ${BAZELUPLOAD}/kops/${VERSION}/images/kube-apiserver-healthcheck-$*.tar.gz.sha256
-	${UPLOAD_CMD} ${BAZELUPLOAD}/ ${UPLOAD_DEST}
+dev-upload-linux-amd64 dev-upload-linux-arm64: dev-upload-linux-%: dev-version-dist-%
+	${UPLOAD_CMD} ${UPLOAD}/ ${UPLOAD_DEST}
 
 # dev-upload does a faster build and uploads to GCS / S3
 .PHONY: dev-upload
@@ -856,29 +721,21 @@ crds:
 # kops-controller
 
 .PHONY: kops-controller-push
-kops-controller-push: bazelisk
-	DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX} KOPS_CONTROLLER_TAG=${KOPS_CONTROLLER_PUSH_TAG} ${BAZEL} run --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/kops-controller:push-image-amd64
-	DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX} KOPS_CONTROLLER_TAG=${KOPS_CONTROLLER_PUSH_TAG} ${BAZEL} run --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/kops-controller:push-image-arm64
+kops-controller-push: ko-kops-controller-push
 
-.PHONY: kops-controller-manifest
-kops-controller-manifest:
-	docker manifest create --amend ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kops-controller:${KOPS_CONTROLLER_PUSH_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kops-controller:${KOPS_CONTROLLER_PUSH_TAG}-amd64
-	docker manifest create --amend ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kops-controller:${KOPS_CONTROLLER_PUSH_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kops-controller:${KOPS_CONTROLLER_PUSH_TAG}-arm64
-	docker manifest push --purge ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kops-controller:${KOPS_CONTROLLER_PUSH_TAG}
+.PHONY: ko-kops-controller-push
+ko-kops-controller-push: ko
+	KO_DOCKER_REPO="${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kops-controller" ko build --tags ${KOPS_CONTROLLER_PUSH_TAG} --platform=linux/amd64,linux/arm64 --bare ./cmd/kops-controller/
 
 #------------------------------------------------------
 # kube-apiserver-healthcheck
 
 .PHONY: kube-apiserver-healthcheck-push
-kube-apiserver-healthcheck-push: bazelisk
-	DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX} KUBE_APISERVER_HEALTHCHECK_TAG=${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG} ${BAZEL} run --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //cmd/kube-apiserver-healthcheck:push-image-amd64
-	DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX} KUBE_APISERVER_HEALTHCHECK_TAG=${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG} ${BAZEL} run --@io_bazel_rules_go//go/config:pure --platforms=@io_bazel_rules_go//go/toolchain:linux_arm64 //cmd/kube-apiserver-healthcheck:push-image-arm64
+kube-apiserver-healthcheck-push: ko-kube-apiserver-healthcheck-push
 
-.PHONY: kube-apiserver-healthcheck-manifest
-kube-apiserver-healthcheck-manifest:
-	docker manifest create --amend ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kube-apiserver-healthcheck:${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kube-apiserver-healthcheck:${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG}-amd64
-	docker manifest create --amend ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kube-apiserver-healthcheck:${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kube-apiserver-healthcheck:${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG}-arm64
-	docker manifest push --purge ${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kube-apiserver-healthcheck:${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG}
+.PHONY: ko-kube-apiserver-healthcheck-push
+ko-kube-apiserver-healthcheck-push: ko
+	KO_DOCKER_REPO="${DOCKER_REGISTRY}/${DOCKER_IMAGE_PREFIX}kube-apiserver-healthcheck" ko build --tags ${KUBE_APISERVER_HEALTHCHECK_PUSH_TAG} --platform=linux/amd64,linux/arm64 --bare ./cmd/kube-apiserver-healthcheck/
 
 #------------------------------------------------------
 # CloudBuild artifacts
@@ -888,7 +745,7 @@ kube-apiserver-healthcheck-manifest:
 .PHONY: cloudbuild-artifacts
 cloudbuild-artifacts:
 	mkdir -p ${KOPS_ROOT}/cloudbuild/
-	cd ${BAZELUPLOAD}/kops/; find . -type f | sort | xargs sha256sum > ${KOPS_ROOT}/cloudbuild/files.sha256
-	cd ${KOPS_ROOT}/${BAZEL_BIN}/; find . -name '*.digest' -type f | sort | xargs grep . > ${KOPS_ROOT}/cloudbuild/image-digests
+	cd ${UPLOAD}/kops/; find . -type f | sort | xargs sha256sum > ${KOPS_ROOT}/cloudbuild/files.sha256
+	# cd ${KOPS_ROOT}/${BAZEL_BIN}/; find . -name '*.digest' -type f | sort | xargs grep . > ${KOPS_ROOT}/cloudbuild/image-digests
 	# ${BUILDER_OUTPUT}/output is a special cloudbuild target; the first 4KB is captured securely
 	cd ${KOPS_ROOT}/cloudbuild/; find -type f | sort | xargs sha256sum > ${BUILDER_OUTPUT}/output

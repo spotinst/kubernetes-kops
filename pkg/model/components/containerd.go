@@ -47,9 +47,12 @@ func (b *ContainerdOptionsBuilder) BuildOptions(o interface{}) error {
 		// Set version based on Kubernetes version
 		if fi.StringValue(containerd.Version) == "" {
 			if b.IsKubernetesGTE("1.23") {
-				containerd.Version = fi.String("1.6.0-rc.3")
+				containerd.Version = fi.String("1.6.8")
+				containerd.Runc = &kops.Runc{
+					Version: fi.String("1.1.3"),
+				}
 			} else {
-				containerd.Version = fi.String("1.4.12")
+				containerd.Version = fi.String("1.4.13")
 			}
 		}
 		// Set default log level to INFO
@@ -84,7 +87,7 @@ func (b *ContainerdOptionsBuilder) BuildOptions(o interface{}) error {
 	}
 
 	if containerd.NvidiaGPU != nil && fi.BoolValue(containerd.NvidiaGPU.Enabled) && containerd.NvidiaGPU.DriverPackage == "" {
-		containerd.NvidiaGPU.DriverPackage = "nvidia-headless-460-server"
+		containerd.NvidiaGPU.DriverPackage = kops.NvidiaDefaultDriverPackage
 	}
 
 	return nil

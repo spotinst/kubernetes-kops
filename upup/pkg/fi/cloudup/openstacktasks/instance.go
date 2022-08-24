@@ -98,7 +98,7 @@ func (e *Instance) IsForAPIServer() bool {
 	return e.ForAPIServer
 }
 
-func (e *Instance) FindIPAddress(context *fi.Context) (*string, error) {
+func (e *Instance) FindAddresses(context *fi.Context) ([]string, error) {
 	cloud := context.Cloud.(openstack.OpenstackCloud)
 	if e.Port == nil {
 		return nil, nil
@@ -110,10 +110,33 @@ func (e *Instance) FindIPAddress(context *fi.Context) (*string, error) {
 	}
 
 	for _, port := range ports.FixedIPs {
-		return fi.String(port.IPAddress), nil
+		return []string{port.IPAddress}, nil
 	}
 
 	return nil, nil
+}
+
+// filterInstancePorts tries to get all ports of an instance tagged with the cluster name.
+// If no tagged ports are found it will return all ports of the instance, to not change the legacy behavior when there weren't tagged ports
+func filterInstancePorts(allPorts []ports.Port, clusterName string) []ports.Port {
+	clusterNameTag := fmt.Sprintf("%s=%s", openstack.TagClusterName, clusterName)
+
+	var taggedPorts []ports.Port
+
+	for _, port := range allPorts {
+		for _, tag := range port.Tags {
+			if tag == clusterNameTag {
+				taggedPorts = append(taggedPorts, port)
+				break
+			}
+		}
+	}
+
+	if len(taggedPorts) == 0 {
+		return allPorts
+	}
+
+	return taggedPorts
 }
 
 func (e *Instance) Find(c *fi.Context) (*Instance, error) {
@@ -177,6 +200,8 @@ func (e *Instance) Find(c *fi.Context) (*Instance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch port for instance %v: %v", server.ID, err)
 	}
+
+	ports = filterInstancePorts(ports, fi.StringValue(e.ServerGroup.ClusterName))
 
 	if len(ports) == 1 {
 		port := ports[0]

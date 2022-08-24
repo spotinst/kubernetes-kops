@@ -41,6 +41,9 @@ type LoadBalancer struct {
 	Region       *string
 	DropletTag   *string
 	IPAddress    *string
+	VPCUUID      *string
+	VPCName      *string
+	NetworkCIDR  *string
 	ForAPIServer bool
 }
 
@@ -75,9 +78,10 @@ func (lb *LoadBalancer) Find(c *fi.Context) (*LoadBalancer, error) {
 	}
 
 	return &LoadBalancer{
-		Name:   fi.String(loadbalancer.Name),
-		ID:     fi.String(loadbalancer.ID),
-		Region: fi.String(loadbalancer.Region.Slug),
+		Name:    fi.String(loadbalancer.Name),
+		ID:      fi.String(loadbalancer.ID),
+		Region:  fi.String(loadbalancer.Region.Slug),
+		VPCUUID: fi.String(loadbalancer.VPCUUID),
 
 		// Ignore system fields
 		Lifecycle:    lb.Lifecycle,
@@ -149,9 +153,20 @@ func (_ *LoadBalancer) RenderDO(t *do.DOAPITarget, a, e, changes *LoadBalancer) 
 		if strings.Contains(loadbalancer.Name, fi.StringValue(e.Name)) {
 			// load balancer already exists.
 			e.ID = fi.String(loadbalancer.ID)
-			e.IPAddress = fi.String(loadbalancer.IP) // This will be empty on create, but will be filled later on FindIPAddress invokation.
+			e.IPAddress = fi.String(loadbalancer.IP) // This will be empty on create, but will be filled later on FindAddresses invokation.
 			return nil
 		}
+	}
+
+	// associate vpcuuid to the loadbalancer if set
+	vpcUUID := ""
+	if fi.StringValue(e.NetworkCIDR) != "" {
+		vpcUUID, err = t.Cloud.GetVPCUUID(fi.StringValue(e.NetworkCIDR), fi.StringValue(e.VPCName))
+		if err != nil {
+			return fmt.Errorf("Error fetching vpcUUID from network cidr=%s", fi.StringValue(e.NetworkCIDR))
+		}
+	} else if fi.StringValue(e.VPCUUID) != "" {
+		vpcUUID = fi.StringValue(e.VPCUUID)
 	}
 
 	loadBalancerService := t.Cloud.LoadBalancersService()
@@ -159,16 +174,16 @@ func (_ *LoadBalancer) RenderDO(t *do.DOAPITarget, a, e, changes *LoadBalancer) 
 		Name:            fi.StringValue(e.Name),
 		Region:          fi.StringValue(e.Region),
 		Tag:             fi.StringValue(e.DropletTag),
+		VPCUUID:         vpcUUID,
 		ForwardingRules: Rules,
 		HealthCheck:     HealthCheck,
 	})
 	if err != nil {
-		klog.Errorf("Error creating load balancer with Name=%s, Error=%v", fi.StringValue(e.Name), err)
-		return err
+		return fmt.Errorf("Error creating load balancer with Name=%s, Error=%v", fi.StringValue(e.Name), err)
 	}
 
 	e.ID = fi.String(loadbalancer.ID)
-	e.IPAddress = fi.String(loadbalancer.IP) // This will be empty on create, but will be filled later on FindIPAddress invokation.
+	e.IPAddress = fi.String(loadbalancer.IP) // This will be empty on create, but will be filled later on FindAddresses invokation.
 
 	klog.V(2).Infof("load balancer for DO created with id: %s", loadbalancer.ID)
 	return nil
@@ -178,7 +193,7 @@ func (lb *LoadBalancer) IsForAPIServer() bool {
 	return lb.ForAPIServer
 }
 
-func (lb *LoadBalancer) FindIPAddress(c *fi.Context) (*string, error) {
+func (lb *LoadBalancer) FindAddresses(c *fi.Context) ([]string, error) {
 	cloud := c.Cloud.(do.DOCloud)
 	loadBalancerService := cloud.LoadBalancersService()
 	address := ""
@@ -202,7 +217,7 @@ func (lb *LoadBalancer) FindIPAddress(c *fi.Context) (*string, error) {
 			return false, nil
 		})
 		if done {
-			return &address, nil
+			return []string{address}, nil
 		} else {
 			if err == nil {
 				err = wait.ErrWaitTimeout

@@ -81,16 +81,19 @@ func (b *BootstrapScript) kubeEnv(ig *kops.InstanceGroup, c *fi.Context) (string
 	var alternateNames []string
 
 	for _, hasAddress := range b.alternateNameTasks {
-		address, err := hasAddress.FindIPAddress(c)
+		addresses, err := hasAddress.FindAddresses(c)
 		if err != nil {
 			return "", fmt.Errorf("error finding address for %v: %v", hasAddress, err)
 		}
-		if address == nil {
-			klog.Warningf("Task did not have an address: %v", hasAddress)
+		if len(addresses) == 0 {
+			// Such tasks won't have an address in dry-run mode, until the resource is created
+			klog.V(2).Infof("Task did not have an address: %v", hasAddress)
 			continue
 		}
-		klog.V(8).Infof("Resolved alternateName %q for %q", *address, hasAddress)
-		alternateNames = append(alternateNames, *address)
+		for _, address := range addresses {
+			klog.V(8).Infof("Resolved alternateName %q for %q", address, hasAddress)
+			alternateNames = append(alternateNames, address)
+		}
 	}
 
 	sort.Strings(alternateNames)
@@ -139,7 +142,7 @@ func (b *BootstrapScript) buildEnvironmentVariables(cluster *kops.Cluster) (map[
 		env["S3_SECRET_ACCESS_KEY"] = os.Getenv("S3_SECRET_ACCESS_KEY")
 	}
 
-	if kops.CloudProviderID(cluster.Spec.CloudProvider) == kops.CloudProviderOpenstack {
+	if cluster.Spec.GetCloudProvider() == kops.CloudProviderOpenstack {
 
 		osEnvs := []string{
 			"OS_TENANT_ID", "OS_TENANT_NAME", "OS_PROJECT_ID", "OS_PROJECT_NAME",
@@ -176,14 +179,21 @@ func (b *BootstrapScript) buildEnvironmentVariables(cluster *kops.Cluster) (map[
 		}
 	}
 
-	if kops.CloudProviderID(cluster.Spec.CloudProvider) == kops.CloudProviderDO {
+	if cluster.Spec.GetCloudProvider() == kops.CloudProviderDO {
 		doToken := os.Getenv("DIGITALOCEAN_ACCESS_TOKEN")
 		if doToken != "" {
 			env["DIGITALOCEAN_ACCESS_TOKEN"] = doToken
 		}
 	}
 
-	if kops.CloudProviderID(cluster.Spec.CloudProvider) == kops.CloudProviderAWS {
+	if cluster.Spec.GetCloudProvider() == kops.CloudProviderHetzner {
+		hcloudToken := os.Getenv("HCLOUD_TOKEN")
+		if hcloudToken != "" {
+			env["HCLOUD_TOKEN"] = hcloudToken
+		}
+	}
+
+	if cluster.Spec.GetCloudProvider() == kops.CloudProviderAWS {
 		region, err := awsup.FindRegion(cluster)
 		if err != nil {
 			return nil, err
@@ -195,7 +205,7 @@ func (b *BootstrapScript) buildEnvironmentVariables(cluster *kops.Cluster) (map[
 		}
 	}
 
-	if kops.CloudProviderID(cluster.Spec.CloudProvider) == kops.CloudProviderAzure {
+	if cluster.Spec.GetCloudProvider() == kops.CloudProviderAzure {
 		env["AZURE_STORAGE_ACCOUNT"] = os.Getenv("AZURE_STORAGE_ACCOUNT")
 		azureEnv := os.Getenv("AZURE_ENVIRONMENT")
 		if azureEnv != "" {

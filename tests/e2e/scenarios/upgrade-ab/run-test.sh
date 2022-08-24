@@ -32,9 +32,17 @@ fi
 export KOPS_BASE_URL
 
 echo "Cleaning up any leaked resources from previous cluster"
-KOPS_BASE_URL=$(kops-base-from-marker "${KOPS_VERSION_B}")
-KOPS_BASE_URL_B="${KOPS_BASE_URL}"
-KOPS_B=$(kops-download-from-base)
+# For KOPS_VERSION_B, the value "latest" means build of the tree
+if [[ "${KOPS_VERSION_B}" == "latest" ]]; then
+  kops-acquire-latest
+  KOPS_BASE_URL_B="${KOPS_BASE_URL}"
+  KOPS_B="${KOPS}"
+else
+  KOPS_BASE_URL=$(kops-base-from-marker "${KOPS_VERSION_B}")
+  KOPS_BASE_URL_B="${KOPS_BASE_URL}"
+  KOPS_B=$(kops-download-from-base)
+fi
+
 ${KUBETEST2} \
 		--down \
 		--kops-binary-path="${KOPS_B}" || echo "kubetest2 down failed"
@@ -96,11 +104,14 @@ cp "${KOPS_B}" "${WORKSPACE}/kops"
 
 "${KOPS_B}" export kubecfg --name "${CLUSTER_NAME}" --admin
 
+if [[ -n ${KOPS_SKIP_E2E:-} ]]; then
+  exit
+fi
+
 ${KUBETEST2} \
 		--cloud-provider="${CLOUD_PROVIDER}" \
 		--kops-binary-path="${KOPS}" \
 		--test=kops \
 		-- \
 		--test-package-version="${K8S_VERSION_B}" \
-		--parallel 25 \
-		--skip-regex="\[Slow\]|\[Serial\]|\[Disruptive\]|\[Flaky\]|\[Feature:.+\]|\[HPA\]|Dashboard|RuntimeClass|RuntimeHandler|TCP.CLOSE_WAIT|Projected.configMap.optional.updates|Invalid.AWS.KMS.key|Volume.limits.should.verify.that.all.nodes.have.volume.limits"
+		--parallel 25

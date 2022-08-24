@@ -45,9 +45,32 @@ func Apply(data []byte) error {
 	if err := os.WriteFile(localManifestFile, data, 0o600); err != nil {
 		return fmt.Errorf("error writing temp file: %v", err)
 	}
+	// First do an apply. This may fail when removing things from lists/arrays and required fields are not removed.
+	{
+		_, err := execKubectl("apply", "-f", localManifestFile, "--server-side", "--force-conflicts", "--field-manager=kops")
+		if err != nil {
+			klog.Errorf("failed to apply the manifest: %v", err)
+		}
 
-	_, err = execKubectl("apply", "-f", localManifestFile, "--server-side", "--force-conflicts", "--field-manager=kops")
-	return err
+	}
+
+	// Replace will force ownership on all fields to kops. But on some k8s versions, this will fail on e.g trying to set clusterIP to "".
+	{
+		_, err := execKubectl("replace", "-f", localManifestFile, "--field-manager=kops")
+		if err != nil {
+			klog.Errorf("failed to replace manifest: %v", err)
+		}
+	}
+
+	// Do a final replace to ensure resources are correctly apply. This should always succeed if the addon is updated as expected.
+	{
+		_, err := execKubectl("apply", "-f", localManifestFile, "--server-side", "--force-conflicts", "--field-manager=kops")
+		if err != nil {
+			return fmt.Errorf("failed to apply the manifest: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func execKubectl(args ...string) (string, error) {

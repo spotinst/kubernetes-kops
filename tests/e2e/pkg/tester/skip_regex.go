@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	skipRegexBase = "\\[Slow\\]|\\[Serial\\]|\\[Disruptive\\]|\\[Flaky\\]|\\[Feature:.+\\]|\\[Driver:.nfs\\]|Gluster"
+	skipRegexBase = "\\[Slow\\]|\\[Serial\\]|\\[Disruptive\\]|\\[Flaky\\]|\\[Feature:.+\\]|nfs|NFS|Gluster"
 )
 
 func (t *Tester) setSkipRegexFlag() error {
@@ -51,20 +51,22 @@ func (t *Tester) setSkipRegexFlag() error {
 		skipRegex += "|external.IP.is.not.assigned.to.a.node"
 		// https://github.com/cilium/cilium/issues/14287
 		skipRegex += "|same.port.number.but.different.protocols|same.hostPort.but.different.hostIP.and.protocol"
-		if strings.Contains(cluster.Spec.KubernetesVersion, "v1.23") || strings.Contains(cluster.Spec.KubernetesVersion, "v1.24") {
+		if strings.Contains(cluster.Spec.KubernetesVersion, "v1.23") || strings.Contains(cluster.Spec.KubernetesVersion, "v1.24") || strings.Contains(cluster.Spec.KubernetesVersion, "v1.25") {
 			// Reassess after https://github.com/kubernetes/kubernetes/pull/102643 is merged
 			// ref:
 			// https://github.com/kubernetes/kubernetes/issues/96717
 			// https://github.com/cilium/cilium/issues/5719
 			skipRegex += "|should.create.a.Pod.with.SCTP.HostPort"
 		}
+		// https://github.com/cilium/cilium/issues/18241
+		skipRegex += "|Services.should.create.endpoints.for.unready.pods"
 	} else if networking.Kuberouter != nil {
 		skipRegex += "|load-balancer|hairpin|affinity\\stimeout|service\\.kubernetes\\.io|CLOSE_WAIT"
 	} else if networking.Kubenet != nil {
 		skipRegex += "|Services.*affinity"
 	}
 
-	if cluster.Spec.CloudProvider == "gce" {
+	if cluster.Spec.LegacyCloudProvider == "gce" {
 		// Firewall tests expect a specific format for cluster and control plane host names
 		// which kOps does not match
 		// ref: https://github.com/kubernetes/kubernetes/blob/1bd00776b5d78828a065b5c21e7003accc308a06/test/e2e/framework/providers/gce/firewall.go#L92-L100
@@ -90,9 +92,21 @@ func (t *Tester) setSkipRegexFlag() error {
 		skipRegex += "|RuntimeClass.should.run"
 	}
 
-	if strings.Contains(cluster.Spec.KubernetesVersion, "v1.23.") && cluster.Spec.CloudProvider == "aws" && utils.IsIPv6CIDR(cluster.Spec.NonMasqueradeCIDR) {
+	if strings.Contains(cluster.Spec.KubernetesVersion, "v1.23.") && cluster.Spec.LegacyCloudProvider == "aws" && utils.IsIPv6CIDR(cluster.Spec.NonMasqueradeCIDR) {
 		// ref: https://github.com/kubernetes/kubernetes/pull/106992
 		skipRegex += "|should.not.disrupt.a.cloud.load-balancer.s.connectivity.during.rollout"
+	}
+
+	if strings.Contains(cluster.Spec.KubernetesVersion, "v1.23.") {
+		// beta feature not enabled by default
+		skipRegex += "|Topology.Hints"
+	}
+
+	if strings.Contains(cluster.Spec.KubernetesVersion, "v1.25.") {
+		// this test was being skipped automatically because it isn't applicable with CSIMigration=true which is default
+		// but skipping logic has been changed and now the test is planned for removal
+		// ref: https://github.com/kubernetes/kubernetes/pull/109649#issuecomment-1108574843
+		skipRegex += "|should.verify.that.all.nodes.have.volume.limits"
 	}
 
 	// Ensure it is valid regex

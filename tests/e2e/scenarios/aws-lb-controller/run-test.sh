@@ -29,10 +29,6 @@ OVERRIDES="${OVERRIDES} --set=cluster.spec.certManager.enabled=true"
 # shellcheck disable=SC2034
 ZONES="eu-west-1a,eu-west-1b,eu-west-1c"
 
-# TODO remove when kops#11689 is addressed
-K8S_VERSION="1.21.6"
-export K8S_VERSION
-
 kops-up
 
 VPC=$(${KOPS} toolbox dump -o json | jq -r .vpc.id)
@@ -41,22 +37,24 @@ ZONE=$(${KOPS} get ig -o json | jq -r '[.[] | select(.spec.role=="Node") | .spec
 
 REGION=${ZONE%?}
 
-REPORT_DIR="${ARTIFACTS:-$(pwd)/_artifacts}/aws-lb-controller/"
+REPORT_DIR="${ARTIFACTS:-$(pwd)/_artifacts}/aws-lb-controller"
 
 # shellcheck disable=SC2164
 cd "$(mktemp -dt kops.XXXXXXXXX)"
-go get github.com/onsi/ginkgo/ginkgo
+go install github.com/onsi/ginkgo/ginkgo@latest
 
 git clone https://github.com/kubernetes-sigs/aws-load-balancer-controller .
+
+mkdir -p "${REPORT_DIR}"
 
 ginkgo -v -r test/e2e/ingress -- \
     -cluster-name="${CLUSTER_NAME}" \
     -aws-region="${REGION}" \
     -aws-vpc-id="$VPC" \
-    -ginkgo.reportFile="${REPORT_DIR}/junit-ingress.xml"
+    -ginkgo.junit-report="${REPORT_DIR}/junit-ingress.xml"
 
 ginkgo -v -r test/e2e/service -- \
     -cluster-name="${CLUSTER_NAME}" \
     -aws-region="${REGION}" \
     -aws-vpc-id="$VPC" \
-    -ginkgo.reportFile="${REPORT_DIR}/junit-service.xml"
+    -ginkgo.junit-report="${REPORT_DIR}/junit-service.xml"

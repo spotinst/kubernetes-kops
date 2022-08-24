@@ -25,6 +25,7 @@ import (
 	"k8s.io/kops/pkg/flagbuilder"
 	"k8s.io/kops/pkg/k8scodecs"
 	"k8s.io/kops/pkg/kubemanifest"
+	"k8s.io/kops/pkg/model/components"
 	"k8s.io/kops/pkg/rbac"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/nodeup/nodetasks"
@@ -207,6 +208,9 @@ func (b *KubeControllerManagerBuilder) buildPod(kcm *kops.KubeControllerManagerC
 	flags = append(flags, "--flex-volume-plugin-dir="+volumePluginDir)
 
 	image := kcm.Image
+	if components.IsBaseURL(b.Cluster.Spec.KubernetesVersion) {
+		image = strings.Replace(image, "registry.k8s.io", "k8s.gcr.io", 1)
+	}
 	if b.Architecture != architectures.ArchitectureAmd64 {
 		image = strings.Replace(image, "-amd64", "-"+string(b.Architecture), 1)
 	}
@@ -248,11 +252,17 @@ func (b *KubeControllerManagerBuilder) buildPod(kcm *kops.KubeControllerManagerC
 		container.Args = append(container.Args, sortedStrings(flags)...)
 	} else {
 		container.Command = []string{"/usr/local/bin/kube-controller-manager"}
-		container.Args = append(
-			sortedStrings(flags),
-			"--logtostderr=false", // https://github.com/kubernetes/klog/issues/60
-			"--alsologtostderr",
-			"--log-file=/var/log/kube-controller-manager.log")
+		if kcm.LogFormat != "" && kcm.LogFormat != "text" {
+			// When logging-format is not text, some flags are not accepted.
+			// https://github.com/kubernetes/kops/issues/14100
+			container.Args = sortedStrings(flags)
+		} else {
+			container.Args = append(
+				sortedStrings(flags),
+				"--logtostderr=false", // https://github.com/kubernetes/klog/issues/60
+				"--alsologtostderr",
+				"--log-file=/var/log/kube-controller-manager.log")
+		}
 	}
 	for _, path := range b.SSLHostPaths() {
 		name := strings.Replace(path, "/", "", -1)

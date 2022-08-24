@@ -143,6 +143,25 @@ spec:
   compressUserData: true
 ```
 
+## packages
+{{ kops_feature_table(kops_added_default='1.24') }}
+
+To install additional packages to hosts in the instance group, specify the `packages` field as an array of strings.
+
+Package names are distro specific and are not validated in any way. Specifying incorrect package names may prevent nodes from starting.
+
+For example:
+
+```YAML
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  name: nodes
+spec:
+  packages:
+  - nfs-common
+```
+
 ## sysctlParameters
 {{ kops_feature_table(kops_added_default='1.17') }}
 
@@ -164,8 +183,8 @@ metadata:
   name: nodes
 spec:
   sysctlParameters:
-    - fs.pipe-user-pages-soft=524288
-    - net.ipv4.tcp_keepalive_time=200
+  - fs.pipe-user-pages-soft=524288
+  - net.ipv4.tcp_keepalive_time=200
 ```
 
 which would end up in a drop-in file on nodes of the instance group in question.
@@ -250,7 +269,7 @@ Instead of configuring specific machine types, the InstanceGroup can be configur
 ```
 spec:
   mixedInstancesPolicy:
-    instanceRquirements:
+    instanceRequirements:
       cpu:
         min: "2"
         max: "16"
@@ -300,4 +319,20 @@ spec:
   instanceMetadata:
     httpPutResponseHopLimit: 1
     httpTokens: required
+```
+
+## maxInstanceLifetime (AWS Only)
+
+{{ kops_feature_table(kops_added_default='1.24') }}
+
+The maximum instance lifetime specifies the maximum amount of time (in go duration [format](https://pkg.go.dev/time#ParseDuration)) that an instance can be in service before it is terminated and replaced.
+A common use case might be a requirement to replace your instances on a schedule because of internal security policies or external compliance controls. 
+In other words, this feature helps you to put a bit of ephemerality in your cluster.
+You must specify a value of at least 24h (86,400 seconds). To clear a previously set value, specify a new value of 0.
+
+The following configuration enables a maximum instance lifetime to two days.
+
+```yaml
+spec:
+  maxInstanceLifetime: "48h"
 ```

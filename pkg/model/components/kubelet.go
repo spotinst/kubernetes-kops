@@ -19,7 +19,9 @@ package components
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
 	"k8s.io/kops/pkg/apis/kops"
@@ -120,7 +122,7 @@ func (b *KubeletOptionsBuilder) BuildOptions(o interface{}) error {
 		clusterSpec.MasterKubelet.HairpinMode = "none"
 	}
 
-	cloudProvider := kops.CloudProviderID(clusterSpec.CloudProvider)
+	cloudProvider := clusterSpec.GetCloudProvider()
 
 	clusterSpec.Kubelet.CgroupRoot = "/"
 
@@ -143,6 +145,10 @@ func (b *KubeletOptionsBuilder) BuildOptions(o interface{}) error {
 		clusterSpec.CloudConfig.Multizone = fi.Bool(true)
 		clusterSpec.CloudConfig.NodeTags = fi.String(gce.TagForRole(b.ClusterName, kops.InstanceGroupRoleNode))
 
+	}
+
+	if cloudProvider == kops.CloudProviderHetzner {
+		clusterSpec.Kubelet.CloudProvider = "external"
 	}
 
 	if cloudProvider == kops.CloudProviderOpenstack {
@@ -171,7 +177,7 @@ func (b *KubeletOptionsBuilder) BuildOptions(o interface{}) error {
 
 	// Prevent image GC from pruning the pause image
 	// https://github.com/kubernetes/enhancements/tree/master/keps/sig-node/2040-kubelet-cri#pinned-images
-	image := "k8s.gcr.io/pause:3.6"
+	image := "registry.k8s.io/pause:3.6"
 	var err error
 	if image, err = b.AssetBuilder.RemapImage(image); err != nil {
 		return err
@@ -205,6 +211,16 @@ func (b *KubeletOptionsBuilder) BuildOptions(o interface{}) error {
 
 	if b.IsKubernetesGTE("1.22") && clusterSpec.Kubelet.ProtectKernelDefaults == nil {
 		clusterSpec.Kubelet.ProtectKernelDefaults = fi.Bool(true)
+	}
+
+	// We do not enable graceful shutdown when using amazonaws due to leaking ENIs.
+	// Graceful shutdown is also not available by default on k8s < 1.21
+	if b.IsKubernetesGTE("1.21") && clusterSpec.Kubelet.ShutdownGracePeriod == nil && clusterSpec.Networking.AmazonVPC == nil {
+		clusterSpec.Kubelet.ShutdownGracePeriod = &metav1.Duration{Duration: time.Duration(30 * time.Second)}
+		clusterSpec.Kubelet.ShutdownGracePeriodCriticalPods = &metav1.Duration{Duration: time.Duration(10 * time.Second)}
+	} else if clusterSpec.Networking.AmazonVPC != nil {
+		clusterSpec.Kubelet.ShutdownGracePeriod = &metav1.Duration{Duration: 0}
+		clusterSpec.Kubelet.ShutdownGracePeriodCriticalPods = &metav1.Duration{Duration: 0}
 	}
 
 	return nil

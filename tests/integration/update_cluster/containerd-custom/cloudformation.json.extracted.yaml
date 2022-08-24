@@ -139,7 +139,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amasterscontainerdexamplecom.Properti
       - http://HostIP2:Port2
       docker.io:
       - https://registry-1.docker.io
-    version: 1.4.12
+    version: 1.4.13
   docker:
     skipInstall: true
   encryptionConfig: null
@@ -171,7 +171,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amasterscontainerdexamplecom.Properti
     - https://127.0.0.1:4001
     etcdServersOverrides:
     - /events#https://127.0.0.1:4002
-    image: k8s.gcr.io/kube-apiserver:v1.21.0
+    image: registry.k8s.io/kube-apiserver:v1.21.0
     kubeletPreferredAddressTypes:
     - InternalIP
     - Hostname
@@ -197,7 +197,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amasterscontainerdexamplecom.Properti
     clusterCIDR: 100.96.0.0/11
     clusterName: containerd.example.com
     configureCloudRoutes: false
-    image: k8s.gcr.io/kube-controller-manager:v1.21.0
+    image: registry.k8s.io/kube-controller-manager:v1.21.0
     leaderElection:
       leaderElect: true
     logLevel: 2
@@ -205,10 +205,10 @@ Resources.AWSEC2LaunchTemplatemasterustest1amasterscontainerdexamplecom.Properti
   kubeProxy:
     clusterCIDR: 100.96.0.0/11
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.21.0
+    image: registry.k8s.io/kube-proxy:v1.21.0
     logLevel: 2
   kubeScheduler:
-    image: k8s.gcr.io/kube-scheduler:v1.21.0
+    image: registry.k8s.io/kube-scheduler:v1.21.0
     leaderElection:
       leaderElect: true
     logLevel: 2
@@ -224,8 +224,10 @@ Resources.AWSEC2LaunchTemplatemasterustest1amasterscontainerdexamplecom.Properti
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
   masterKubelet:
     anonymousAuth: false
     cgroupDriver: systemd
@@ -238,9 +240,11 @@ Resources.AWSEC2LaunchTemplatemasterustest1amasterscontainerdexamplecom.Properti
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
     registerSchedulable: false
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -249,7 +253,7 @@ Resources.AWSEC2LaunchTemplatemasterustest1amasterscontainerdexamplecom.Properti
   ConfigBase: memfs://clusters.example.com/containerd.example.com
   InstanceGroupName: master-us-test-1a
   InstanceGroupRole: Master
-  NodeupConfigHash: DfsRiHSWjgWeofo6UCjAvar5VAeGF5DWoXVF5YTC8n4=
+  NodeupConfigHash: hzTvph7znsVtrWF8kMVzd9KkRVVxAkIh8iwI1opkpOc=
 
   __EOF_KUBE_ENV
 
@@ -396,13 +400,13 @@ Resources.AWSEC2LaunchTemplatenodescontainerdexamplecom.Properties.LaunchTemplat
       - http://HostIP2:Port2
       docker.io:
       - https://registry-1.docker.io
-    version: 1.4.12
+    version: 1.4.13
   docker:
     skipInstall: true
   kubeProxy:
     clusterCIDR: 100.96.0.0/11
     cpuRequest: 100m
-    image: k8s.gcr.io/kube-proxy:v1.21.0
+    image: registry.k8s.io/kube-proxy:v1.21.0
     logLevel: 2
   kubelet:
     anonymousAuth: false
@@ -416,8 +420,10 @@ Resources.AWSEC2LaunchTemplatenodescontainerdexamplecom.Properties.LaunchTemplat
     kubeconfigPath: /var/lib/kubelet/kubeconfig
     logLevel: 2
     networkPluginName: cni
-    podInfraContainerImage: k8s.gcr.io/pause:3.6
+    podInfraContainerImage: registry.k8s.io/pause:3.6
     podManifestPath: /etc/kubernetes/manifests
+    shutdownGracePeriod: 30s
+    shutdownGracePeriodCriticalPods: 10s
 
   __EOF_CLUSTER_SPEC
 
@@ -426,7 +432,7 @@ Resources.AWSEC2LaunchTemplatenodescontainerdexamplecom.Properties.LaunchTemplat
   ConfigBase: memfs://clusters.example.com/containerd.example.com
   InstanceGroupName: nodes
   InstanceGroupRole: Node
-  NodeupConfigHash: WyYB+0ykKXVtBJmwrsoL7skr531CTsAKLNrsRHRSUbc=
+  NodeupConfigHash: d8tQ8Cu9BBsLm39p1EgOO5ligPAoCEf6JqjM2DIdpHE=
 
   __EOF_KUBE_ENV
 

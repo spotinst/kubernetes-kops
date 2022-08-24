@@ -32,13 +32,20 @@ type GCEModelContext struct {
 }
 
 // LinkToNetwork returns the GCE Network object the cluster is located in
-func (c *GCEModelContext) LinkToNetwork() *gcetasks.Network {
-	name := c.Cluster.Spec.NetworkID
-	if name == "" {
-		name = c.SafeClusterName()
+func (c *GCEModelContext) LinkToNetwork() (*gcetasks.Network, error) {
+	if c.Cluster.Spec.NetworkID == "" {
+		return &gcetasks.Network{Name: s(c.SafeTruncatedClusterName())}, nil
+	}
+	name, project, err := gce.ParseNameAndProjectFromNetworkID(c.Cluster.Spec.NetworkID)
+	if err != nil {
+		return nil, err
 	}
 
-	return &gcetasks.Network{Name: s(name)}
+	network := &gcetasks.Network{Name: s(name)}
+	if project != "" {
+		network.Project = &project
+	}
+	return network, nil
 }
 
 // NameForIPAliasRange returns the name for the secondary IP range attached to a subnet
@@ -54,7 +61,7 @@ func (c *GCEModelContext) NameForIPAliasRange(key string) string {
 func (c *GCEModelContext) LinkToSubnet(subnet *kops.ClusterSubnetSpec) *gcetasks.Subnet {
 	name := subnet.ProviderID
 	if name == "" {
-		name = c.SafeObjectName(subnet.Name)
+		name = gce.ClusterSuffixedName(subnet.Name, c.Cluster.ObjectMeta.Name, 63)
 	}
 
 	return &gcetasks.Subnet{Name: s(name)}
@@ -65,9 +72,19 @@ func (c *GCEModelContext) SafeObjectName(name string) string {
 	return gce.SafeObjectName(name, c.Cluster.ObjectMeta.Name)
 }
 
+// SafeSuffixedObjectName returns the object name and cluster name escaped for GCE, limited to 63 chars
+func (c *GCEModelContext) SafeSuffixedObjectName(name string) string {
+	return gce.ClusterSuffixedName(name, c.Cluster.ObjectMeta.Name, 63)
+}
+
 // SafeClusterName returns the cluster name escaped for use as a GCE resource name
 func (c *GCEModelContext) SafeClusterName() string {
 	return gce.SafeClusterName(c.Cluster.ObjectMeta.Name)
+}
+
+// SafeClusterName returns the cluster name escaped and truncated for use as a GCE resource name
+func (c *GCEModelContext) SafeTruncatedClusterName() string {
+	return gce.SafeTruncatedClusterName(c.Cluster.ObjectMeta.Name, 63)
 }
 
 // GCETagForRole returns the (network) tag for GCE instances in the given instance group role.
@@ -80,19 +97,39 @@ func (c *GCEModelContext) LinkToTargetPool(id string) *gcetasks.TargetPool {
 }
 
 func (c *GCEModelContext) NameForTargetPool(id string) string {
+	return c.SafeSuffixedObjectName(id)
+}
+
+func (c *GCEModelContext) NameForHealthCheck(id string) string {
+	return c.SafeObjectName(id)
+}
+
+func (c *GCEModelContext) NameForBackendService(id string) string {
 	return c.SafeObjectName(id)
 }
 
 func (c *GCEModelContext) NameForForwardingRule(id string) string {
-	return c.SafeObjectName(id)
+	return c.SafeSuffixedObjectName(id)
 }
 
 func (c *GCEModelContext) NameForIPAddress(id string) string {
+	return c.SafeSuffixedObjectName(id)
+}
+
+func (c *GCEModelContext) NameForPoolHealthcheck(id string) string {
 	return c.SafeObjectName(id)
 }
 
+func (c *GCEModelContext) NameForHealthcheck(id string) string {
+	return c.SafeSuffixedObjectName(id)
+}
+
+func (c *GCEModelContext) NameForRouter(id string) string {
+	return c.SafeSuffixedObjectName(id)
+}
+
 func (c *GCEModelContext) NameForFirewallRule(id string) string {
-	return c.SafeObjectName(id)
+	return gce.ClusterSuffixedName(id, c.Cluster.ObjectMeta.Name, 63)
 }
 
 func (c *GCEModelContext) NetworkingIsIPAlias() bool {
@@ -120,22 +157,19 @@ func (c *GCEModelContext) LinkToServiceAccount(ig *kops.InstanceGroup) *gcetasks
 	name := ""
 	switch role {
 	case kops.InstanceGroupRoleAPIServer, kops.InstanceGroupRoleMaster:
-		name = "control-plane"
+		name = gce.ControlPlane
 
 	case kops.InstanceGroupRoleBastion:
-		name = "bastion"
+		name = gce.Bastion
 
 	case kops.InstanceGroupRoleNode:
-		name = "node"
+		name = gce.Node
 
 	default:
 		klog.Fatalf("unknown role %q", role)
 	}
 
-	accountID, err := gce.ServiceAccountName(name, c.ClusterName())
-	if err != nil {
-		klog.Fatalf("failed to construct serviceaccount name: %w", err)
-	}
+	accountID := gce.ServiceAccountName(name, c.ClusterName())
 	projectID := c.ProjectID
 
 	email := accountID + "@" + projectID + ".iam.gserviceaccount.com"

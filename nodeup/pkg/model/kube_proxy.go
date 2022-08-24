@@ -27,6 +27,7 @@ import (
 	"k8s.io/kops/pkg/flagbuilder"
 	"k8s.io/kops/pkg/k8scodecs"
 	"k8s.io/kops/pkg/kubemanifest"
+	"k8s.io/kops/pkg/model/components"
 	"k8s.io/kops/pkg/rbac"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/nodeup/nodetasks"
@@ -162,7 +163,14 @@ func (b *KubeProxyBuilder) buildPod() (*v1.Pod, error) {
 		"--oom-score-adj=-998",
 	}...)
 
-	image := kubeProxyImage(b.NodeupModelContext)
+	image := c.Image
+	if b.Architecture != architectures.ArchitectureAmd64 {
+		image = strings.Replace(image, "-amd64", "-"+string(b.Architecture), 1)
+	}
+	if components.IsBaseURL(b.Cluster.Spec.KubernetesVersion) {
+		image = strings.Replace(image, "registry.k8s.io", "k8s.gcr.io", 1)
+	}
+
 	container := &v1.Container{
 		Name:  "kube-proxy",
 		Image: image,
@@ -240,27 +248,6 @@ func (b *KubeProxyBuilder) buildPod() (*v1.Pod, error) {
 
 	pod.Spec.Containers = append(pod.Spec.Containers, *container)
 
-	// Note that e.g. kubeadm has this as a daemonset, but this doesn't have a lot of test coverage AFAICT
-	// ServiceAccountName: "kube-proxy",
-
-	//d := &v1beta1.DaemonSet{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Labels: map[string]string{
-	//			"k8s-app": "kube-proxy",
-	//		},
-	//		Name: "kube-proxy",
-	//		Namespace: "kube-proxy",
-	//	},
-	//	Spec: v1beta1.DeploymentSpec{
-	//		Selector: &metav1.LabelSelector{
-	//			MatchLabels: map[string]string{
-	//				"k8s-app": "kube-proxy",
-	//			},
-	//		},
-	//		Template: template,
-	//	},
-	//}
-
 	// This annotation ensures that kube-proxy does not get evicted if the node
 	// supports critical pod annotation based priority scheme.
 	// Note that kube-proxy runs as a static pod so this annotation does NOT have
@@ -286,12 +273,4 @@ func tolerateMasterTaints() []v1.Toleration {
 	//}
 
 	return tolerations
-}
-
-func kubeProxyImage(b *NodeupModelContext) string {
-	image := b.Cluster.Spec.KubeProxy.Image
-	if b.Architecture != architectures.ArchitectureAmd64 {
-		image = strings.Replace(image, "-amd64", "-"+string(b.Architecture), 1)
-	}
-	return image
 }

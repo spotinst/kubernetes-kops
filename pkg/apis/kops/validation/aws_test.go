@@ -18,6 +18,7 @@ package validation
 
 import (
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/cloudup/awsup"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kops/pkg/apis/kops"
 )
@@ -201,6 +203,26 @@ func TestValidateInstanceGroupSpec(t *testing.T) {
 		{
 			Input: kops.InstanceGroupSpec{
 				InstanceInterruptionBehavior: fi.String("stop"),
+			},
+			ExpectedErrors: []string{},
+		},
+		{
+			Input: kops.InstanceGroupSpec{
+				MaxInstanceLifetime: &metav1.Duration{Duration: time.Duration(100 * float64(time.Second))},
+			},
+			ExpectedErrors: []string{
+				"Invalid value::test-nodes.spec.maxInstanceLifetime",
+			},
+		},
+		{
+			Input: kops.InstanceGroupSpec{
+				MaxInstanceLifetime: &metav1.Duration{Duration: time.Duration(86400 * float64(time.Second))},
+			},
+			ExpectedErrors: []string{},
+		},
+		{
+			Input: kops.InstanceGroupSpec{
+				MaxInstanceLifetime: &metav1.Duration{Duration: time.Duration(0 * float64(time.Second))},
 			},
 			ExpectedErrors: []string{},
 		},
@@ -636,6 +658,176 @@ func TestAWSAuthentication(t *testing.T) {
 					AWS: &kops.AWSAuthenticationSpec{
 						BackendMode:      test.backendMode,
 						IdentityMappings: test.identityMappings,
+					},
+				},
+			},
+		}
+		errs := awsValidateCluster(&cluster)
+		testErrors(t, test, errs, test.expected)
+	}
+}
+
+func TestAWSAdditionalRoutes(t *testing.T) {
+	tests := []struct {
+		clusterCidr string
+		providerId  string
+		subnetType  kops.SubnetType
+		route       []kops.RouteSpec
+		expected    []string
+	}{
+		{ // valid pcx
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "pcx-abcdef",
+				},
+			},
+		},
+		{ // valid instance
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "i-abcdef",
+				},
+			},
+		},
+		{ // valid nat
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "nat-abcdef",
+				},
+			},
+		},
+		{ // valid transit gateway
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "tgw-abcdef",
+				},
+			},
+		},
+		{ // valid internet gateway
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "igw-abcdef",
+				},
+			},
+		},
+		{ // valid egress only internet gateway
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "eigw-abcdef",
+				},
+			},
+		},
+		{ // bad cluster cidr
+			clusterCidr: "not cidr",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "pcx-abcdef",
+				},
+			},
+			expected: []string{"Invalid value::spec.networkCIDR"},
+		},
+		{ // bad cidr
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "bad cidr",
+					Target: "pcx-abcdef",
+				},
+			},
+			expected: []string{"Invalid value::spec.subnets[0].additionalRoutes[0].cidr"},
+		},
+		{ // bad target
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "unknown-abcdef",
+				},
+			},
+			expected: []string{"Invalid value::spec.subnets[0].additionalRoutes[0].target"},
+		},
+		{ // target more specific
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "100.64.1.0/24",
+					Target: "pcx-abcdef",
+				},
+			},
+			expected: []string{"Forbidden::spec.subnets[0].additionalRoutes[0].target"},
+		},
+		{ // duplicates cidr
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "pcx-abcdef",
+				},
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "tgw-abcdef",
+				},
+			},
+			expected: []string{"Duplicate value::spec.subnets[0].additionalRoutes[1].cidr"},
+		},
+		{ // shared subnet
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePrivate,
+			providerId:  "123456",
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "pcx-abcdef",
+				},
+			},
+			expected: []string{"Invalid value::spec.subnets[0]"},
+		},
+		{ // not a private subnet
+			clusterCidr: "100.64.0.0/10",
+			subnetType:  kops.SubnetTypePublic,
+			route: []kops.RouteSpec{
+				{
+					CIDR:   "10.0.0.0/8",
+					Target: "pcx-abcdef",
+				},
+			},
+			expected: []string{"Invalid value::spec.subnets[0]"},
+		},
+	}
+
+	for _, test := range tests {
+		cluster := kops.Cluster{
+			Spec: kops.ClusterSpec{
+				NetworkCIDR: test.clusterCidr,
+				Subnets: []kops.ClusterSubnetSpec{
+					{
+						ProviderID:       test.providerId,
+						Type:             test.subnetType,
+						AdditionalRoutes: test.route,
 					},
 				},
 			},

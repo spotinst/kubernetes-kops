@@ -97,19 +97,21 @@ func (b *KubeAPIServerOptionsBuilder) BuildOptions(o interface{}) error {
 	}
 	c.Image = image
 
-	switch kops.CloudProviderID(clusterSpec.CloudProvider) {
+	switch clusterSpec.GetCloudProvider() {
 	case kops.CloudProviderAWS:
 		c.CloudProvider = "aws"
 	case kops.CloudProviderGCE:
 		c.CloudProvider = "gce"
 	case kops.CloudProviderDO:
 		c.CloudProvider = "external"
+	case kops.CloudProviderHetzner:
+		c.CloudProvider = "external"
 	case kops.CloudProviderOpenstack:
 		c.CloudProvider = "openstack"
 	case kops.CloudProviderAzure:
 		c.CloudProvider = "azure"
 	default:
-		return fmt.Errorf("unknown cloudprovider %q", clusterSpec.CloudProvider)
+		return fmt.Errorf("unknown cloudprovider %q", clusterSpec.GetCloudProvider())
 	}
 
 	if clusterSpec.ExternalCloudControllerManager != nil {

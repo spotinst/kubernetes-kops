@@ -226,6 +226,21 @@ etcdClusters:
 
 *Note:* If you are running multiple etcd clusters you need to expose the metrics on different ports for each cluster as etcd is running as a service on the master nodes.
 
+### etcd backups interval
+{{ kops_feature_table(kops_added_default='1.24.1') }}
+
+You can set the interval between backups using the `backupInterval` parameter:
+
+```yaml
+etcdClusters:
+- etcdMembers:
+  - instanceGroup: master-us-east-1a
+    name: a
+  name: main
+  manager:
+    backupInterval: 1h
+```
+
 ### etcd backups retention
 {{ kops_feature_table(kops_added_default='1.18') }}
 
@@ -257,6 +272,10 @@ spec:
     - 12.34.56.78/32
 ```
 
+{{ kops_feature_table(kops_added_default='1.23') }}
+
+In AWS, instead of listing all CIDRs, it is possible to specify a pre-existing [AWS Prefix List](https://docs.aws.amazon.com/vpc/latest/userguide/managed-prefix-lists.html) ID.
+
 ## kubernetesApiAccess
 
 This array configures the CIDRs that are able to access the kubernetes API. On AWS this is manifested as inbound security group rules on the ELB or master security groups.
@@ -268,6 +287,10 @@ spec:
   kubernetesApiAccess:
     - 12.34.56.78/32
 ```
+
+{{ kops_feature_table(kops_added_default='1.23') }}
+
+In AWS, instead of listing all CIDRs, it is possible to specify a pre-existing [AWS Prefix List](https://docs.aws.amazon.com/vpc/latest/userguide/managed-prefix-lists.html) ID.
 
 ## cluster.spec Subnet Keys
 
@@ -343,6 +366,25 @@ spec:
     zone: us-east-1a
 ```
 
+### additionalRoutes
+
+{{ kops_feature_table(kops_added_default='1.24') }}
+
+Add routes in the route tables of the subnet. Targets of routes can be an instance, a peering connection, a NAT gateway, a transit gateway, an internet gateway or an egress-only internet gateway.
+Currently, only AWS is supported.
+
+```yaml
+spec:
+  subnets:
+  - cidr: 10.20.64.0/21
+    name: us-east-1a
+    type: Private
+    zone: us-east-1a
+    additionalRoutes:
+    - cidr: 10.21.0.0/16
+      target: vpc-abcdef
+```
+
 ## kubeAPIServer
 
 This block contains configuration for the `kube-apiserver`.
@@ -362,7 +404,7 @@ spec:
     oidcGroupsPrefix: "oidc:"
     oidcCAFile: /etc/kubernetes/ssl/kc-ca.pem
     oidcRequiredClaim:
-    	- "key=value"
+    - "key=value"
 ```
 
 ### Audit Logging
@@ -742,6 +784,25 @@ spec:
     logFormat: json
 ```
 
+### Graceful Node Shutdown
+
+{{ kops_feature_table(kops_added_default='1.23', k8s_min='1.21') }}
+
+Graceful node shutdown allows kubelet to prevent instance shutdown until Pods have been safely terminated or a timeout has been reached.
+
+For all CNIs except `amazonaws`, kOps will try to add a 30 second timeout for 30 seconds where the first 20 seconds is reserved for normal Pods and the last 10 seconds for critical Pods. When using `amazonaws` this feature is disabled, as it leads to [leaking ENIs](https://github.com/aws/amazon-vpc-cni-k8s/issues/1223).
+
+This configuration can be changed as follows:
+
+```yaml
+spec:
+  kubelet:
+    shutdownGracePeriod: 60s
+    shutdownGracePeriodCriticalPods: 20s
+```
+
+Note that Kubelet will fail to install the shutdown inhibtor on systems where logind is configured with an `InhibitDelayMaxSeconds` lower than `shutdownGracePeriod`. On Ubuntu, this setting is 30 seconds.
+
 ## kubeScheduler
 
 This block contains configurations for `kube-scheduler`.  See https://kubernetes.io/docs/admin/kube-scheduler/
@@ -1044,19 +1105,38 @@ spec:
 
 ## fileAssets
 
-FileAssets permits you to place inline file content into the cluster and instanceGroup specification. This is useful for deploying additional configuration files that kubernetes components requires, such as auditlogs or admission controller configurations.
+FileAssets permit you to place inline file content into the Cluster and [Instance Group](instance_groups.md) specifications. This is useful for deploying additional files that Kubernetes components require, such as audit logging or admission controller configurations.
 
 ```yaml
 spec:
   fileAssets:
   - name: iptable-restore
-    # Note if not path is specified the default path it /srv/kubernetes/assets/<name>
+    # Note if path is not specified, the default is /srv/kubernetes/assets/<name>
     path: /var/lib/iptables/rules-save
-    roles: [Master,Node,Bastion] # a list of roles to apply the asset to, zero defaults to all
+    # Note if roles are not specified, the default is all roles
+    roles: [Master,Node,Bastion] # a list of roles to apply the asset to
     content: |
       some file content
 ```
 
+### mode
+
+{{ kops_feature_table(kops_added_default='1.24') }}
+
+Optionally, `mode` allows you to specify a file's mode and permission bits.
+
+**NOTE**: If not specified, the default is `"0440"`, which matches the behaviour of older versions of kOps.
+
+```yaml
+spec:
+  fileAssets:
+  - name: my-script
+    path: /usr/local/bin/my-script
+    mode: "0550"
+    content: |
+      #! /usr/bin/env bash
+      ...
+```
 
 ## cloudConfig
 
@@ -1080,6 +1160,20 @@ This can be useful to avoid AWS limits: 500 security groups per region and 50 ru
 spec:
   cloudConfig:
     elbSecurityGroup: sg-123445678
+```
+
+### manageStorageClasses
+{{ kops_feature_table(kops_added_default='1.20') }}
+
+
+By default kops will create `StorageClass` resources with some opinionated settings specific to cloud provider on which the cluster is installed. One of those storage classes will be defined as default applying the annotation `storageclass.kubernetes.io/is-default-class: "true"`. This may not always be a desirable behaviour and some cluster admins rather prefer to have more control of storage classes and manage them outside of kops. When set to `false`, kOps will no longer create any `StorageClass` objects. Any such objects that kOps created in the past are left as is, and kOps will no longer reconcile them against future changes.
+
+The existing `spec.cloudConfig.openstack.blockStorage.createStorageClass` field remains in place. However, if both that and the new `spec.cloudConfig.manageStorageClasses` field are populated, they must agree: It is invalid both to disable management of `StorageClass` objects globally but to enable them for OpenStack and, conversely, to enable management globally but disable it for OpenStack.
+
+```yaml
+spec:
+  cloudConfig:
+    manageStorageClasses: false
 ```
 
 ## containerRuntime
@@ -1133,6 +1227,30 @@ tar tf cri-containerd-cni-1.4.4-linux-amd64.tar.gz
     usr/local/bin/critest
     usr/local/bin/ctr
     usr/local/sbin/runc
+```
+
+### Runc Version and Packages
+{{ kops_feature_table(kops_added_default='1.24.2') }}
+
+kOps uses the binaries from https://github.com/opencontainers/runc for installing runc on any supported OS. This makes it easy to specify the desired release version:
+
+```yaml
+spec:
+  containerd:
+    runc:
+      version: 1.1.2
+```
+
+It also makes it possible to use a newer version than the kOps binary, pre-release packages, or even a custom build, by specifying its URL and sha256:
+
+```yaml
+spec:
+  containerd:
+    runc:
+      version: 1.100.0
+      packages:
+        urlAmd64: https://cdn.example.com/k8s/runc/releases/download/v1.100.0/runc.amd64
+        hashAmd64: ab1c67fbcbdddbe481e48a55cf0ef9a86b38b166b5079e0010737fd87d7454bb
 ```
 
 ### Registry Mirrors
@@ -1431,3 +1549,5 @@ spec:
               }
             ]
 ```
+
+To configure Pods to assume the given IAM roles, enable the [Pod Identity Webhook](/addons/#pod-identity-webhook). Without this webhook, you need to modify your Pod specs yourself for your Pod to assume the defined roles.

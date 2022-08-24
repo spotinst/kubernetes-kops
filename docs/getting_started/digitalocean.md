@@ -28,7 +28,7 @@ export S3_SECRET_ACCESS_KEY=<secret-key>  # where <secret-key> is the Spaces API
 ## Creating a Single Master Cluster
 
 In the following examples, `example.com` should be replaced with the DigitalOcean domain you created when going through the [Requirements](#requirements).
-Note that you kOps will only be able to successfully provision clusters in regions that support block storage (AMS3, BLR1, FRA1, LON1, NYC1, NYC3, SFO2, SFO3, SGP1 and TOR1).
+Note that you kOps will only be able to successfully provision clusters in regions that support block storage (AMS3, BLR1, FRA1, LON1, NYC1, NYC3, SFO3, SGP1 and TOR1).
 
 ```bash
 # debian (the default) + flannel overlay cluster in tor1
@@ -72,6 +72,21 @@ kops create cluster --cloud=digitalocean --name=dev5.k8s.local --networking=cili
 # to delete a cluster - this will also delete the load balancer associated with the cluster.
 kops delete cluster dev5.k8s.local --yes
 ```
+
+## VPC Support
+
+If you already have a VPC created and want to run kops cluster in this vpc, specify the vpc uuid as below.
+
+```bash
+/kops create cluster --cloud=digitalocean --name=dev1.example.com --vpc=af287488-862e-46c7-a783-5e5fa89cb200 --networking=cilium --zones=tor1 --ssh-public-key=~/.ssh/id_rsa.pub
+```
+
+If you want to create a new VPC for running your kops cluster, specify the network-cidr as below.
+
+```bash
+./kops create cluster --cloud=digitalocean --name=dev1.example.com --networking=calico --network-cidr=192.168.11.0/24 --zones=nyc1 --ssh-public-key=~/.ssh/id_rsa.pub --yes
+```
+
 
 ## Features Still in Development
 

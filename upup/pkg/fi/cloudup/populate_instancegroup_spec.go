@@ -18,6 +18,7 @@ package cloudup
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/blang/semver/v4"
@@ -36,16 +37,19 @@ import (
 
 // Default Machine types for various types of instance group machine
 const (
-	defaultNodeMachineTypeGCE   = "n1-standard-2"
-	defaultNodeMachineTypeDO    = "s-2vcpu-4gb"
-	defaultNodeMachineTypeAzure = "Standard_B2ms"
+	defaultNodeMachineTypeGCE     = "n1-standard-2"
+	defaultNodeMachineTypeDO      = "s-2vcpu-4gb"
+	defaultNodeMachineTypeAzure   = "Standard_B2ms"
+	defaultNodeMachineTypeHetzner = "cx21"
 
-	defaultBastionMachineTypeGCE   = "f1-micro"
-	defaultBastionMachineTypeAzure = "Standard_B2ms"
+	defaultBastionMachineTypeGCE     = "f1-micro"
+	defaultBastionMachineTypeAzure   = "Standard_B2ms"
+	defaultBastionMachineTypeHetzner = "cx11"
 
-	defaultMasterMachineTypeGCE   = "n1-standard-1"
-	defaultMasterMachineTypeDO    = "s-2vcpu-4gb"
-	defaultMasterMachineTypeAzure = "Standard_B2ms"
+	defaultMasterMachineTypeGCE     = "n1-standard-1"
+	defaultMasterMachineTypeDO      = "s-2vcpu-4gb"
+	defaultMasterMachineTypeAzure   = "Standard_B2ms"
+	defaultMasterMachineTypeHetzner = "cx21"
 
 	defaultDONodeImage = "ubuntu-20-04-x64"
 )
@@ -130,7 +134,7 @@ func PopulateInstanceGroupSpec(cluster *kops.Cluster, input *kops.InstanceGroup,
 	}
 
 	if ig.Spec.Tenancy != "" && ig.Spec.Tenancy != "default" {
-		switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+		switch cluster.Spec.GetCloudProvider() {
 		case kops.CloudProviderAWS:
 			if _, ok := awsDedicatedInstanceExceptions[ig.Spec.MachineType]; ok {
 				return nil, fmt.Errorf("invalid dedicated instance type: %s", ig.Spec.MachineType)
@@ -174,20 +178,44 @@ func PopulateInstanceGroupSpec(cluster *kops.Cluster, input *kops.InstanceGroup,
 		return nil, fmt.Errorf("unable to infer any Subnets for InstanceGroup %s ", ig.ObjectMeta.Name)
 	}
 
+	hasGPU := false
+	clusterNvidia := false
 	if cluster.Spec.Containerd != nil && cluster.Spec.Containerd.NvidiaGPU != nil && fi.BoolValue(cluster.Spec.Containerd.NvidiaGPU.Enabled) {
-		switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
-		case kops.CloudProviderAWS:
+		clusterNvidia = true
+	}
+	igNvidia := false
+	if ig.Spec.Containerd != nil && ig.Spec.Containerd.NvidiaGPU != nil && fi.BoolValue(ig.Spec.Containerd.NvidiaGPU.Enabled) {
+		igNvidia = true
+	}
+
+	switch cluster.Spec.GetCloudProvider() {
+	case kops.CloudProviderAWS:
+		if clusterNvidia || igNvidia {
 			mt, err := awsup.GetMachineTypeInfo(cloud.(awsup.AWSCloud), ig.Spec.MachineType)
 			if err != nil {
 				return ig, fmt.Errorf("error looking up machine type info: %v", err)
 			}
-			if mt.GPU {
-				if ig.Spec.NodeLabels == nil {
-					ig.Spec.NodeLabels = make(map[string]string)
-				}
-				ig.Spec.NodeLabels["kops.k8s.io/gpu"] = "1"
-				ig.Spec.Taints = append(ig.Spec.Taints, "nvidia.com/gpu:NoSchedule")
+			hasGPU = mt.GPU
+		}
+	case kops.CloudProviderOpenstack:
+		if igNvidia {
+			hasGPU = true
+		}
+	}
+
+	if hasGPU {
+		if ig.Spec.NodeLabels == nil {
+			ig.Spec.NodeLabels = make(map[string]string)
+		}
+		ig.Spec.NodeLabels["kops.k8s.io/gpu"] = "1"
+		hasNvidiaTaint := false
+		for _, taint := range ig.Spec.Taints {
+			if strings.HasPrefix(taint, "nvidia.com/gpu") {
+				hasNvidiaTaint = true
 			}
+		}
+		if !hasNvidiaTaint {
+			ig.Spec.Taints = append(ig.Spec.Taints, "nvidia.com/gpu:NoSchedule")
 		}
 	}
 
@@ -199,7 +227,7 @@ func PopulateInstanceGroupSpec(cluster *kops.Cluster, input *kops.InstanceGroup,
 
 // defaultMachineType returns the default MachineType for the instance group, based on the cloudprovider
 func defaultMachineType(cloud fi.Cloud, cluster *kops.Cluster, ig *kops.InstanceGroup) (string, error) {
-	switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+	switch cluster.Spec.GetCloudProvider() {
 	case kops.CloudProviderAWS:
 		if ig.Spec.Manager == kops.InstanceManagerKarpenter {
 			return "", nil
@@ -233,6 +261,18 @@ func defaultMachineType(cloud fi.Cloud, cluster *kops.Cluster, ig *kops.Instance
 
 		}
 
+	case kops.CloudProviderHetzner:
+		switch ig.Spec.Role {
+		case kops.InstanceGroupRoleMaster:
+			return defaultMasterMachineTypeHetzner, nil
+
+		case kops.InstanceGroupRoleNode:
+			return defaultNodeMachineTypeHetzner, nil
+
+		case kops.InstanceGroupRoleBastion:
+			return defaultBastionMachineTypeHetzner, nil
+		}
+
 	case kops.CloudProviderOpenstack:
 		instanceType, err := cloud.(openstack.OpenstackCloud).DefaultInstanceType(cluster, ig)
 		if err != nil {
@@ -253,7 +293,7 @@ func defaultMachineType(cloud fi.Cloud, cluster *kops.Cluster, ig *kops.Instance
 		}
 	}
 
-	klog.V(2).Infof("Cannot set default MachineType for CloudProvider=%q, Role=%q", cluster.Spec.CloudProvider, ig.Spec.Role)
+	klog.V(2).Infof("Cannot set default MachineType for CloudProvider=%q, Role=%q", cluster.Spec.GetCloudProvider(), ig.Spec.Role)
 	return "", nil
 }
 
@@ -269,18 +309,18 @@ func defaultImage(cluster *kops.Cluster, channel *kops.Channel, architecture arc
 			}
 		}
 		if kubernetesVersion != nil {
-			image := channel.FindImage(kops.CloudProviderID(cluster.Spec.CloudProvider), *kubernetesVersion, architecture)
+			image := channel.FindImage(cluster.Spec.GetCloudProvider(), *kubernetesVersion, architecture)
 			if image != nil {
 				return image.Name
 			}
 		}
 	}
 
-	switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
+	switch cluster.Spec.GetCloudProvider() {
 	case kops.CloudProviderDO:
 		return defaultDONodeImage
 	}
-	klog.Infof("Cannot set default Image for CloudProvider=%q", cluster.Spec.CloudProvider)
+	klog.Infof("Cannot set default Image for CloudProvider=%q", cluster.Spec.GetCloudProvider())
 	return ""
 }
 

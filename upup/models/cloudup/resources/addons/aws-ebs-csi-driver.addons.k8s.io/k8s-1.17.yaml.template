@@ -134,7 +134,7 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshotcontents"]
-    verbs: ["create", "get", "list", "watch", "update", "delete"]
+    verbs: ["create", "get", "list", "watch", "update", "delete", "patch"]
   - apiGroups: ["snapshot.storage.k8s.io"]
     resources: ["volumesnapshotcontents/status"]
     verbs: ["update"]
@@ -274,6 +274,10 @@ spec:
         app.kubernetes.io/name: aws-ebs-csi-driver
         app.kubernetes.io/instance: aws-ebs-csi-driver
         app.kubernetes.io/version: {{ .Version }}
+      annotations:
+        {{- range $key, $value := .PodAnnotations }}
+        {{ $key }}: "{{ $value }}"
+        {{- end }}
     spec:
       nodeSelector:
         kubernetes.io/os: linux
@@ -285,7 +289,8 @@ spec:
         - name: ebs-plugin
           securityContext:
             privileged: true
-          image: k8s.gcr.io/provider-aws/aws-ebs-csi-driver:{{ .Version }}
+          image: registry.k8s.io/provider-aws/aws-ebs-csi-driver:{{ .Version }}
+          imagePullPolicy: IfNotPresent
           args:
             - node
             - --endpoint=$(CSI_ENDPOINT)
@@ -326,15 +331,12 @@ spec:
             periodSeconds: 10
             failureThreshold: 5
         - name: node-driver-registrar
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.1.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.5.1
+          imagePullPolicy: IfNotPresent
           args:
             - --csi-address=$(ADDRESS)
             - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
             - --v=5
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "rm -rf /registration/ebs.csi.aws.com-reg.sock /csi/csi.sock"]
           env:
             - name: ADDRESS
               value: /csi/csi.sock
@@ -346,7 +348,8 @@ spec:
             - name: registration-dir
               mountPath: /registration
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.2.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.5.0
+          imagePullPolicy: IfNotPresent
           args:
             - --csi-address=/csi/csi.sock
           volumeMounts:
@@ -395,7 +398,33 @@ spec:
         app.kubernetes.io/name: aws-ebs-csi-driver
         app.kubernetes.io/instance: aws-ebs-csi-driver
         app.kubernetes.io/version: {{ .Version }}
+      annotations:
+        {{- range $key, $value := .PodAnnotations }}
+        {{ $key }}: "{{ $value }}"
+        {{- end }}
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              {{ if not UseServiceAccountExternalPermissions }}
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+              {{ end }}
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+            - matchExpressions:
+              {{ if not UseServiceAccountExternalPermissions }}
+              - key: node-role.kubernetes.io/master
+                operator: Exists
+              {{ end }}
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
       topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: "topology.kubernetes.io/zone"
@@ -413,20 +442,16 @@ spec:
             app: ebs-csi-controller
             app.kubernetes.io/name: aws-ebs-csi-driver
             app.kubernetes.io/instance: aws-ebs-csi-driver
-      nodeSelector:
-        kubernetes.io/os: linux
-        {{ if not UseServiceAccountExternalPermissions }}
-        node-role.kubernetes.io/master: ""
-        {{ end }}
       serviceAccountName: ebs-csi-controller-sa
       priorityClassName: system-cluster-critical
+      nodeSelector: null
       {{ if not UseServiceAccountExternalPermissions }}
       tolerations:
         - operator: Exists
       {{ end }}
       containers:
         - name: ebs-plugin
-          image: k8s.gcr.io/provider-aws/aws-ebs-csi-driver:{{ .Version }}
+          image: registry.k8s.io/provider-aws/aws-ebs-csi-driver:{{ .Version }}
           imagePullPolicy: IfNotPresent
           args:
             - controller
@@ -440,13 +465,13 @@ spec:
             - name: AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE
               value: IPv6
             {{- end }}
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
             - name: CSI_NODE_NAME
               valueFrom:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: spec.nodeName
-            - name: CSI_ENDPOINT
-              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
@@ -474,14 +499,23 @@ spec:
             timeoutSeconds: 3
             periodSeconds: 10
             failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
         - name: csi-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.0
+          image: registry.k8s.io/sig-storage/csi-provisioner:v3.1.0
+          imagePullPolicy: IfNotPresent
           args:
             - --csi-address=$(ADDRESS)
             - --v=5
             - --feature-gates=Topology=true
+            - --extra-create-metadata
             - --leader-election=true
-            - --extra-create-metadata=true
             - --default-fstype=ext4
           env:
             - name: ADDRESS
@@ -490,7 +524,8 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-attacher
-          image: k8s.gcr.io/sig-storage/csi-attacher:v3.2.0
+          image: registry.k8s.io/sig-storage/csi-attacher:v3.4.0
+          imagePullPolicy: IfNotPresent
           args:
             - --csi-address=$(ADDRESS)
             - --v=5
@@ -501,8 +536,10 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
+        {{ if HasSnapshotController }}
         - name: csi-snapshotter
-          image: k8s.gcr.io/sig-storage/csi-snapshotter:v4.0.0
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v6.0.1
+          imagePullPolicy: IfNotPresent
           args:
             - --csi-address=$(ADDRESS)
             - --leader-election=true
@@ -512,9 +549,10 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
+        {{ end }}
         - name: csi-resizer
-          image: k8s.gcr.io/sig-storage/csi-resizer:v1.1.0
-          imagePullPolicy: Always
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.4.0
+          imagePullPolicy: IfNotPresent
           args:
             - --csi-address=$(ADDRESS)
             - --v=5
@@ -525,7 +563,8 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: liveness-probe
-          image: k8s.gcr.io/sig-storage/livenessprobe:v2.2.0
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.5.0
+          imagePullPolicy: IfNotPresent
           args:
             - --csi-address=/csi/csi.sock
           volumeMounts:

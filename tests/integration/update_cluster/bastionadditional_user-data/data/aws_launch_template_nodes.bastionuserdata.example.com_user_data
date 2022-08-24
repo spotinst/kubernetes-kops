@@ -139,13 +139,13 @@ cloudConfig:
 containerRuntime: containerd
 containerd:
   logLevel: info
-  version: 1.4.12
+  version: 1.4.13
 docker:
   skipInstall: true
 kubeProxy:
   clusterCIDR: 100.96.0.0/11
   cpuRequest: 100m
-  image: k8s.gcr.io/kube-proxy:v1.21.0
+  image: registry.k8s.io/kube-proxy:v1.21.0
   logLevel: 2
 kubelet:
   anonymousAuth: false
@@ -159,8 +159,10 @@ kubelet:
   kubeconfigPath: /var/lib/kubelet/kubeconfig
   logLevel: 2
   networkPluginName: cni
-  podInfraContainerImage: k8s.gcr.io/pause:3.6
+  podInfraContainerImage: registry.k8s.io/pause:3.6
   podManifestPath: /etc/kubernetes/manifests
+  shutdownGracePeriod: 30s
+  shutdownGracePeriodCriticalPods: 10s
 
 __EOF_CLUSTER_SPEC
 
@@ -169,7 +171,7 @@ CloudProvider: aws
 ConfigBase: memfs://clusters.example.com/bastionuserdata.example.com
 InstanceGroupName: nodes
 InstanceGroupRole: Node
-NodeupConfigHash: /wbUQ+BV558/dsdc2HnkJ3vsWsH8veRU8XI0A/vM8lk=
+NodeupConfigHash: vK3IPyCBp3wBDlIogRiZr/v/rQa3Q/JUr8C18uJYH0Q=
 
 __EOF_KUBE_ENV
 

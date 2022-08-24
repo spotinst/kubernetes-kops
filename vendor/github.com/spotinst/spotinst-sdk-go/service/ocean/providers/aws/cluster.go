@@ -24,6 +24,7 @@ type Cluster struct {
 	Compute             *Compute    `json:"compute,omitempty"`
 	Scheduling          *Scheduling `json:"scheduling,omitempty"`
 	AutoScaler          *AutoScaler `json:"autoScaler,omitempty"`
+	Logging             *Logging    `json:"logging,omitempty"`
 
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -110,18 +111,19 @@ type InstanceTypes struct {
 }
 
 type LaunchSpecification struct {
-	AssociatePublicIPAddress *bool               `json:"associatePublicIpAddress,omitempty"`
-	SecurityGroupIDs         []string            `json:"securityGroupIds,omitempty"`
-	ImageID                  *string             `json:"imageId,omitempty"`
-	KeyPair                  *string             `json:"keyPair,omitempty"`
-	UserData                 *string             `json:"userData,omitempty"`
-	IAMInstanceProfile       *IAMInstanceProfile `json:"iamInstanceProfile,omitempty"`
-	Tags                     []*Tag              `json:"tags,omitempty"`
-	LoadBalancers            []*LoadBalancer     `json:"loadBalancers,omitempty"`
-	RootVolumeSize           *int                `json:"rootVolumeSize,omitempty"`
-	Monitoring               *bool               `json:"monitoring,omitempty"`
-	EBSOptimized             *bool               `json:"ebsOptimized,omitempty"`
-	UseAsTemplateOnly        *bool               `json:"useAsTemplateOnly,omitempty"`
+	AssociatePublicIPAddress *bool                    `json:"associatePublicIpAddress,omitempty"`
+	SecurityGroupIDs         []string                 `json:"securityGroupIds,omitempty"`
+	ImageID                  *string                  `json:"imageId,omitempty"`
+	KeyPair                  *string                  `json:"keyPair,omitempty"`
+	UserData                 *string                  `json:"userData,omitempty"`
+	IAMInstanceProfile       *IAMInstanceProfile      `json:"iamInstanceProfile,omitempty"`
+	Tags                     []*Tag                   `json:"tags,omitempty"`
+	LoadBalancers            []*LoadBalancer          `json:"loadBalancers,omitempty"`
+	RootVolumeSize           *int                     `json:"rootVolumeSize,omitempty"`
+	Monitoring               *bool                    `json:"monitoring,omitempty"`
+	EBSOptimized             *bool                    `json:"ebsOptimized,omitempty"`
+	UseAsTemplateOnly        *bool                    `json:"useAsTemplateOnly,omitempty"`
+	InstanceMetadataOptions  *InstanceMetadataOptions `json:"instanceMetadataOptions,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -145,13 +147,15 @@ type LoadBalancer struct {
 }
 
 type AutoScaler struct {
-	IsEnabled              *bool                     `json:"isEnabled,omitempty"`
-	IsAutoConfig           *bool                     `json:"isAutoConfig,omitempty"`
-	Cooldown               *int                      `json:"cooldown,omitempty"`
-	AutoHeadroomPercentage *int                      `json:"autoHeadroomPercentage,omitempty"`
-	Headroom               *AutoScalerHeadroom       `json:"headroom,omitempty"`
-	ResourceLimits         *AutoScalerResourceLimits `json:"resourceLimits,omitempty"`
-	Down                   *AutoScalerDown           `json:"down,omitempty"`
+	IsEnabled                        *bool                     `json:"isEnabled,omitempty"`
+	IsAutoConfig                     *bool                     `json:"isAutoConfig,omitempty"`
+	Cooldown                         *int                      `json:"cooldown,omitempty"`
+	AutoHeadroomPercentage           *int                      `json:"autoHeadroomPercentage,omitempty"`
+	Headroom                         *AutoScalerHeadroom       `json:"headroom,omitempty"`
+	ResourceLimits                   *AutoScalerResourceLimits `json:"resourceLimits,omitempty"`
+	Down                             *AutoScalerDown           `json:"down,omitempty"`
+	EnableAutomaticAndManualHeadroom *bool                     `json:"enableAutomaticAndManualHeadroom,omitempty"`
+	ExtendedResourceDefinitions      []string                  `json:"extendedResourceDefinitions,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -178,6 +182,35 @@ type AutoScalerResourceLimits struct {
 type AutoScalerDown struct {
 	EvaluationPeriods      *int     `json:"evaluationPeriods,omitempty"`
 	MaxScaleDownPercentage *float64 `json:"maxScaleDownPercentage,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type InstanceMetadataOptions struct {
+	HTTPTokens              *string `json:"httpTokens,omitempty"`
+	HTTPPutResponseHopLimit *int    `json:"httpPutResponseHopLimit,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type Logging struct {
+	Export *Export `json:"export,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type Export struct {
+	S3 *S3 `json:"s3,omitempty"`
+
+	forceSendFields []string
+	nullFields      []string
+}
+
+type S3 struct {
+	ID *string `json:"id,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string
@@ -260,6 +293,8 @@ type RollSpec struct {
 	Comment                      *string  `json:"comment,omitempty"`
 	Status                       *string  `json:"status,omitempty"`
 	BatchSizePercentage          *int     `json:"batchSizePercentage,omitempty"`
+	BatchMinHealthyPercentage    *int     `json:"batchMinHealthyPercentage,omitempty"`
+	RespectPDB                   *bool    `json:"respectPdb,omitempty"`
 	DisableLaunchSpecAutoScaling *bool    `json:"disableLaunchSpecAutoScaling,omitempty"`
 	LaunchSpecIDs                []string `json:"launchSpecIds,omitempty"`
 	InstanceIDs                  []string `json:"instanceIds,omitempty"`
@@ -337,6 +372,126 @@ type GetLogEventsInput struct {
 
 type GetLogEventsOutput struct {
 	Events []*LogEvent `json:"events,omitempty"`
+}
+
+type ClusterAggregatedCostInput struct {
+	OceanId   *string           `json:"oceanId,omitempty"`
+	StartTime *string           `json:"startTime,omitempty"`
+	EndTime   *string           `json:"endTime,omitempty"`
+	GroupBy   *string           `json:"groupBy,omitempty"`
+	Filter    *AggregatedFilter `json:"filter,omitempty"`
+}
+
+type AggregatedFilter struct {
+	Scope      *string     `json:"scope,omitempty"`
+	Conditions *Conditions `json:"conditions,omitempty"`
+}
+
+type Conditions struct {
+	AnyMatch []*AllMatch `json:"anyMatch,omitempty"`
+}
+
+type AllMatch struct {
+	AllMatches []*AllMatchInner `json:"allMatch,omitempty"`
+}
+
+type AllMatchInner struct {
+	Type     *string `json:"type,omitempty"`
+	Key      *string `json:"key,omitempty"`
+	Operator *string `json:"operator,omitempty"`
+	Value    *string `json:"value,omitempty"`
+}
+
+type ClusterAggregatedCostOutput struct {
+	AggregatedClusterCosts []*AggregatedClusterCost `json:"aggregatedClusterCosts,omitempty"`
+}
+
+type AggregatedClusterCost struct {
+	Result *Result `json:"result,omitempty"`
+}
+
+type Result struct {
+	TotalForDuration *TotalForDuration `json:"totalForDuration,omitempty"`
+}
+
+type TotalForDuration struct {
+	Summary       *Summary       `json:"summary,omitempty"`
+	StartTime     *string        `json:"startTime,omitempty"`
+	EndTime       *string        `json:"endTime,omitempty"`
+	DetailedCosts *DetailedCosts `json:"detailedCosts,omitempty"`
+}
+
+type DetailedCosts struct {
+	Aggregations map[string]Property `json:"aggregations,omitempty"`
+	GroupedBy    *string             `json:"groupedBy,omitempty"`
+}
+
+type Property struct {
+	Resources []AggregatedCostResource `json:"resources,omitempty"`
+	Summary   *Summary                 `json:"summary,omitempty"`
+}
+
+type Summary struct {
+	Compute *AggregatedCompute `json:"compute,omitempty"`
+	Storage *AggregatedStorage `json:"storage,omitempty"`
+	Total   *float64           `json:"total,omitempty"`
+}
+
+type AggregatedCostResource struct {
+	Compute  *AggregatedCompute `json:"compute,omitempty"`
+	Storage  *AggregatedStorage `json:"storage,omitempty"`
+	MetaData *MetaData          `json:"metaData,omitempty"`
+	Total    *float64           `json:"total,omitempty"`
+}
+
+type AggregatedCompute struct {
+	Headroom  *Headroom  `json:"headroom,omitempty"`
+	Total     *float64   `json:"total,omitempty"`
+	Workloads *Workloads `json:"workloads,omitempty"`
+}
+
+type AggregatedStorage struct {
+	Block *Block   `json:"block,omitempty"`
+	File  *File    `json:"file,omitempty"`
+	Total *float64 `json:"total,omitempty"`
+}
+
+type MetaData struct {
+	Name       *string `json:"name,omitempty"`
+	Namespace  *string `json:"namespace,omitempty"`
+	Type       *string `json:"type,omitempty"`
+	CustomType *string `json:"customType,omitempty"`
+}
+
+type Headroom struct {
+	Total *float64 `json:"total,omitempty"`
+}
+
+type Workloads struct {
+	Total *float64 `json:"total,omitempty"`
+}
+
+type Block struct {
+	EbsPv *EbsPv   `json:"ebsPv,omitempty"`
+	NonPv *NonPv   `json:"nonPv,omitempty"`
+	Total *float64 `json:"total,omitempty"`
+}
+
+type File struct {
+	EfsPv *EfsPv   `json:"efsPv,omitempty"`
+	Total *float64 `json:"total,omitempty"`
+}
+
+type EbsPv struct {
+	Total *float64 `json:"total,omitempty"`
+}
+
+type NonPv struct {
+	Total *float64 `json:"total,omitempty"`
+}
+
+type EfsPv struct {
+	Total *float64 `json:"total,omitempty"`
 }
 
 func clusterFromJSON(in []byte) (*Cluster, error) {
@@ -477,6 +632,45 @@ func logEventsFromHttpResponse(resp *http.Response) ([]*LogEvent, error) {
 		return nil, err
 	}
 	return logEventsFromJSON(body)
+}
+
+func clusterAggregatedCostFromJSON(in []byte) (*AggregatedClusterCost, error) {
+	b := new(AggregatedClusterCost)
+	if err := json.Unmarshal(in, b); err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func clusterAggregatedCostsFromJSON(in []byte) ([]*AggregatedClusterCost, error) {
+	var rw client.Response
+	if err := json.Unmarshal(in, &rw); err != nil {
+		return nil, err
+	}
+	out := make([]*AggregatedClusterCost, len(rw.Response.Items))
+
+	if len(out) == 0 {
+		return out, nil
+	}
+	for i, rb := range rw.Response.Items {
+		b, err := clusterAggregatedCostFromJSON(rb)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = b
+	}
+
+	return out, nil
+}
+
+func clusterAggregatedCostsFromHttpResponse(resp *http.Response) ([]*AggregatedClusterCost, error) {
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return clusterAggregatedCostsFromJSON(body)
 }
 
 func (s *ServiceOp) ListClusters(ctx context.Context, input *ListClustersInput) (*ListClustersOutput, error) {
@@ -801,6 +995,35 @@ func (s *ServiceOp) Roll(ctx context.Context, input *RollClusterInput) (*RollClu
 	return output, nil
 }
 
+func (s *ServiceOp) GetClusterAggregatedCosts(ctx context.Context, input *ClusterAggregatedCostInput) (*ClusterAggregatedCostOutput, error) {
+	path, err := uritemplates.Expand("/ocean/aws/k8s/cluster/{oceanId}/aggregatedCosts", uritemplates.Values{
+		"oceanId": spotinst.StringValue(input.OceanId),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// We do not need the ID anymore so let's drop it.
+	input.OceanId = nil
+
+	r := client.NewRequest(http.MethodPost, path)
+
+	r.Obj = input
+
+	resp, err := client.RequireOK(s.Client.Do(ctx, r))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	costs, err := clusterAggregatedCostsFromHttpResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClusterAggregatedCostOutput{costs}, nil
+}
+
 // region Cluster
 
 func (o Cluster) MarshalJSON() ([]byte, error) {
@@ -868,6 +1091,13 @@ func (o *Cluster) SetScheduling(v *Scheduling) *Cluster {
 func (o *Cluster) SetAutoScaler(v *AutoScaler) *Cluster {
 	if o.AutoScaler = v; o.AutoScaler == nil {
 		o.nullFields = append(o.nullFields, "AutoScaler")
+	}
+	return o
+}
+
+func (o *Cluster) SetLogging(v *Logging) *Cluster {
+	if o.Logging = v; o.Logging == nil {
+		o.nullFields = append(o.nullFields, "Logging")
 	}
 	return o
 }
@@ -1183,6 +1413,13 @@ func (o *LaunchSpecification) SetUseAsTemplateOnly(v *bool) *LaunchSpecification
 	return o
 }
 
+func (o *LaunchSpecification) SetInstanceMetadataOptions(v *InstanceMetadataOptions) *LaunchSpecification {
+	if o.InstanceMetadataOptions = v; o.InstanceMetadataOptions == nil {
+		o.nullFields = append(o.nullFields, "InstanceMetadataOptions")
+	}
+	return o
+}
+
 // endregion
 
 // region LoadBalancer
@@ -1287,6 +1524,20 @@ func (o *AutoScaler) SetResourceLimits(v *AutoScalerResourceLimits) *AutoScaler 
 func (o *AutoScaler) SetDown(v *AutoScalerDown) *AutoScaler {
 	if o.Down = v; o.Down == nil {
 		o.nullFields = append(o.nullFields, "Down")
+	}
+	return o
+}
+
+func (o *AutoScaler) SetEnableAutomaticAndManualHeadroom(v *bool) *AutoScaler {
+	if o.EnableAutomaticAndManualHeadroom = v; o.EnableAutomaticAndManualHeadroom == nil {
+		o.nullFields = append(o.nullFields, "EnableAutomaticAndManualHeadroom")
+	}
+	return o
+}
+
+func (o *AutoScaler) SetExtendedResourceDefinitions(v []string) *AutoScaler {
+	if o.ExtendedResourceDefinitions = v; o.ExtendedResourceDefinitions == nil {
+		o.nullFields = append(o.nullFields, "ExtendedResourceDefinitions")
 	}
 	return o
 }
@@ -1453,6 +1704,20 @@ func (o *RollSpec) SetBatchSizePercentage(v *int) *RollSpec {
 	return o
 }
 
+func (o *RollSpec) SetBatchMinHealthyPercentage(v *int) *RollSpec {
+	if o.BatchMinHealthyPercentage = v; o.BatchMinHealthyPercentage == nil {
+		o.nullFields = append(o.nullFields, "BatchMinHealthyPercentage")
+	}
+	return o
+}
+
+func (o *RollSpec) SetRespectPDB(v *bool) *RollSpec {
+	if o.RespectPDB = v; o.RespectPDB == nil {
+		o.nullFields = append(o.nullFields, "RespectPDB")
+	}
+	return o
+}
+
 func (o *RollSpec) SetDisableLaunchSpecAutoScaling(v *bool) *RollSpec {
 	if o.DisableLaunchSpecAutoScaling = v; o.DisableLaunchSpecAutoScaling == nil {
 		o.nullFields = append(o.nullFields, "DisableLaunchSpecAutoScaling")
@@ -1470,6 +1735,81 @@ func (o *RollSpec) SetLaunchSpecIDs(v []string) *RollSpec {
 func (o *RollSpec) SetInstanceIDs(v []string) *RollSpec {
 	if o.InstanceIDs = v; o.InstanceIDs == nil {
 		o.nullFields = append(o.nullFields, "InstanceIDs")
+	}
+	return o
+}
+
+// endregion
+
+// region InstanceMetadataOptions
+
+func (o InstanceMetadataOptions) MarshalJSON() ([]byte, error) {
+	type noMethod InstanceMetadataOptions
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *InstanceMetadataOptions) SetHTTPTokens(v *string) *InstanceMetadataOptions {
+	if o.HTTPTokens = v; o.HTTPTokens == nil {
+		o.nullFields = append(o.nullFields, "HTTPTokens")
+	}
+	return o
+}
+
+func (o *InstanceMetadataOptions) SetHTTPPutResponseHopLimit(v *int) *InstanceMetadataOptions {
+	if o.HTTPPutResponseHopLimit = v; o.HTTPPutResponseHopLimit == nil {
+		o.nullFields = append(o.nullFields, "HTTPPutResponseHopLimit")
+	}
+	return o
+}
+
+// endregion
+
+// region Logging
+
+func (o Logging) MarshalJSON() ([]byte, error) {
+	type noMethod Logging
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *Logging) SetExport(v *Export) *Logging {
+	if o.Export = v; o.Export == nil {
+		o.nullFields = append(o.nullFields, "Export")
+	}
+	return o
+}
+
+// endregion
+
+// region Export
+
+func (o Export) MarshalJSON() ([]byte, error) {
+	type noMethod Export
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *Export) SetS3(v *S3) *Export {
+	if o.S3 = v; o.S3 == nil {
+		o.nullFields = append(o.nullFields, "S3")
+	}
+	return o
+}
+
+// endregion
+
+// region S3
+
+func (o S3) MarshalJSON() ([]byte, error) {
+	type noMethod S3
+	raw := noMethod(o)
+	return jsonutil.MarshalJSON(raw, o.forceSendFields, o.nullFields)
+}
+
+func (o *S3) SetId(v *string) *S3 {
+	if o.ID = v; o.ID == nil {
+		o.nullFields = append(o.nullFields, "ID")
 	}
 	return o
 }

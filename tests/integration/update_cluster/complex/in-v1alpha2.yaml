@@ -19,8 +19,11 @@ spec:
           allocationId: eipalloc-012345a678b9cdefa
       accessLog:
         bucket: access-log-example
+  authentication:
+    aws: {}
   kubernetesApiAccess:
   - 1.1.1.0/24
+  - pl-44444444
   channel: stable
   cloudProvider: aws
   cloudLabels:
@@ -47,7 +50,7 @@ spec:
     memoryLimit: 1000Mi
   kubelet:
     anonymousAuth: false
-  kubernetesVersion: v1.21.0
+  kubernetesVersion: v1.24.0
   masterInternalName: api.internal.complex.example.com
   masterPublicName: api.complex.example.com
   networkCIDR: 172.20.0.0/16
@@ -66,6 +69,8 @@ spec:
       - 990F4193972F2BECF12DDEDA5237F9C952F20D9E
   sshAccess:
   - 1.1.1.1/32
+  - pl-66666666
+
   sshKeyName: ""
   target:
     terraform:
@@ -86,6 +91,9 @@ spec:
     type: Private
     zone: us-test-1a
     egress: tgw-123456
+    additionalRoutes:
+    - cidr: "192.168.1.10/32"
+      target: "tgw-0123456"
   - cidr: 172.20.96.0/19
     name: us-east-1a-utility
     type: Utility
@@ -113,6 +121,8 @@ spec:
   machineType: t2.medium
   maxSize: 2
   minSize: 2
+  packages:
+  - nfs-common
   role: Node
   subnets:
   - us-test-1a

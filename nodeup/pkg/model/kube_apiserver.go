@@ -64,6 +64,16 @@ func (b *KubeAPIServerBuilder) Build(c *fi.ModelBuilderContext) error {
 		kubeAPIServer = *b.NodeupConfig.APIServerConfig.KubeAPIServer
 	}
 
+	if b.CloudProvider == kops.CloudProviderHetzner {
+		localIP, err := b.GetMetadataLocalIP()
+		if err != nil {
+			return err
+		}
+		if localIP != "" {
+			kubeAPIServer.AdvertiseAddress = localIP
+		}
+	}
+
 	if err := b.writeAuthenticationConfig(c, &kubeAPIServer); err != nil {
 		return err
 	}
@@ -378,6 +388,15 @@ func (b *KubeAPIServerBuilder) writeServerCertificate(c *fi.ModelBuilderContext,
 		// We also want to be able to reference it locally via https://127.0.0.1
 		alternateNames = append(alternateNames, "127.0.0.1")
 
+		if b.CloudProvider == kops.CloudProviderHetzner {
+			localIP, err := b.GetMetadataLocalIP()
+			if err != nil {
+				return err
+			}
+			if localIP != "" {
+				alternateNames = append(alternateNames, localIP)
+			}
+		}
 		if b.CloudProvider == kops.CloudProviderOpenstack {
 			if b.Cluster.Spec.Topology != nil && b.Cluster.Spec.Topology.Masters == kops.TopologyPrivate {
 				instanceAddress, err := getInstanceAddress()
@@ -588,6 +607,9 @@ func (b *KubeAPIServerBuilder) buildPod(kubeAPIServer *kops.KubeAPIServerConfig)
 	}
 
 	image := kubeAPIServer.Image
+	if components.IsBaseURL(b.Cluster.Spec.KubernetesVersion) {
+		image = strings.Replace(image, "registry.k8s.io", "k8s.gcr.io", 1)
+	}
 	if b.Architecture != architectures.ArchitectureAmd64 {
 		image = strings.Replace(image, "-amd64", "-"+string(b.Architecture), 1)
 	}
@@ -638,11 +660,17 @@ func (b *KubeAPIServerBuilder) buildPod(kubeAPIServer *kops.KubeAPIServerConfig)
 		container.Args = append(container.Args, sortedStrings(flags)...)
 	} else {
 		container.Command = []string{"/usr/local/bin/kube-apiserver"}
-		container.Args = append(
-			sortedStrings(flags),
-			"--logtostderr=false", // https://github.com/kubernetes/klog/issues/60
-			"--alsologtostderr",
-			"--log-file=/var/log/kube-apiserver.log")
+		if kubeAPIServer.LogFormat != "" && kubeAPIServer.LogFormat != "text" {
+			// When logging-format is not text, some flags are not accepted.
+			// https://github.com/kubernetes/kops/issues/13245
+			container.Args = sortedStrings(flags)
+		} else {
+			container.Args = append(
+				sortedStrings(flags),
+				"--logtostderr=false", // https://github.com/kubernetes/klog/issues/60
+				"--alsologtostderr",
+				"--log-file=/var/log/kube-apiserver.log")
+		}
 	}
 
 	for _, path := range b.SSLHostPaths() {

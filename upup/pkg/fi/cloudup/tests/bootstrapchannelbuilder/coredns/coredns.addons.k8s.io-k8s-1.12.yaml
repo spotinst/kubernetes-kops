@@ -126,8 +126,10 @@ spec:
     type: RollingUpdate
   template:
     metadata:
+      creationTimestamp: null
       labels:
         k8s-app: kube-dns
+        kops.k8s.io/managed-by: kops
     spec:
       affinity:
         nodeAffinity:
@@ -154,7 +156,7 @@ spec:
       - args:
         - -conf
         - /etc/coredns/Corefile
-        image: k8s.gcr.io/coredns/coredns:v1.8.5
+        image: registry.k8s.io/coredns/coredns:v1.8.6
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 5
@@ -375,8 +377,10 @@ spec:
     metadata:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ""
+      creationTimestamp: null
       labels:
         k8s-app: coredns-autoscaler
+        kops.k8s.io/managed-by: kops
     spec:
       containers:
       - command:
@@ -387,7 +391,7 @@ spec:
         - --default-params={"linear":{"coresPerReplica":256,"nodesPerReplica":16,"preventSinglePointFailure":true}}
         - --logtostderr=true
         - --v=2
-        image: k8s.gcr.io/cpa/cluster-proportional-autoscaler:1.8.4
+        image: registry.k8s.io/cpa/cluster-proportional-autoscaler:1.8.4
         name: autoscaler
         resources:
           requests:

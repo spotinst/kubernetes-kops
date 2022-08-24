@@ -126,20 +126,20 @@ cat > conf/cluster_spec.yaml << '__EOF_CLUSTER_SPEC'
 cloudConfig:
   awsEBSCSIDriver:
     enabled: true
-    version: v1.5.0
+    version: v1.8.0
   manageStorageClasses: true
 containerRuntime: containerd
 containerd:
   logLevel: info
-  version: 1.4.12
+  version: 1.4.13
 docker:
   skipInstall: true
 encryptionConfig: null
 etcdClusters:
   events:
-    version: 3.5.1
+    version: 3.5.4
   main:
-    version: 3.5.1
+    version: 3.5.4
 kubeAPIServer:
   allowPrivileged: true
   anonymousAuth: false
@@ -166,7 +166,7 @@ kubeAPIServer:
   featureGates:
     CSIMigrationAWS: "true"
     InTreePluginAWSUnregister: "true"
-  image: k8s.gcr.io/kube-apiserver:v1.22.0
+  image: registry.k8s.io/kube-apiserver:v1.22.0
   kubeletPreferredAddressTypes:
   - InternalIP
   - Hostname
@@ -195,7 +195,7 @@ kubeControllerManager:
   featureGates:
     CSIMigrationAWS: "true"
     InTreePluginAWSUnregister: "true"
-  image: k8s.gcr.io/kube-controller-manager:v1.22.0
+  image: registry.k8s.io/kube-controller-manager:v1.22.0
   leaderElection:
     leaderElect: true
   logLevel: 2
@@ -203,13 +203,13 @@ kubeControllerManager:
 kubeProxy:
   clusterCIDR: 100.96.0.0/11
   cpuRequest: 100m
-  image: k8s.gcr.io/kube-proxy:v1.22.0
+  image: registry.k8s.io/kube-proxy:v1.22.0
   logLevel: 2
 kubeScheduler:
   featureGates:
     CSIMigrationAWS: "true"
     InTreePluginAWSUnregister: "true"
-  image: k8s.gcr.io/kube-scheduler:v1.22.0
+  image: registry.k8s.io/kube-scheduler:v1.22.0
   leaderElection:
     leaderElect: true
   logLevel: 2
@@ -228,9 +228,11 @@ kubelet:
   kubeconfigPath: /var/lib/kubelet/kubeconfig
   logLevel: 2
   networkPluginName: cni
-  podInfraContainerImage: k8s.gcr.io/pause:3.6
+  podInfraContainerImage: registry.k8s.io/pause:3.6
   podManifestPath: /etc/kubernetes/manifests
   protectKernelDefaults: true
+  shutdownGracePeriod: 30s
+  shutdownGracePeriodCriticalPods: 10s
 masterKubelet:
   anonymousAuth: false
   cgroupDriver: systemd
@@ -246,10 +248,12 @@ masterKubelet:
   kubeconfigPath: /var/lib/kubelet/kubeconfig
   logLevel: 2
   networkPluginName: cni
-  podInfraContainerImage: k8s.gcr.io/pause:3.6
+  podInfraContainerImage: registry.k8s.io/pause:3.6
   podManifestPath: /etc/kubernetes/manifests
   protectKernelDefaults: true
   registerSchedulable: false
+  shutdownGracePeriod: 30s
+  shutdownGracePeriodCriticalPods: 10s
 
 __EOF_CLUSTER_SPEC
 
@@ -258,7 +262,7 @@ CloudProvider: aws
 ConfigBase: memfs://clusters.example.com/privatecanal.example.com
 InstanceGroupName: master-us-test-1a
 InstanceGroupRole: Master
-NodeupConfigHash: NBobc+BMdSjp3pSeatusDGULS3utRf11NDCEfCAllDo=
+NodeupConfigHash: mV85Q+x1rwzcZ9STzUTh/0gi1X5kwqcVp1WDJg7offc=
 
 __EOF_KUBE_ENV
 

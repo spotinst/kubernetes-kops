@@ -41,8 +41,9 @@ nav:
     - Deploying to GCE - Alpha: "getting_started/gce.md"
     - Deploying to OpenStack - Beta: "getting_started/openstack.md"
     - Deploying to Digital Ocean - Beta: "getting_started/digitalocean.md"
-    - Deploying to Spot Ocean - Alpha: "getting_started/spot-ocean.md"
     - Deploying to Azure - Alpha: "getting_started/azure.md"
+    - Deploying to Hetzner - Alpha: "getting_started/hetzner.md"
+    - Deploying to Spot Ocean - Alpha: "getting_started/spot-ocean.md"
     - kOps Commands: "getting_started/commands.md"
     - kOps Arguments: "getting_started/arguments.md"
     - kubectl usage: "getting_started/kubectl.md"
@@ -148,11 +149,11 @@ nav:
     - Low level description on how kOps works: "contributing/how_it_works.md"
     - Notes on Gossip design: "contributing/gossip.md"
     - Notes on master instance sizing: "contributing/instancesizes.md"
-    - Bazel: "contributing/bazel.md"
     - Vendoring: "contributing/vendoring.md"
     - Ports: "contributing/ports.md"
     - Cluster Addons & Manager : "contributing/addons.md"
   - Releases:
+    - "1.24": releases/1.24-NOTES.md
     - "1.23": releases/1.23-NOTES.md
     - "1.22": releases/1.22-NOTES.md
     - "1.21": releases/1.21-NOTES.md
