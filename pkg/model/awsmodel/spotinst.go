@@ -324,6 +324,9 @@ func (b *SpotInstanceGroupModelBuilder) buildElastigroup(c *fi.ModelBuilderConte
 		group.AutoScalerOpts.Taints = nil
 	}
 
+	// Instance Metadata Options
+	group.InstanceMetadataOptions = b.buildInstanceMetadataOptions(ig)
+
 	klog.V(4).Infof("Adding task: Elastigroup/%s", fi.StringValue(group.Name))
 	c.AddTask(group)
 
@@ -447,6 +450,9 @@ func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, ig
 		ocean.AutoScalerOpts.Taints = nil
 		ocean.AutoScalerOpts.Headroom = nil
 	}
+
+	//  Instance Metadata Options
+	ocean.InstanceMetadataOptions = b.buildInstanceMetadataOptions(ig)
 
 	if !fi.BoolValue(ocean.UseAsTemplateOnly) {
 		// Capacity.
@@ -616,6 +622,9 @@ func (b *SpotInstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContex
 			launchSpec.AutoScalerOpts = autoScalerOpts
 		}
 	}
+
+	//  Instance Metadata Options
+	launchSpec.InstanceMetadataOptions = b.buildInstanceMetadataOptions(ig)
 
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
 	c.AddTask(launchSpec)
@@ -1030,6 +1039,17 @@ func (b *SpotInstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig
 	}
 
 	return opts, nil
+}
+
+func (b *SpotInstanceGroupModelBuilder) buildInstanceMetadataOptions(ig *kops.InstanceGroup) *spotinsttasks.InstanceMetadataOptions {
+	opt := new(spotinsttasks.InstanceMetadataOptions)
+	if ig.Spec.InstanceMetadata != nil {
+		token := fi.StringValue(ig.Spec.InstanceMetadata.HTTPTokens)
+		opt.HTTPPutResponseHopLimit = fi.Int64(fi.Int64Value(ig.Spec.InstanceMetadata.HTTPPutResponseHopLimit))
+		opt.HTTPTokens = fi.String(token)
+
+	}
+	return opt
 }
 
 func parseBool(str string) (*bool, error) {
