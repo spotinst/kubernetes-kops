@@ -54,6 +54,7 @@ type LaunchSpec struct {
 	AssociatePublicIPAddress *bool
 	MinSize                  *int64
 	MaxSize                  *int64
+	InstanceMetadataOptions  *InstanceMetadataOptions
 
 	Ocean *Ocean
 }
@@ -535,6 +536,16 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 		}
 	}
 
+	// Instance Metadata Options
+	{
+		if e.InstanceMetadataOptions != nil {
+			opt := new(aws.InstanceMetadataOptions)
+			opt.SetHTTPPutResponseHopLimit(fi.Int64(fi.Int64Value(e.InstanceMetadataOptions.HTTPPutResponseHopLimit)))
+			opt.SetHTTPTokens(e.InstanceMetadataOptions.HTTPTokens)
+			spec.SetInstanceMetadataOptions(opt)
+		}
+	}
+
 	// Wrap the raw object as a LaunchSpec.
 	sp, err := spotinst.NewLaunchSpec(cloud.ProviderID(), spec)
 	if err != nil {
@@ -784,6 +795,18 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 		if changes.RestrictScaleDown != nil {
 			spec.SetRestrictScaleDown(e.RestrictScaleDown)
 			changes.RestrictScaleDown = nil
+			changed = true
+		}
+	}
+
+	// Instance Metadata Options
+	{
+		if changes.InstanceMetadataOptions != nil {
+			opt := new(aws.InstanceMetadataOptions)
+			opt.SetHTTPPutResponseHopLimit(fi.Int64(fi.Int64Value(e.InstanceMetadataOptions.HTTPPutResponseHopLimit)))
+			opt.SetHTTPTokens(e.InstanceMetadataOptions.HTTPTokens)
+			spec.SetInstanceMetadataOptions(opt)
+			changes.InstanceMetadataOptions = nil
 			changed = true
 		}
 	}
