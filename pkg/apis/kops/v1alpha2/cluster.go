@@ -219,6 +219,7 @@ type ClusterSpec struct {
 	// PodIdentityWebhook determines the EKS Pod Identity Webhook configuration.
 	PodIdentityWebhook *PodIdentityWebhookConfig `json:"podIdentityWebhook,omitempty"`
 	// LaunchSpecScheduling
+	// +optional
 	LaunchSpecScheduling *LaunchSpecScheduling `json:"launchSpecScheduling,omitempty"`
 }
 

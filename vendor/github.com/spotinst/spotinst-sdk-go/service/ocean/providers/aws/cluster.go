@@ -25,7 +25,8 @@ type Cluster struct {
 	Scheduling          *Scheduling `json:"scheduling,omitempty"`
 	AutoScaler          *AutoScaler `json:"autoScaler,omitempty"`
 	Logging             *Logging    `json:"logging,omitempty"`
-
+	LaunchSpecScheduling *LaunchSpecScheduling `json:"launchSpecScheduling,omitempty"`
+	
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
@@ -124,6 +125,7 @@ type LaunchSpecification struct {
 	EBSOptimized             *bool                    `json:"ebsOptimized,omitempty"`
 	UseAsTemplateOnly        *bool                    `json:"useAsTemplateOnly,omitempty"`
 	InstanceMetadataOptions  *InstanceMetadataOptions `json:"instanceMetadataOptions,omitempty"`
+	LaunchSpecScheduling     *LaunchSpecScheduling    `json:"scheduling,omitempty"`
 
 	forceSendFields []string
 	nullFields      []string

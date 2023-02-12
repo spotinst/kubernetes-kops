@@ -54,6 +54,7 @@ type LaunchSpec struct {
 	AssociatePublicIPAddress *bool
 	MinSize                  *int64
 	MaxSize                  *int64
+	LaunchSpecScheduling     *LaunchSpecScheduling
 
 	Ocean *Ocean
 }
@@ -534,6 +535,8 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 			spec.SetRestrictScaleDown(e.RestrictScaleDown)
 		}
 	}
+
+	// LaunchSpecScheduling
 
 	// Wrap the raw object as a LaunchSpec.
 	sp, err := spotinst.NewLaunchSpec(cloud.ProviderID(), spec)
