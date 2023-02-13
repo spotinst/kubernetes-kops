@@ -63,7 +63,6 @@ type Ocean struct {
 	UseAsTemplateOnly        *bool
 	RootVolumeOpts           *RootVolumeOpts
 	AutoScalerOpts           *AutoScalerOpts
-	LaunchSpecSchedulingOpts *LaunchSpecScheduling
 }
 
 var (
