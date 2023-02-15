@@ -821,7 +821,7 @@ type WarmPoolSpec struct {
 }
 
 type LaunchSpecScheduling struct {
-	Tasks         []*LaunchSpecTask        `json:"tasks,omitempty"`
+	Tasks         []LaunchSpecTask         `json:"tasks,omitempty"`
 	ShutdownHours *LaunchSpecShutdownHours `json:"shutdownHours,omitempty"`
 }
 
@@ -838,7 +838,7 @@ type LaunchSpecTask struct {
 }
 
 type TaskConfigOpts struct {
-	TaskHeadrooms []*LaunchSpecTaskHeadroom `json:"headrooms,omitempty"`
+	TaskHeadrooms []LaunchSpecTaskHeadroom `json:"headrooms,omitempty"`
 }
 
 type LaunchSpecTaskHeadroom struct {

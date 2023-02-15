@@ -3893,6 +3893,46 @@ spec:
                 description: The version of kubernetes to install (optional, and can
                   be a "spec" like stable)
                 type: string
+              launchSpecScheduling:
+                description: LaunchSpecScheduling
+                properties:
+                  shutdownHours:
+                    properties:
+                      isEnabled:
+                        type: boolean
+                      timeWindows:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  tasks:
+                    items:
+                      properties:
+                        config:
+                          properties:
+                            headrooms:
+                              items:
+                                properties:
+                                  cpuPerUnit:
+                                    type: integer
+                                  gpuPerUnit:
+                                    type: integer
+                                  memoryPerUnit:
+                                    type: integer
+                                  numOfUnits:
+                                    type: integer
+                                type: object
+                              type: array
+                          type: object
+                        cronExpression:
+                          type: string
+                        isEnabled:
+                          type: boolean
+                        taskType:
+                          type: string
+                      type: object
+                    type: array
+                type: object
               masterInternalName:
                 description: MasterInternalName is the internal DNS name for the master
                   nodes
