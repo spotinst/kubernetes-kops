@@ -539,7 +539,8 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	// LaunchSpecScheduling
 	{
 		if opts := e.LaunchSpecScheduling; opts != nil {
-			spec.LaunchSpecScheduling = getLaunchSpecScheduling(opts)
+			specSchedualing := getLaunchSpecScheduling(opts)
+			spec.SetScheduling(specSchedualing)
 		}
 	}
 
@@ -799,7 +800,8 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	// LaunchSpecScheduling
 	{
 		if changes.LaunchSpecScheduling != nil {
-			spec.LaunchSpecScheduling = getLaunchSpecScheduling(changes.LaunchSpecScheduling)
+			specSchedualing := getLaunchSpecScheduling(e.LaunchSpecScheduling)
+			spec.SetScheduling(specSchedualing)
 			changes.LaunchSpecScheduling = nil
 			changed = true
 		}
@@ -874,12 +876,14 @@ func getLaunchSpecScheduling(in *LaunchSpecScheduling) *aws.LaunchSpecScheduling
 			}
 			out.SetTasks(tasks)
 		}
-		shutdownHours := &aws.LaunchSpecShutdownHours{}
-		shutdownHours.SetIsEnabled(opts.ShutdownHours.IsEnabled)
-		for _, hours := range opts.ShutdownHours.TimeWindows {
-			shutdownHours.TimeWindows = append(shutdownHours.TimeWindows, hours)
+		if opts.ShutdownHours != nil {
+			shutdownHours := &aws.LaunchSpecShutdownHours{}
+			shutdownHours.SetIsEnabled(opts.ShutdownHours.IsEnabled)
+			for _, hours := range opts.ShutdownHours.TimeWindows {
+				shutdownHours.TimeWindows = append(shutdownHours.TimeWindows, hours)
+			}
+			out.SetShutdownHours(shutdownHours)
 		}
-		out.SetShutdownHours(shutdownHours)
 	}
 	return out
 }

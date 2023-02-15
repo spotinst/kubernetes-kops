@@ -40,9 +40,9 @@ func (c *Client) Do(ctx context.Context, r *Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-//	c.logRequest(req)
+	c.logRequest(req)
 	resp, err := c.config.HTTPClient.Do(req)
-//	c.logResponse(resp)
+	c.logResponse(resp)
 	return resp, err
 }
 

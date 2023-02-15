@@ -449,6 +449,13 @@ func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, ig
 		ocean.AutoScalerOpts.Headroom = nil
 	}
 
+	// LaunchSpecScheduling
+	klog.V(4).Infof("buildOcean add LaunchSpecScheduling: %+v", b.Cluster.Spec.LaunchSpecScheduling)
+	ocean.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(b.Cluster.Spec.LaunchSpecScheduling)
+	if err != nil {
+		return fmt.Errorf("error building add LaunchSpecScheduling: %v", err)
+	}
+
 	if !fi.BoolValue(ocean.UseAsTemplateOnly) {
 		// Capacity.
 		ocean.MinSize = fi.Int64(0)
@@ -507,6 +514,7 @@ func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, ig
 func (b *SpotInstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	ig, igOcean *kops.InstanceGroup, ocean *spotinsttasks.Ocean) (err error) {
 	klog.V(4).Infof("Building instance group as LaunchSpec: %q", b.AutoscalingGroupName(ig))
+	klog.V(4).Infof("Building ig as LaunchSpec: %+v", ig)
 	launchSpec := &spotinsttasks.LaunchSpec{
 		Name:      fi.String(b.AutoscalingGroupName(ig)),
 		Lifecycle: b.Lifecycle,
@@ -620,23 +628,15 @@ func (b *SpotInstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContex
 		}
 	}
 
-	if b.Cluster.Spec.LaunchSpecScheduling != nil {
-		klog.V(4).Infof("buildOcean cluster wide LaunchSpecScheduling: %+v", b.Cluster.Spec.LaunchSpecScheduling)
-		launchSpec.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(b.Cluster.Spec.LaunchSpecScheduling)
-		if err != nil {
-			return fmt.Errorf("error building LaunchSpecScheduling: %v", err)
-		}
-	} else {
-		if ig.Spec.LaunchSpecScheduling != nil {
-			klog.V(4).Infof("buildOcean ig LaunchSpecScheduling: %+v", b.Cluster.Spec.LaunchSpecScheduling)
-			launchSpec.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(ig.Spec.LaunchSpecScheduling)
-			if err != nil {
-				return fmt.Errorf("error building LaunchSpecScheduling: %v", err)
-
-			}
-		}
+	// LaunchSpecScheduling
+	klog.V(4).Infof("buildOcean ig LaunchSpecScheduling: %+v", b.Cluster.Spec.LaunchSpecScheduling)
+	launchSpec.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(ig.Spec.LaunchSpecScheduling)
+	if err != nil {
+		return fmt.Errorf("error building LaunchSpecScheduling: %v", err)
 	}
+
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
+	klog.V(4).Infof("buildLaunchSpec Adding task spec :%+v", launchSpec)
 	c.AddTask(launchSpec)
 
 	return nil
@@ -645,6 +645,9 @@ func (b *SpotInstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContex
 func (b *SpotInstanceGroupModelBuilder) buildLaunchSpecScheduling(spec *kops.LaunchSpecScheduling) (*spotinsttasks.LaunchSpecScheduling, error) {
 
 	opts := &spotinsttasks.LaunchSpecScheduling{}
+	if spec == nil {
+		return opts, nil
+	}
 	for i, task := range spec.Tasks {
 		opts.Tasks = append(opts.Tasks, &spotinsttasks.LaunchSpecTask{})
 		opts.Tasks[i].IsEnabled = task.IsEnabled
@@ -661,14 +664,15 @@ func (b *SpotInstanceGroupModelBuilder) buildLaunchSpecScheduling(spec *kops.Lau
 				})
 		}
 	}
-	opts.ShutdownHours = &spotinsttasks.LaunchSpecShutdownHours{
-		IsEnabled: spec.ShutdownHours.IsEnabled,
+	if spec.ShutdownHours != nil {
+		opts.ShutdownHours = &spotinsttasks.LaunchSpecShutdownHours{
+			IsEnabled: spec.ShutdownHours.IsEnabled,
+		}
+		for _, downHours := range spec.ShutdownHours.TimeWindows {
+			opts.ShutdownHours.TimeWindows = append(opts.ShutdownHours.TimeWindows, downHours)
+		}
 	}
 
-	for _, downHours := range spec.ShutdownHours.TimeWindows {
-		opts.ShutdownHours.TimeWindows = append(opts.ShutdownHours.TimeWindows, downHours)
-	}
-	//	*opts = *spec
 	return opts, nil
 }
 
@@ -1081,23 +1085,6 @@ func (b *SpotInstanceGroupModelBuilder) buildAutoScalerOpts(clusterID string, ig
 	return opts, nil
 }
 
-/*
-func (b *SpotInstanceGroupModelBuilder) buildLaunchSpecScheduling(ig *kops.InstanceGroup) (*spotinsttasks.LaunchSpecScheduling, error) {
-	opts := &spotinsttasks.LaunchSpecScheduling{}
-
-	*opts = *b.Cluster.Spec.LaunchSpecScheduling.
-	return opts, nil
-}
-
-func copyLaunchSpecScheduling(in spotinsttasks.LaunchSpecScheduling) *spotinsttasks.LaunchSpecScheduling {
-	out :=  &spotinsttasks.LaunchSpecScheduling{}
-	for _,task := range in.Tasks {
-		out = append(out.Tasks, &spotinsttasks.LaunchSpecScheduling{}
-		}
-
-	}
-}
-*/
 func parseBool(str string) (*bool, error) {
 	v, err := strconv.ParseBool(str)
 	if err != nil {

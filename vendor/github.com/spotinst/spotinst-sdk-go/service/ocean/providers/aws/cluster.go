@@ -25,7 +25,7 @@ type Cluster struct {
 	Scheduling          *Scheduling `json:"scheduling,omitempty"`
 	AutoScaler          *AutoScaler `json:"autoScaler,omitempty"`
 	Logging             *Logging    `json:"logging,omitempty"`
-	LaunchSpecScheduling *LaunchSpecScheduling `json:"launchSpecScheduling,omitempty"`
+	LaunchSpecScheduling *LaunchSpecScheduling `json:"scheduling,omitempty"`
 	
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -1100,6 +1100,13 @@ func (o *Cluster) SetAutoScaler(v *AutoScaler) *Cluster {
 func (o *Cluster) SetLogging(v *Logging) *Cluster {
 	if o.Logging = v; o.Logging == nil {
 		o.nullFields = append(o.nullFields, "Logging")
+	}
+	return o
+}
+
+func (o *Cluster) SetLaunchSpecScheduling(v *LaunchSpecScheduling) *Cluster {
+	if o.LaunchSpecScheduling = v; o.LaunchSpecScheduling == nil {
+		o.nullFields = append(o.nullFields, "LaunchSpecScheduling")
 	}
 	return o
 }

@@ -63,6 +63,7 @@ type Ocean struct {
 	UseAsTemplateOnly        *bool
 	RootVolumeOpts           *RootVolumeOpts
 	AutoScalerOpts           *AutoScalerOpts
+	LaunchSpecScheduling     *LaunchSpecScheduling
 }
 
 var (
@@ -547,6 +548,13 @@ func (_ *Ocean) create(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			}
 		}
 	}
+	// LaunchSpecScheduling
+	{
+		if opts := e.LaunchSpecScheduling; opts != nil {
+			specScheduling := getLaunchSpecScheduling(opts)
+			ocean.SetLaunchSpecScheduling(specScheduling)
+		}
+	}
 
 	attempt := 0
 	maxAttempts := 10
@@ -991,6 +999,16 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 			}
 
 			changes.AutoScalerOpts = nil
+		}
+	}
+
+	// LaunchSpecScheduling
+	{
+		if opts := changes.LaunchSpecScheduling; opts != nil {
+			//			specScheduling := getLaunchSpecScheduling(opts)
+			//TODO			ocean.SetLaunchSpecScheduling(specScheduling)
+			changes.LaunchSpecScheduling = nil
+			changed = true
 		}
 	}
 

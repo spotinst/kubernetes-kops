@@ -567,7 +567,7 @@ func (o *LaunchSpec) SetRestrictScaleDown(v *bool) *LaunchSpec {
 
 func (o *LaunchSpec) SetScheduling(v *LaunchSpecScheduling) *LaunchSpec {
 	if o.LaunchSpecScheduling = v; o.LaunchSpecScheduling == nil {
-		o.nullFields = append(o.nullFields, "LaunchSpecScheduling")
+		o.nullFields = append(o.nullFields, "Scheduling")
 	}
 	return o
 }
