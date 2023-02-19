@@ -37,7 +37,7 @@ type LaunchSpec struct {
 	AssociatePublicIPAddress *bool                 `json:"associatePublicIpAddress,omitempty"`
 	RestrictScaleDown        *bool                 `json:"restrictScaleDown,omitempty"`
 	LaunchSpecScheduling     *LaunchSpecScheduling `json:"scheduling,omitempty"`
-
+	InstanceMetadataOptions  *InstanceMetadataOptions `json:"instanceMetadataOptions,omitempty"`
 	// Read-only fields.
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
@@ -572,6 +572,12 @@ func (o *LaunchSpec) SetScheduling(v *LaunchSpecScheduling) *LaunchSpec {
 	return o
 }
 
+func (o *LaunchSpec) SetInstanceMetadataOptions(v *InstanceMetadataOptions) *LaunchSpec {
+	if o.InstanceMetadataOptions = v; o.InstanceMetadataOptions == nil {
+		o.nullFields = append(o.nullFields, "InstanceMetadataOptions")
+	}
+	return o
+}
 // endregion
 
 // region BlockDeviceMapping
