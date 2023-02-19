@@ -540,7 +540,7 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	{
 		if e.InstanceMetadataOptions != nil {
 			opt := new(aws.InstanceMetadataOptions)
-			opt.SetHTTPPutResponseHopLimit(fi.Int64(fi.Int64Value(e.InstanceMetadataOptions.HTTPPutResponseHopLimit)))
+			opt.SetHTTPPutResponseHopLimit(fi.Int(int(*e.InstanceMetadataOptions.HTTPPutResponseHopLimit)))
 			opt.SetHTTPTokens(e.InstanceMetadataOptions.HTTPTokens)
 			spec.SetInstanceMetadataOptions(opt)
 		}
@@ -803,7 +803,7 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	{
 		if changes.InstanceMetadataOptions != nil {
 			opt := new(aws.InstanceMetadataOptions)
-			opt.SetHTTPPutResponseHopLimit(fi.Int64(fi.Int64Value(e.InstanceMetadataOptions.HTTPPutResponseHopLimit)))
+			opt.SetHTTPPutResponseHopLimit(fi.Int(int(*e.InstanceMetadataOptions.HTTPPutResponseHopLimit)))
 			opt.SetHTTPTokens(e.InstanceMetadataOptions.HTTPTokens)
 			spec.SetInstanceMetadataOptions(opt)
 			changes.InstanceMetadataOptions = nil
