@@ -332,7 +332,6 @@ func (b *SpotInstanceGroupModelBuilder) buildElastigroup(c *fi.ModelBuilderConte
 
 func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, igs ...*kops.InstanceGroup) (err error) {
 	klog.V(4).Infof("Building instance group as Ocean: %q", "nodes."+b.ClusterName())
-	klog.V(4).Infof("Building Ocean from cluster spec :%+v", b.Cluster.Spec)
 	ocean := &spotinsttasks.Ocean{
 		Lifecycle: b.Lifecycle,
 		Name:      fi.String("nodes." + b.ClusterName()),
@@ -450,7 +449,6 @@ func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, ig
 	}
 
 	// LaunchSpecScheduling
-	klog.V(4).Infof("buildOcean add LaunchSpecScheduling: %+v", b.Cluster.Spec.LaunchSpecScheduling)
 	ocean.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(b.Cluster.Spec.LaunchSpecScheduling)
 	if err != nil {
 		return fmt.Errorf("error building add LaunchSpecScheduling: %v", err)
@@ -494,8 +492,6 @@ func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, ig
 		if err != nil {
 			return fmt.Errorf("error building cloud tags: %v", err)
 		}
-
-		//
 	}
 
 	// Create a Launch Spec for each instance group.
@@ -514,7 +510,6 @@ func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, ig
 func (b *SpotInstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContext,
 	ig, igOcean *kops.InstanceGroup, ocean *spotinsttasks.Ocean) (err error) {
 	klog.V(4).Infof("Building instance group as LaunchSpec: %q", b.AutoscalingGroupName(ig))
-	klog.V(4).Infof("Building ig as LaunchSpec: %+v", ig)
 	launchSpec := &spotinsttasks.LaunchSpec{
 		Name:      fi.String(b.AutoscalingGroupName(ig)),
 		Lifecycle: b.Lifecycle,
@@ -629,14 +624,12 @@ func (b *SpotInstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContex
 	}
 
 	// LaunchSpecScheduling
-	klog.V(4).Infof("buildOcean ig LaunchSpecScheduling: %+v", b.Cluster.Spec.LaunchSpecScheduling)
 	launchSpec.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(ig.Spec.LaunchSpecScheduling)
 	if err != nil {
 		return fmt.Errorf("error building LaunchSpecScheduling: %v", err)
 	}
 
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
-	klog.V(4).Infof("buildLaunchSpec Adding task spec :%+v", launchSpec)
 	c.AddTask(launchSpec)
 
 	return nil

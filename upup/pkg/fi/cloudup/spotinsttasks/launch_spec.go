@@ -852,6 +852,7 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 
 	return nil
 }
+
 func getLaunchSpecScheduling(in *LaunchSpecScheduling) *aws.LaunchSpecScheduling {
 	out := new(aws.LaunchSpecScheduling)
 	if opts := in; opts != nil {

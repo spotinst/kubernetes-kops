@@ -129,9 +129,11 @@ type LaunchSpecTask struct {
 	TaskType       *string
 	Config         *TaskConfig
 }
+
 type TaskConfig struct {
 	TaskHeadrooms []*LaunchSpecTaskHeadroom
 }
+
 type LaunchSpecTaskHeadroom struct {
 	CPUPerUnit    *int
 	GPUPerUnit    *int
