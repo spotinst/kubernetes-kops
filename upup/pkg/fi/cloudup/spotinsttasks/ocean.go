@@ -1005,8 +1005,8 @@ func (_ *Ocean) update(cloud awsup.AWSCloud, a, e, changes *Ocean) error {
 	// LaunchSpecScheduling
 	{
 		if opts := changes.LaunchSpecScheduling; opts != nil {
-			//			specScheduling := getLaunchSpecScheduling(opts)
-			//TODO			ocean.SetLaunchSpecScheduling(specScheduling)
+			specScheduling := getLaunchSpecScheduling(opts)
+			ocean.SetLaunchSpecScheduling(specScheduling)
 			changes.LaunchSpecScheduling = nil
 			changed = true
 		}
