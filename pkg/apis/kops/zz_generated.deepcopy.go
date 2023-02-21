@@ -1380,11 +1380,6 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		*out = new(PodIdentityWebhookConfig)
 		**out = **in
 	}
-	if in.LaunchSpecScheduling != nil {
-		in, out := &in.LaunchSpecScheduling, &out.LaunchSpecScheduling
-		*out = new(LaunchSpecScheduling)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
