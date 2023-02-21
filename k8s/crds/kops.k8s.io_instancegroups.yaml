@@ -776,10 +776,8 @@ spec:
                     type: string
                 type: object
               launchSpecScheduling:
-                description: An object used to define scheduled tasks such as a manual headroom update
                 properties:
                   shutdownHours:
-                    description: An object used to specify times that the nodes in the group will be taken down.
                     properties:
                       isEnabled:
                         type: boolean

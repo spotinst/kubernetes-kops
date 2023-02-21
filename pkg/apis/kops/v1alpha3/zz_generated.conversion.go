@@ -2945,15 +2945,6 @@ func autoConvert_v1alpha3_ClusterSpec_To_kops_ClusterSpec(in *ClusterSpec, out *
 	} else {
 		out.PodIdentityWebhook = nil
 	}
-	if in.LaunchSpecScheduling != nil {
-		in, out := &in.LaunchSpecScheduling, &out.LaunchSpecScheduling
-		*out = new(kops.LaunchSpecScheduling)
-		if err := Convert_v1alpha3_LaunchSpecScheduling_To_kops_LaunchSpecScheduling(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.LaunchSpecScheduling = nil
-	}
 	return nil
 }
 
@@ -3377,15 +3368,6 @@ func autoConvert_kops_ClusterSpec_To_v1alpha3_ClusterSpec(in *kops.ClusterSpec, 
 		}
 	} else {
 		out.PodIdentityWebhook = nil
-	}
-	if in.LaunchSpecScheduling != nil {
-		in, out := &in.LaunchSpecScheduling, &out.LaunchSpecScheduling
-		*out = new(LaunchSpecScheduling)
-		if err := Convert_kops_LaunchSpecScheduling_To_v1alpha3_LaunchSpecScheduling(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.LaunchSpecScheduling = nil
 	}
 	return nil
 }

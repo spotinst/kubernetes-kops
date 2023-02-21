@@ -375,3 +375,31 @@ type AcceleratorConfig struct {
 	AcceleratorCount int64  `json:"acceleratorCount,omitempty"`
 	AcceleratorType  string `json:"acceleratorType,omitempty"`
 }
+
+type LaunchSpecScheduling struct {
+	Tasks         []LaunchSpecTask         `json:"tasks,omitempty"`
+	ShutdownHours *LaunchSpecShutdownHours `json:"shutdownHours,omitempty"`
+}
+
+type LaunchSpecShutdownHours struct {
+	IsEnabled   *bool    `json:"isEnabled,omitempty"`
+	TimeWindows []string `json:"timeWindows,omitempty"`
+}
+
+type LaunchSpecTask struct {
+	IsEnabled      *bool           `json:"isEnabled,omitempty"`
+	CronExpression *string         `json:"cronExpression,omitempty"`
+	TaskType       *string         `json:"taskType,omitempty"`
+	Config         *TaskConfigOpts `json:"config,omitempty"`
+}
+
+type TaskConfigOpts struct {
+	TaskHeadrooms []LaunchSpecTaskHeadroom `json:"headrooms,omitempty"`
+}
+
+type LaunchSpecTaskHeadroom struct {
+	CPUPerUnit    *int `json:"cpuPerUnit,omitempty"`
+	GPUPerUnit    *int `json:"gpuPerUnit,omitempty"`
+	MemoryPerUnit *int `json:"memoryPerUnit,omitempty"`
+	NumOfUnits    *int `json:"numOfUnits,omitempty"`
+}

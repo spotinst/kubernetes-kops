@@ -448,12 +448,6 @@ func (b *SpotInstanceGroupModelBuilder) buildOcean(c *fi.ModelBuilderContext, ig
 		ocean.AutoScalerOpts.Headroom = nil
 	}
 
-	// LaunchSpecScheduling
-	ocean.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(b.Cluster.Spec.LaunchSpecScheduling)
-	if err != nil {
-		return fmt.Errorf("error building add LaunchSpecScheduling: %v", err)
-	}
-
 	if !fi.BoolValue(ocean.UseAsTemplateOnly) {
 		// Capacity.
 		ocean.MinSize = fi.Int64(0)
