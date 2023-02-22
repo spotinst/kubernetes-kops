@@ -776,40 +776,69 @@ spec:
                     type: string
                 type: object
               launchSpecScheduling:
+                description: LaunchSpecScheduling configure scheduled tasks such as
+                  a manual headroom update. Or specify times that the nodes in the
+                  virtual node group will be taken down.
                 properties:
                   shutdownHours:
+                    description: LaunchSpecShutdownHours An object used to specify
+                      times that the nodes in the virtual node group will be taken
+                      down.
                     properties:
                       isEnabled:
                         type: boolean
                       timeWindows:
+                        description: 'TimeWindows The times that the shutdown hours
+                          will apply. For example : "Sat:08:00-Sun:08:00".'
                         items:
                           type: string
                         type: array
                     type: object
                   tasks:
                     items:
+                      description: LaunchSpecTask task definition
                       properties:
                         config:
+                          description: Config The config of this scheduled task. Depends
+                            on the value of taskType
                           properties:
                             headrooms:
                               items:
+                                description: LaunchSpecTaskHeadroom Set custom headroom
+                                  per VNG
                                 properties:
                                   cpuPerUnit:
+                                    description: CPUPerUnit Configure the number of
+                                      CPUs to allocate the headroom. CPUs are denoted
+                                      in millicores, where 1000 millicores = 1 vCPU.
                                     type: integer
                                   gpuPerUnit:
+                                    description: GPUPerUnit Amount of GPU to allocate
+                                      for headroom unit.
                                     type: integer
                                   memoryPerUnit:
+                                    description: MemoryPerUnit Configure the amount
+                                      of memory (MiB) to allocate the headroom
                                     type: integer
                                   numOfUnits:
+                                    description: NumOfUnits The number of units to
+                                      retain as headroom, where each unit has the
+                                      defined headroom CPU and memory.
                                     type: integer
                                 type: object
                               type: array
                           type: object
                         cronExpression:
+                          description: 'CronExpression A valid cron expression. For
+                            example : " * * * * * ". The cron job runs in UTC time
+                            and is in Unix cron format. (See the Cron Expression Validator
+                            Script.)'
                           type: string
                         isEnabled:
                           type: boolean
                         taskType:
+                          description: 'TaskType The activity that you are scheduling.
+                            Valid values: "manualHeadroomUpdate".'
                           type: string
                       type: object
                     type: array
