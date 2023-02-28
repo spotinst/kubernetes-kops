@@ -199,6 +199,9 @@ type InstanceGroupSpec struct {
 	// MaxInstanceLifetime to the maximum amount of time, in seconds, that an instance can be in service.
 	// Value expected must be in form of duration ("ms", "s", "m", "h")
 	MaxInstanceLifetime *metav1.Duration `json:"maxInstanceLifetime,omitempty"`
+	// LaunchSpecScheduling configure scheduled tasks such as a manual headroom update.
+	// Or specify times that the nodes in the virtual node group will be taken down.
+	LaunchSpecScheduling *LaunchSpecScheduling `json:"launchSpecScheduling,omitempty"`
 }
 
 const (
@@ -373,4 +376,47 @@ type LoadBalancer struct {
 type AcceleratorConfig struct {
 	AcceleratorCount int64  `json:"acceleratorCount,omitempty"`
 	AcceleratorType  string `json:"acceleratorType,omitempty"`
+}
+
+// LaunchSpecScheduling configure scheduled tasks such as a manual headroom update.
+// Or specify times that the nodes in the virtual node group will be taken down.
+type LaunchSpecScheduling struct {
+	Tasks         []LaunchSpecTask         `json:"tasks,omitempty"`
+	ShutdownHours *LaunchSpecShutdownHours `json:"shutdownHours,omitempty"`
+}
+
+// LaunchSpecShutdownHours An object used to specify times that the nodes in the virtual node group will be taken down.
+type LaunchSpecShutdownHours struct {
+	IsEnabled *bool `json:"isEnabled,omitempty"`
+	//TimeWindows The times that the shutdown hours will apply. For example : "Sat:08:00-Sun:08:00".
+	TimeWindows []string `json:"timeWindows,omitempty"`
+}
+
+// LaunchSpecTask task definition
+type LaunchSpecTask struct {
+	IsEnabled *bool `json:"isEnabled,omitempty"`
+	// CronExpression A valid cron expression. For example : " * * * * * ".
+	// The cron job runs in UTC time and is in Unix cron format. (See the Cron Expression Validator Script.)
+	CronExpression *string `json:"cronExpression,omitempty"`
+	// TaskType The activity that you are scheduling. Valid values: "manualHeadroomUpdate".
+	TaskType *string `json:"taskType,omitempty"`
+	// Config The config of this scheduled task. Depends on the value of taskType
+	Config *TaskConfigOpts `json:"config,omitempty"`
+}
+
+type TaskConfigOpts struct {
+	TaskHeadrooms []LaunchSpecTaskHeadroom `json:"headrooms,omitempty"`
+}
+
+// LaunchSpecTaskHeadroom Set custom headroom per VNG
+type LaunchSpecTaskHeadroom struct {
+	// CPUPerUnit Configure the number of CPUs to allocate the headroom.
+	// CPUs are denoted in millicores, where 1000 millicores = 1 vCPU.
+	CPUPerUnit *int `json:"cpuPerUnit,omitempty"`
+	// GPUPerUnit Amount of GPU to allocate for headroom unit.
+	GPUPerUnit *int `json:"gpuPerUnit,omitempty"`
+	// MemoryPerUnit Configure the amount of memory (MiB) to allocate the headroom
+	MemoryPerUnit *int `json:"memoryPerUnit,omitempty"`
+	// NumOfUnits The number of units to retain as headroom, where each unit has the defined headroom CPU and memory.
+	NumOfUnits *int `json:"numOfUnits,omitempty"`
 }

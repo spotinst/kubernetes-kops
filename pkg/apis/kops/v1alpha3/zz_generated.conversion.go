@@ -834,6 +834,46 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*LaunchSpecScheduling)(nil), (*kops.LaunchSpecScheduling)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha3_LaunchSpecScheduling_To_kops_LaunchSpecScheduling(a.(*LaunchSpecScheduling), b.(*kops.LaunchSpecScheduling), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*kops.LaunchSpecScheduling)(nil), (*LaunchSpecScheduling)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_kops_LaunchSpecScheduling_To_v1alpha3_LaunchSpecScheduling(a.(*kops.LaunchSpecScheduling), b.(*LaunchSpecScheduling), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*LaunchSpecShutdownHours)(nil), (*kops.LaunchSpecShutdownHours)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha3_LaunchSpecShutdownHours_To_kops_LaunchSpecShutdownHours(a.(*LaunchSpecShutdownHours), b.(*kops.LaunchSpecShutdownHours), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*kops.LaunchSpecShutdownHours)(nil), (*LaunchSpecShutdownHours)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_kops_LaunchSpecShutdownHours_To_v1alpha3_LaunchSpecShutdownHours(a.(*kops.LaunchSpecShutdownHours), b.(*LaunchSpecShutdownHours), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*LaunchSpecTask)(nil), (*kops.LaunchSpecTask)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha3_LaunchSpecTask_To_kops_LaunchSpecTask(a.(*LaunchSpecTask), b.(*kops.LaunchSpecTask), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*kops.LaunchSpecTask)(nil), (*LaunchSpecTask)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_kops_LaunchSpecTask_To_v1alpha3_LaunchSpecTask(a.(*kops.LaunchSpecTask), b.(*LaunchSpecTask), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*LaunchSpecTaskHeadroom)(nil), (*kops.LaunchSpecTaskHeadroom)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha3_LaunchSpecTaskHeadroom_To_kops_LaunchSpecTaskHeadroom(a.(*LaunchSpecTaskHeadroom), b.(*kops.LaunchSpecTaskHeadroom), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*kops.LaunchSpecTaskHeadroom)(nil), (*LaunchSpecTaskHeadroom)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_kops_LaunchSpecTaskHeadroom_To_v1alpha3_LaunchSpecTaskHeadroom(a.(*kops.LaunchSpecTaskHeadroom), b.(*LaunchSpecTaskHeadroom), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*LeaderElectionConfiguration)(nil), (*kops.LeaderElectionConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha3_LeaderElectionConfiguration_To_kops_LeaderElectionConfiguration(a.(*LeaderElectionConfiguration), b.(*kops.LeaderElectionConfiguration), scope)
 	}); err != nil {
@@ -1161,6 +1201,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*kops.TargetSpec)(nil), (*TargetSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_kops_TargetSpec_To_v1alpha3_TargetSpec(a.(*kops.TargetSpec), b.(*TargetSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*TaskConfigOpts)(nil), (*kops.TaskConfigOpts)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha3_TaskConfigOpts_To_kops_TaskConfigOpts(a.(*TaskConfigOpts), b.(*kops.TaskConfigOpts), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*kops.TaskConfigOpts)(nil), (*TaskConfigOpts)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_kops_TaskConfigOpts_To_v1alpha3_TaskConfigOpts(a.(*kops.TaskConfigOpts), b.(*TaskConfigOpts), scope)
 	}); err != nil {
 		return err
 	}
@@ -4641,6 +4691,15 @@ func autoConvert_v1alpha3_InstanceGroupSpec_To_kops_InstanceGroupSpec(in *Instan
 		out.GuestAccelerators = nil
 	}
 	out.MaxInstanceLifetime = in.MaxInstanceLifetime
+	if in.LaunchSpecScheduling != nil {
+		in, out := &in.LaunchSpecScheduling, &out.LaunchSpecScheduling
+		*out = new(kops.LaunchSpecScheduling)
+		if err := Convert_v1alpha3_LaunchSpecScheduling_To_kops_LaunchSpecScheduling(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.LaunchSpecScheduling = nil
+	}
 	return nil
 }
 
@@ -4825,6 +4884,15 @@ func autoConvert_kops_InstanceGroupSpec_To_v1alpha3_InstanceGroupSpec(in *kops.I
 		out.GuestAccelerators = nil
 	}
 	out.MaxInstanceLifetime = in.MaxInstanceLifetime
+	if in.LaunchSpecScheduling != nil {
+		in, out := &in.LaunchSpecScheduling, &out.LaunchSpecScheduling
+		*out = new(LaunchSpecScheduling)
+		if err := Convert_kops_LaunchSpecScheduling_To_v1alpha3_LaunchSpecScheduling(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.LaunchSpecScheduling = nil
+	}
 	return nil
 }
 
@@ -5897,6 +5965,154 @@ func autoConvert_kops_KuberouterNetworkingSpec_To_v1alpha3_KuberouterNetworkingS
 // Convert_kops_KuberouterNetworkingSpec_To_v1alpha3_KuberouterNetworkingSpec is an autogenerated conversion function.
 func Convert_kops_KuberouterNetworkingSpec_To_v1alpha3_KuberouterNetworkingSpec(in *kops.KuberouterNetworkingSpec, out *KuberouterNetworkingSpec, s conversion.Scope) error {
 	return autoConvert_kops_KuberouterNetworkingSpec_To_v1alpha3_KuberouterNetworkingSpec(in, out, s)
+}
+
+func autoConvert_v1alpha3_LaunchSpecScheduling_To_kops_LaunchSpecScheduling(in *LaunchSpecScheduling, out *kops.LaunchSpecScheduling, s conversion.Scope) error {
+	if in.Tasks != nil {
+		in, out := &in.Tasks, &out.Tasks
+		*out = make([]kops.LaunchSpecTask, len(*in))
+		for i := range *in {
+			if err := Convert_v1alpha3_LaunchSpecTask_To_kops_LaunchSpecTask(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Tasks = nil
+	}
+	if in.ShutdownHours != nil {
+		in, out := &in.ShutdownHours, &out.ShutdownHours
+		*out = new(kops.LaunchSpecShutdownHours)
+		if err := Convert_v1alpha3_LaunchSpecShutdownHours_To_kops_LaunchSpecShutdownHours(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.ShutdownHours = nil
+	}
+	return nil
+}
+
+// Convert_v1alpha3_LaunchSpecScheduling_To_kops_LaunchSpecScheduling is an autogenerated conversion function.
+func Convert_v1alpha3_LaunchSpecScheduling_To_kops_LaunchSpecScheduling(in *LaunchSpecScheduling, out *kops.LaunchSpecScheduling, s conversion.Scope) error {
+	return autoConvert_v1alpha3_LaunchSpecScheduling_To_kops_LaunchSpecScheduling(in, out, s)
+}
+
+func autoConvert_kops_LaunchSpecScheduling_To_v1alpha3_LaunchSpecScheduling(in *kops.LaunchSpecScheduling, out *LaunchSpecScheduling, s conversion.Scope) error {
+	if in.Tasks != nil {
+		in, out := &in.Tasks, &out.Tasks
+		*out = make([]LaunchSpecTask, len(*in))
+		for i := range *in {
+			if err := Convert_kops_LaunchSpecTask_To_v1alpha3_LaunchSpecTask(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Tasks = nil
+	}
+	if in.ShutdownHours != nil {
+		in, out := &in.ShutdownHours, &out.ShutdownHours
+		*out = new(LaunchSpecShutdownHours)
+		if err := Convert_kops_LaunchSpecShutdownHours_To_v1alpha3_LaunchSpecShutdownHours(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.ShutdownHours = nil
+	}
+	return nil
+}
+
+// Convert_kops_LaunchSpecScheduling_To_v1alpha3_LaunchSpecScheduling is an autogenerated conversion function.
+func Convert_kops_LaunchSpecScheduling_To_v1alpha3_LaunchSpecScheduling(in *kops.LaunchSpecScheduling, out *LaunchSpecScheduling, s conversion.Scope) error {
+	return autoConvert_kops_LaunchSpecScheduling_To_v1alpha3_LaunchSpecScheduling(in, out, s)
+}
+
+func autoConvert_v1alpha3_LaunchSpecShutdownHours_To_kops_LaunchSpecShutdownHours(in *LaunchSpecShutdownHours, out *kops.LaunchSpecShutdownHours, s conversion.Scope) error {
+	out.IsEnabled = in.IsEnabled
+	out.TimeWindows = in.TimeWindows
+	return nil
+}
+
+// Convert_v1alpha3_LaunchSpecShutdownHours_To_kops_LaunchSpecShutdownHours is an autogenerated conversion function.
+func Convert_v1alpha3_LaunchSpecShutdownHours_To_kops_LaunchSpecShutdownHours(in *LaunchSpecShutdownHours, out *kops.LaunchSpecShutdownHours, s conversion.Scope) error {
+	return autoConvert_v1alpha3_LaunchSpecShutdownHours_To_kops_LaunchSpecShutdownHours(in, out, s)
+}
+
+func autoConvert_kops_LaunchSpecShutdownHours_To_v1alpha3_LaunchSpecShutdownHours(in *kops.LaunchSpecShutdownHours, out *LaunchSpecShutdownHours, s conversion.Scope) error {
+	out.IsEnabled = in.IsEnabled
+	out.TimeWindows = in.TimeWindows
+	return nil
+}
+
+// Convert_kops_LaunchSpecShutdownHours_To_v1alpha3_LaunchSpecShutdownHours is an autogenerated conversion function.
+func Convert_kops_LaunchSpecShutdownHours_To_v1alpha3_LaunchSpecShutdownHours(in *kops.LaunchSpecShutdownHours, out *LaunchSpecShutdownHours, s conversion.Scope) error {
+	return autoConvert_kops_LaunchSpecShutdownHours_To_v1alpha3_LaunchSpecShutdownHours(in, out, s)
+}
+
+func autoConvert_v1alpha3_LaunchSpecTask_To_kops_LaunchSpecTask(in *LaunchSpecTask, out *kops.LaunchSpecTask, s conversion.Scope) error {
+	out.IsEnabled = in.IsEnabled
+	out.CronExpression = in.CronExpression
+	out.TaskType = in.TaskType
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = new(kops.TaskConfigOpts)
+		if err := Convert_v1alpha3_TaskConfigOpts_To_kops_TaskConfigOpts(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.Config = nil
+	}
+	return nil
+}
+
+// Convert_v1alpha3_LaunchSpecTask_To_kops_LaunchSpecTask is an autogenerated conversion function.
+func Convert_v1alpha3_LaunchSpecTask_To_kops_LaunchSpecTask(in *LaunchSpecTask, out *kops.LaunchSpecTask, s conversion.Scope) error {
+	return autoConvert_v1alpha3_LaunchSpecTask_To_kops_LaunchSpecTask(in, out, s)
+}
+
+func autoConvert_kops_LaunchSpecTask_To_v1alpha3_LaunchSpecTask(in *kops.LaunchSpecTask, out *LaunchSpecTask, s conversion.Scope) error {
+	out.IsEnabled = in.IsEnabled
+	out.CronExpression = in.CronExpression
+	out.TaskType = in.TaskType
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = new(TaskConfigOpts)
+		if err := Convert_kops_TaskConfigOpts_To_v1alpha3_TaskConfigOpts(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.Config = nil
+	}
+	return nil
+}
+
+// Convert_kops_LaunchSpecTask_To_v1alpha3_LaunchSpecTask is an autogenerated conversion function.
+func Convert_kops_LaunchSpecTask_To_v1alpha3_LaunchSpecTask(in *kops.LaunchSpecTask, out *LaunchSpecTask, s conversion.Scope) error {
+	return autoConvert_kops_LaunchSpecTask_To_v1alpha3_LaunchSpecTask(in, out, s)
+}
+
+func autoConvert_v1alpha3_LaunchSpecTaskHeadroom_To_kops_LaunchSpecTaskHeadroom(in *LaunchSpecTaskHeadroom, out *kops.LaunchSpecTaskHeadroom, s conversion.Scope) error {
+	out.CPUPerUnit = in.CPUPerUnit
+	out.GPUPerUnit = in.GPUPerUnit
+	out.MemoryPerUnit = in.MemoryPerUnit
+	out.NumOfUnits = in.NumOfUnits
+	return nil
+}
+
+// Convert_v1alpha3_LaunchSpecTaskHeadroom_To_kops_LaunchSpecTaskHeadroom is an autogenerated conversion function.
+func Convert_v1alpha3_LaunchSpecTaskHeadroom_To_kops_LaunchSpecTaskHeadroom(in *LaunchSpecTaskHeadroom, out *kops.LaunchSpecTaskHeadroom, s conversion.Scope) error {
+	return autoConvert_v1alpha3_LaunchSpecTaskHeadroom_To_kops_LaunchSpecTaskHeadroom(in, out, s)
+}
+
+func autoConvert_kops_LaunchSpecTaskHeadroom_To_v1alpha3_LaunchSpecTaskHeadroom(in *kops.LaunchSpecTaskHeadroom, out *LaunchSpecTaskHeadroom, s conversion.Scope) error {
+	out.CPUPerUnit = in.CPUPerUnit
+	out.GPUPerUnit = in.GPUPerUnit
+	out.MemoryPerUnit = in.MemoryPerUnit
+	out.NumOfUnits = in.NumOfUnits
+	return nil
+}
+
+// Convert_kops_LaunchSpecTaskHeadroom_To_v1alpha3_LaunchSpecTaskHeadroom is an autogenerated conversion function.
+func Convert_kops_LaunchSpecTaskHeadroom_To_v1alpha3_LaunchSpecTaskHeadroom(in *kops.LaunchSpecTaskHeadroom, out *LaunchSpecTaskHeadroom, s conversion.Scope) error {
+	return autoConvert_kops_LaunchSpecTaskHeadroom_To_v1alpha3_LaunchSpecTaskHeadroom(in, out, s)
 }
 
 func autoConvert_v1alpha3_LeaderElectionConfiguration_To_kops_LeaderElectionConfiguration(in *LeaderElectionConfiguration, out *kops.LeaderElectionConfiguration, s conversion.Scope) error {
@@ -7183,6 +7399,46 @@ func autoConvert_kops_TargetSpec_To_v1alpha3_TargetSpec(in *kops.TargetSpec, out
 // Convert_kops_TargetSpec_To_v1alpha3_TargetSpec is an autogenerated conversion function.
 func Convert_kops_TargetSpec_To_v1alpha3_TargetSpec(in *kops.TargetSpec, out *TargetSpec, s conversion.Scope) error {
 	return autoConvert_kops_TargetSpec_To_v1alpha3_TargetSpec(in, out, s)
+}
+
+func autoConvert_v1alpha3_TaskConfigOpts_To_kops_TaskConfigOpts(in *TaskConfigOpts, out *kops.TaskConfigOpts, s conversion.Scope) error {
+	if in.TaskHeadrooms != nil {
+		in, out := &in.TaskHeadrooms, &out.TaskHeadrooms
+		*out = make([]kops.LaunchSpecTaskHeadroom, len(*in))
+		for i := range *in {
+			if err := Convert_v1alpha3_LaunchSpecTaskHeadroom_To_kops_LaunchSpecTaskHeadroom(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.TaskHeadrooms = nil
+	}
+	return nil
+}
+
+// Convert_v1alpha3_TaskConfigOpts_To_kops_TaskConfigOpts is an autogenerated conversion function.
+func Convert_v1alpha3_TaskConfigOpts_To_kops_TaskConfigOpts(in *TaskConfigOpts, out *kops.TaskConfigOpts, s conversion.Scope) error {
+	return autoConvert_v1alpha3_TaskConfigOpts_To_kops_TaskConfigOpts(in, out, s)
+}
+
+func autoConvert_kops_TaskConfigOpts_To_v1alpha3_TaskConfigOpts(in *kops.TaskConfigOpts, out *TaskConfigOpts, s conversion.Scope) error {
+	if in.TaskHeadrooms != nil {
+		in, out := &in.TaskHeadrooms, &out.TaskHeadrooms
+		*out = make([]LaunchSpecTaskHeadroom, len(*in))
+		for i := range *in {
+			if err := Convert_kops_LaunchSpecTaskHeadroom_To_v1alpha3_LaunchSpecTaskHeadroom(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.TaskHeadrooms = nil
+	}
+	return nil
+}
+
+// Convert_kops_TaskConfigOpts_To_v1alpha3_TaskConfigOpts is an autogenerated conversion function.
+func Convert_kops_TaskConfigOpts_To_v1alpha3_TaskConfigOpts(in *kops.TaskConfigOpts, out *TaskConfigOpts, s conversion.Scope) error {
+	return autoConvert_kops_TaskConfigOpts_To_v1alpha3_TaskConfigOpts(in, out, s)
 }
 
 func autoConvert_v1alpha3_TerraformSpec_To_kops_TerraformSpec(in *TerraformSpec, out *kops.TerraformSpec, s conversion.Scope) error {

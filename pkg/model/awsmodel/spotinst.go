@@ -617,10 +617,50 @@ func (b *SpotInstanceGroupModelBuilder) buildLaunchSpec(c *fi.ModelBuilderContex
 		}
 	}
 
+	// LaunchSpecScheduling
+	launchSpec.LaunchSpecScheduling, err = b.buildLaunchSpecScheduling(ig.Spec.LaunchSpecScheduling)
+	if err != nil {
+		return fmt.Errorf("error building LaunchSpecScheduling: %v", err)
+	}
+
 	klog.V(4).Infof("Adding task: LaunchSpec/%s", fi.StringValue(launchSpec.Name))
 	c.AddTask(launchSpec)
 
 	return nil
+}
+
+func (b *SpotInstanceGroupModelBuilder) buildLaunchSpecScheduling(spec *kops.LaunchSpecScheduling) (*spotinsttasks.LaunchSpecScheduling, error) {
+
+	opts := &spotinsttasks.LaunchSpecScheduling{}
+	if spec == nil {
+		return opts, nil
+	}
+	for i, task := range spec.Tasks {
+		opts.Tasks = append(opts.Tasks, &spotinsttasks.LaunchSpecTask{})
+		opts.Tasks[i].IsEnabled = task.IsEnabled
+		opts.Tasks[i].TaskType = task.TaskType
+		opts.Tasks[i].CronExpression = task.CronExpression
+		opts.Tasks[i].Config = &spotinsttasks.TaskConfig{}
+		for _, headRoom := range task.Config.TaskHeadrooms {
+			opts.Tasks[i].Config.TaskHeadrooms = append(opts.Tasks[i].Config.TaskHeadrooms,
+				&spotinsttasks.LaunchSpecTaskHeadroom{
+					CPUPerUnit:    headRoom.CPUPerUnit,
+					GPUPerUnit:    headRoom.GPUPerUnit,
+					MemoryPerUnit: headRoom.MemoryPerUnit,
+					NumOfUnits:    headRoom.NumOfUnits,
+				})
+		}
+	}
+	if spec.ShutdownHours != nil {
+		opts.ShutdownHours = &spotinsttasks.LaunchSpecShutdownHours{
+			IsEnabled: spec.ShutdownHours.IsEnabled,
+		}
+		for _, downHours := range spec.ShutdownHours.TimeWindows {
+			opts.ShutdownHours.TimeWindows = append(opts.ShutdownHours.TimeWindows, downHours)
+		}
+	}
+
+	return opts, nil
 }
 
 func (b *SpotInstanceGroupModelBuilder) buildSecurityGroups(c *fi.ModelBuilderContext,

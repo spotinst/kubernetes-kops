@@ -71,6 +71,7 @@ type Elastigroup struct {
 	Tenancy                  *string
 	RootVolumeOpts           *RootVolumeOpts
 	AutoScalerOpts           *AutoScalerOpts
+	LaunchSpecSchedulingOpts *LaunchSpecScheduling
 }
 
 type RootVolumeOpts struct {
@@ -110,6 +111,34 @@ type AutoScalerDownOpts struct {
 type AutoScalerResourceLimitsOpts struct {
 	MaxVCPU   *int
 	MaxMemory *int
+}
+
+type LaunchSpecScheduling struct {
+	Tasks         []*LaunchSpecTask
+	ShutdownHours *LaunchSpecShutdownHours
+}
+
+type LaunchSpecShutdownHours struct {
+	IsEnabled   *bool
+	TimeWindows []string
+}
+
+type LaunchSpecTask struct {
+	IsEnabled      *bool
+	CronExpression *string
+	TaskType       *string
+	Config         *TaskConfig
+}
+
+type TaskConfig struct {
+	TaskHeadrooms []*LaunchSpecTaskHeadroom
+}
+
+type LaunchSpecTaskHeadroom struct {
+	CPUPerUnit    *int
+	GPUPerUnit    *int
+	MemoryPerUnit *int
+	NumOfUnits    *int
 }
 
 var (

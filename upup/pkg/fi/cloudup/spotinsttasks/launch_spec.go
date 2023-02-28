@@ -54,6 +54,7 @@ type LaunchSpec struct {
 	AssociatePublicIPAddress *bool
 	MinSize                  *int64
 	MaxSize                  *int64
+	LaunchSpecScheduling     *LaunchSpecScheduling
 
 	Ocean *Ocean
 }
@@ -535,6 +536,14 @@ func (_ *LaunchSpec) create(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 		}
 	}
 
+	// LaunchSpecScheduling
+	{
+		if opts := e.LaunchSpecScheduling; opts != nil {
+			specSchedualing := getLaunchSpecScheduling(opts)
+			spec.SetScheduling(specSchedualing)
+		}
+	}
+
 	// Wrap the raw object as a LaunchSpec.
 	sp, err := spotinst.NewLaunchSpec(cloud.ProviderID(), spec)
 	if err != nil {
@@ -788,6 +797,16 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 		}
 	}
 
+	// LaunchSpecScheduling
+	{
+		if changes.LaunchSpecScheduling != nil {
+			specSchedualing := getLaunchSpecScheduling(e.LaunchSpecScheduling)
+			spec.SetScheduling(specSchedualing)
+			changes.LaunchSpecScheduling = nil
+			changed = true
+		}
+	}
+
 	empty := &LaunchSpec{}
 	if !reflect.DeepEqual(empty, changes) {
 		klog.Warningf("Not all changes applied to Launch Spec %q: %v", *e.Name, changes)
@@ -832,6 +851,42 @@ func (_ *LaunchSpec) update(cloud awsup.AWSCloud, a, e, changes *LaunchSpec) err
 	}
 
 	return nil
+}
+
+func getLaunchSpecScheduling(in *LaunchSpecScheduling) *aws.LaunchSpecScheduling {
+	out := new(aws.LaunchSpecScheduling)
+	if opts := in; opts != nil {
+		if len(opts.Tasks) > 0 {
+			tasks := make([]*aws.LaunchSpecTask, len(opts.Tasks))
+			for i, task := range opts.Tasks {
+				tasks[i] = &aws.LaunchSpecTask{}
+				tasks[i].SetCronExpression((*task).CronExpression)
+				tasks[i].SetIsEnabled((*task).IsEnabled)
+				tasks[i].SetTaskType((*task).TaskType)
+				tasks[i].Config = &aws.TaskConfig{
+					TaskHeadrooms: make([]*aws.LaunchSpecTaskHeadroom, len(task.Config.TaskHeadrooms)),
+				}
+				for j, headRoom := range task.Config.TaskHeadrooms {
+					tasks[i].Config.TaskHeadrooms[j] = &aws.LaunchSpecTaskHeadroom{
+						CPUPerUnit:    headRoom.CPUPerUnit,
+						GPUPerUnit:    headRoom.GPUPerUnit,
+						MemoryPerUnit: headRoom.MemoryPerUnit,
+						NumOfUnits:    headRoom.NumOfUnits,
+					}
+				}
+			}
+			out.SetTasks(tasks)
+		}
+		if opts.ShutdownHours != nil {
+			shutdownHours := &aws.LaunchSpecShutdownHours{}
+			shutdownHours.SetIsEnabled(opts.ShutdownHours.IsEnabled)
+			for _, hours := range opts.ShutdownHours.TimeWindows {
+				shutdownHours.TimeWindows = append(shutdownHours.TimeWindows, hours)
+			}
+			out.SetShutdownHours(shutdownHours)
+		}
+	}
+	return out
 }
 
 type terraformLaunchSpec struct {
