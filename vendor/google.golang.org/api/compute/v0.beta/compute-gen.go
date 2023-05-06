@@ -75,6 +75,7 @@ var _ = errors.New
 var _ = strings.Replace
 var _ = context.Canceled
 var _ = internaloption.WithDefaultEndpoint
+var _ = internal.Version
 
 const apiId = "compute:beta"
 const apiName = "compute"
@@ -1978,32 +1979,35 @@ func (s *AcceleratorTypesScopedListWarningData) MarshalJSON() ([]byte, error) {
 // AccessConfig: An access configuration attached to an instance's
 // network interface. Only one access config per instance is supported.
 type AccessConfig struct {
-	// ExternalIpv6: The first IPv6 address of the external IPv6 range
-	// associated with this instance, prefix length is stored in
-	// externalIpv6PrefixLength in ipv6AccessConfig. To use a static
-	// external IP address, it must be unused and in the same region as the
-	// instance's zone. If not specified, Google Cloud will automatically
-	// assign an external IPv6 address from the instance's subnetwork.
+	// ExternalIpv6: Applies to ipv6AccessConfigs only. The first IPv6
+	// address of the external IPv6 range associated with this instance,
+	// prefix length is stored in externalIpv6PrefixLength in
+	// ipv6AccessConfig. To use a static external IP address, it must be
+	// unused and in the same region as the instance's zone. If not
+	// specified, Google Cloud will automatically assign an external IPv6
+	// address from the instance's subnetwork.
 	ExternalIpv6 string `json:"externalIpv6,omitempty"`
 
-	// ExternalIpv6PrefixLength: The prefix length of the external IPv6
-	// range.
+	// ExternalIpv6PrefixLength: Applies to ipv6AccessConfigs only. The
+	// prefix length of the external IPv6 range.
 	ExternalIpv6PrefixLength int64 `json:"externalIpv6PrefixLength,omitempty"`
 
 	// Kind: [Output Only] Type of the resource. Always compute#accessConfig
 	// for access configs.
 	Kind string `json:"kind,omitempty"`
 
-	// Name: The name of this access configuration. The default and
-	// recommended name is External NAT, but you can use any arbitrary
-	// string, such as My external IP or Network Access.
+	// Name: The name of this access configuration. In accessConfigs (IPv4),
+	// the default and recommended name is External NAT, but you can use any
+	// arbitrary string, such as My external IP or Network Access. In
+	// ipv6AccessConfigs, the recommend name is External IPv6.
 	Name string `json:"name,omitempty"`
 
-	// NatIP: An external IP address associated with this instance. Specify
-	// an unused static external IP address available to the project or
-	// leave this field undefined to use an IP from a shared ephemeral IP
-	// address pool. If you specify a static external IP address, it must
-	// live in the same region as the zone of the instance.
+	// NatIP: Applies to accessConfigs (IPv4) only. An external IP address
+	// associated with this instance. Specify an unused static external IP
+	// address available to the project or leave this field undefined to use
+	// an IP from a shared ephemeral IP address pool. If you specify a
+	// static external IP address, it must live in the same region as the
+	// zone of the instance.
 	NatIP string `json:"natIP,omitempty"`
 
 	// NetworkTier: This signifies the networking tier used for configuring
@@ -2039,12 +2043,13 @@ type AccessConfig struct {
 	// associated.
 	SetPublicPtr bool `json:"setPublicPtr,omitempty"`
 
-	// Type: The type of configuration. The default and only option is
-	// ONE_TO_ONE_NAT.
+	// Type: The type of configuration. In accessConfigs (IPv4), the default
+	// and only option is ONE_TO_ONE_NAT. In ipv6AccessConfigs, the default
+	// and only option is DIRECT_IPV6.
 	//
 	// Possible values:
 	//   "DIRECT_IPV6"
-	//   "ONE_TO_ONE_NAT" (default)
+	//   "ONE_TO_ONE_NAT"
 	Type string `json:"type,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "ExternalIpv6") to
@@ -3386,6 +3391,13 @@ type AttachedDiskInitializeParams struct {
 	// the disk. This sets the number of throughput mb per second that the
 	// disk can handle. Values must be between 1 and 7,124.
 	ProvisionedThroughput int64 `json:"provisionedThroughput,omitempty,string"`
+
+	// ReplicaZones: Required for each regional disk associated with the
+	// instance. Specify the URLs of the zones where the disk should be
+	// replicated to. You must provide exactly two replica zones, and one
+	// zone must be the same as the instance zone. You can't use this option
+	// with boot disks.
+	ReplicaZones []string `json:"replicaZones,omitempty"`
 
 	// ResourceManagerTags: Resource manager tags to be bound to the disk.
 	// Tag keys and values have the same definition as resource manager
@@ -7509,6 +7521,44 @@ func (s *Binding) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// BulkInsertDiskResource: A transient resource used in
+// compute.disks.bulkInsert and compute.regionDisks.bulkInsert. It is
+// only used to process requests and is not persisted.
+type BulkInsertDiskResource struct {
+	// SourceConsistencyGroupPolicy: The URL of the
+	// DiskConsistencyGroupPolicy for the group of disks to clone. This may
+	// be a full or partial URL, such as: -
+	// https://www.googleapis.com/compute/v1/projects/project/regions/region
+	// /resourcePolicies/resourcePolicy -
+	// projects/project/regions/region/resourcePolicies/resourcePolicy -
+	// regions/region/resourcePolicies/resourcePolicy
+	SourceConsistencyGroupPolicy string `json:"sourceConsistencyGroupPolicy,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "SourceConsistencyGroupPolicy") to unconditionally include in API
+	// requests. By default, fields with empty or default values are omitted
+	// from API requests. However, any non-pointer, non-interface field
+	// appearing in ForceSendFields will be sent to the server regardless of
+	// whether the field is empty or not. This may be used to include empty
+	// fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g.
+	// "SourceConsistencyGroupPolicy") to include in API requests with the
+	// JSON null value. By default, fields with empty values are omitted
+	// from API requests. However, any field with an empty value appearing
+	// in NullFields will be sent to the server as null. It is an error if a
+	// field in this list has a non-empty value. This may be used to include
+	// null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *BulkInsertDiskResource) MarshalJSON() ([]byte, error) {
+	type NoMethod BulkInsertDiskResource
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // BulkInsertInstanceResource: A transient resource used in
 // compute.instances.bulkInsert and compute.regionInstances.bulkInsert .
 // This resource is not persisted anywhere, it is used only for
@@ -7930,6 +7980,7 @@ type Commitment struct {
 	//   "GENERAL_PURPOSE_N2"
 	//   "GENERAL_PURPOSE_N2D"
 	//   "GENERAL_PURPOSE_T2D"
+	//   "GRAPHICS_OPTIMIZED"
 	//   "MEMORY_OPTIMIZED"
 	//   "MEMORY_OPTIMIZED_M3"
 	//   "TYPE_UNSPECIFIED"
@@ -9095,6 +9146,13 @@ type Disk struct {
 	//   "X86_64" - Machines with architecture X86_64
 	Architecture string `json:"architecture,omitempty"`
 
+	// AsyncPrimaryDisk: Disk asynchronously replicated into this disk.
+	AsyncPrimaryDisk *DiskAsyncReplication `json:"asyncPrimaryDisk,omitempty"`
+
+	// AsyncSecondaryDisks: [Output Only] A list of disks this disk is
+	// asynchronously replicated to.
+	AsyncSecondaryDisks map[string]DiskAsyncReplicationList `json:"asyncSecondaryDisks,omitempty"`
+
 	// CreationTimestamp: [Output Only] Creation timestamp in RFC3339 text
 	// format.
 	CreationTimestamp string `json:"creationTimestamp,omitempty"`
@@ -9250,6 +9308,10 @@ type Disk struct {
 	// automatic snapshot creations.
 	ResourcePolicies []string `json:"resourcePolicies,omitempty"`
 
+	// ResourceStatus: [Output Only] Status information for the disk
+	// resource.
+	ResourceStatus *DiskResourceStatus `json:"resourceStatus,omitempty"`
+
 	// SatisfiesPzs: [Output Only] Reserved for future use.
 	SatisfiesPzs bool `json:"satisfiesPzs,omitempty"`
 
@@ -9264,6 +9326,16 @@ type Disk struct {
 	// a source, the value of sizeGb must not be less than the size of the
 	// source. Acceptable values are 1 to 65536, inclusive.
 	SizeGb int64 `json:"sizeGb,omitempty,string"`
+
+	// SourceConsistencyGroupPolicy: [Output Only] URL of the
+	// DiskConsistencyGroupPolicy for a secondary disk that was created
+	// using a consistency group.
+	SourceConsistencyGroupPolicy string `json:"sourceConsistencyGroupPolicy,omitempty"`
+
+	// SourceConsistencyGroupPolicyId: [Output Only] ID of the
+	// DiskConsistencyGroupPolicy for a secondary disk that was created
+	// using a consistency group.
+	SourceConsistencyGroupPolicyId string `json:"sourceConsistencyGroupPolicyId,omitempty"`
 
 	// SourceDisk: The source disk used to create this disk. You can provide
 	// this as a partial or full URL to the resource. For example, the
@@ -9599,6 +9671,86 @@ type DiskAggregatedListWarningData struct {
 
 func (s *DiskAggregatedListWarningData) MarshalJSON() ([]byte, error) {
 	type NoMethod DiskAggregatedListWarningData
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type DiskAsyncReplication struct {
+	// ConsistencyGroupPolicy: [Output Only] URL of the
+	// DiskConsistencyGroupPolicy if replication was started on the disk as
+	// a member of a group.
+	ConsistencyGroupPolicy string `json:"consistencyGroupPolicy,omitempty"`
+
+	// ConsistencyGroupPolicyId: [Output Only] ID of the
+	// DiskConsistencyGroupPolicy if replication was started on the disk as
+	// a member of a group.
+	ConsistencyGroupPolicyId string `json:"consistencyGroupPolicyId,omitempty"`
+
+	// Disk: The other disk asynchronously replicated to or from the current
+	// disk. You can provide this as a partial or full URL to the resource.
+	// For example, the following are valid values: -
+	// https://www.googleapis.com/compute/v1/projects/project/zones/zone
+	// /disks/disk - projects/project/zones/zone/disks/disk -
+	// zones/zone/disks/disk
+	Disk string `json:"disk,omitempty"`
+
+	// DiskId: [Output Only] The unique ID of the other disk asynchronously
+	// replicated to or from the current disk. This value identifies the
+	// exact disk that was used to create this replication. For example, if
+	// you started replicating the persistent disk from a disk that was
+	// later deleted and recreated under the same name, the disk ID would
+	// identify the exact version of the disk that was used.
+	DiskId string `json:"diskId,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "ConsistencyGroupPolicy") to unconditionally include in API requests.
+	// By default, fields with empty or default values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ConsistencyGroupPolicy")
+	// to include in API requests with the JSON null value. By default,
+	// fields with empty values are omitted from API requests. However, any
+	// field with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *DiskAsyncReplication) MarshalJSON() ([]byte, error) {
+	type NoMethod DiskAsyncReplication
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type DiskAsyncReplicationList struct {
+	AsyncReplicationDisk *DiskAsyncReplication `json:"asyncReplicationDisk,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "AsyncReplicationDisk") to unconditionally include in API requests.
+	// By default, fields with empty or default values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AsyncReplicationDisk") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *DiskAsyncReplicationList) MarshalJSON() ([]byte, error) {
+	type NoMethod DiskAsyncReplicationList
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -9940,6 +10092,70 @@ type DiskParams struct {
 
 func (s *DiskParams) MarshalJSON() ([]byte, error) {
 	type NoMethod DiskParams
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type DiskResourceStatus struct {
+	AsyncPrimaryDisk *DiskResourceStatusAsyncReplicationStatus `json:"asyncPrimaryDisk,omitempty"`
+
+	// AsyncSecondaryDisks: Key: disk, value: AsyncReplicationStatus message
+	AsyncSecondaryDisks map[string]DiskResourceStatusAsyncReplicationStatus `json:"asyncSecondaryDisks,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "AsyncPrimaryDisk") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AsyncPrimaryDisk") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *DiskResourceStatus) MarshalJSON() ([]byte, error) {
+	type NoMethod DiskResourceStatus
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type DiskResourceStatusAsyncReplicationStatus struct {
+	// Possible values:
+	//   "ACTIVE" - Replication is active.
+	//   "CREATED" - Secondary disk is created and is waiting for
+	// replication to start.
+	//   "STARTING" - Replication is starting.
+	//   "STATE_UNSPECIFIED"
+	//   "STOPPED" - Replication is stopped.
+	//   "STOPPING" - Replication is stopping.
+	State string `json:"state,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "State") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "State") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *DiskResourceStatusAsyncReplicationStatus) MarshalJSON() ([]byte, error) {
+	type NoMethod DiskResourceStatusAsyncReplicationStatus
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -10828,6 +11044,79 @@ func (s *DisksScopedListWarningData) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+type DisksStartAsyncReplicationRequest struct {
+	// AsyncSecondaryDisk: The secondary disk to start asynchronous
+	// replication to. You can provide this as a partial or full URL to the
+	// resource. For example, the following are valid values: -
+	// https://www.googleapis.com/compute/v1/projects/project/zones/zone
+	// /disks/disk -
+	// https://www.googleapis.com/compute/v1/projects/project/regions/region
+	// /disks/disk - projects/project/zones/zone/disks/disk -
+	// projects/project/regions/region/disks/disk - zones/zone/disks/disk -
+	// regions/region/disks/disk
+	AsyncSecondaryDisk string `json:"asyncSecondaryDisk,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "AsyncSecondaryDisk")
+	// to unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AsyncSecondaryDisk") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *DisksStartAsyncReplicationRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod DisksStartAsyncReplicationRequest
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// DisksStopGroupAsyncReplicationResource: A transient resource used in
+// compute.disks.stopGroupAsyncReplication and
+// compute.regionDisks.stopGroupAsyncReplication. It is only used to
+// process requests and is not persisted.
+type DisksStopGroupAsyncReplicationResource struct {
+	// ResourcePolicy: The URL of the DiskConsistencyGroupPolicy for the
+	// group of disks to stop. This may be a full or partial URL, such as: -
+	// https://www.googleapis.com/compute/v1/projects/project/regions/region
+	// /resourcePolicies/resourcePolicy -
+	// projects/project/regions/region/resourcePolicies/resourcePolicy -
+	// regions/region/resourcePolicies/resourcePolicy
+	ResourcePolicy string `json:"resourcePolicy,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ResourcePolicy") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ResourcePolicy") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *DisksStopGroupAsyncReplicationResource) MarshalJSON() ([]byte, error) {
+	type NoMethod DisksStopGroupAsyncReplicationResource
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // DisplayDevice: A set of Display Device options
 type DisplayDevice struct {
 	// EnableDisplay: Defines whether the instance has Display enabled.
@@ -11468,6 +11757,15 @@ type ExternalVpnGatewayInterface struct {
 	// on-premise gateway or another Cloud provider's VPN gateway, it cannot
 	// be an IP address from Google Compute Engine.
 	IpAddress string `json:"ipAddress,omitempty"`
+
+	// Ipv6Address: IPv6 address of the interface in the external VPN
+	// gateway. This IPv6 address can be either from your on-premise gateway
+	// or another Cloud provider's VPN gateway, it cannot be an IP address
+	// from Google Compute Engine. Must specify an IPv6 address (not
+	// IPV4-mapped) using any format described in RFC 4291 (e.g.
+	// 2001:db8:0:0:2d9:51:0:0). The output format is RFC 5952 format (e.g.
+	// 2001:db8::2d9:51:0:0).
+	Ipv6Address string `json:"ipv6Address,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Id") to
 	// unconditionally include in API requests. By default, fields with
@@ -13077,9 +13375,10 @@ type ForwardingRule struct {
 	// Network: This field is not used for external load balancing. For
 	// Internal TCP/UDP Load Balancing, this field identifies the network
 	// that the load balanced IP should belong to for this Forwarding Rule.
-	// If this field is not specified, the default network will be used. For
-	// Private Service Connect forwarding rules that forward traffic to
-	// Google APIs, a network must be provided.
+	// If the subnetwork is specified, the network of the subnetwork will be
+	// used. If neither subnetwork nor this field is specified, the default
+	// network will be used. For Private Service Connect forwarding rules
+	// that forward traffic to Google APIs, a network must be provided.
 	Network string `json:"network,omitempty"`
 
 	// NetworkTier: This signifies the networking tier used for configuring
@@ -13937,6 +14236,43 @@ func (s *GRPCHealthCheck) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+type GlobalAddressesMoveRequest struct {
+	// Description: An optional destination address description if intended
+	// to be different from the source.
+	Description string `json:"description,omitempty"`
+
+	// DestinationAddress: The URL of the destination address to move to.
+	// This can be a full or partial URL. For example, the following are all
+	// valid URLs to a address: -
+	// https://www.googleapis.com/compute/v1/projects/project
+	// /global/addresses/address - projects/project/global/addresses/address
+	// Note that destination project must be different from the source
+	// project. So /global/addresses/address is not valid partial url.
+	DestinationAddress string `json:"destinationAddress,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Description") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Description") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GlobalAddressesMoveRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod GlobalAddressesMoveRequest
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 type GlobalNetworkEndpointGroupsAttachEndpointsRequest struct {
 	// NetworkEndpoints: The list of network endpoints to be attached.
 	NetworkEndpoints []*NetworkEndpoint `json:"networkEndpoints,omitempty"`
@@ -14226,8 +14562,8 @@ type GuestOsFeature struct {
 	// commas to separate values. Set to one or more of the following
 	// values: - VIRTIO_SCSI_MULTIQUEUE - WINDOWS - MULTI_IP_SUBNET -
 	// UEFI_COMPATIBLE - GVNIC - SEV_CAPABLE - SUSPEND_RESUME_COMPATIBLE -
-	// SEV_SNP_CAPABLE For more information, see Enabling guest operating
-	// system features.
+	// SEV_LIVE_MIGRATABLE - SEV_SNP_CAPABLE - TDX_CAPABLE For more
+	// information, see Enabling guest operating system features.
 	//
 	// Possible values:
 	//   "FEATURE_TYPE_UNSPECIFIED"
@@ -14235,6 +14571,7 @@ type GuestOsFeature struct {
 	//   "MULTI_IP_SUBNET"
 	//   "SECURE_BOOT"
 	//   "SEV_CAPABLE"
+	//   "SEV_LIVE_MIGRATABLE"
 	//   "SEV_SNP_CAPABLE"
 	//   "UEFI_COMPATIBLE"
 	//   "VIRTIO_SCSI_MULTIQUEUE"
@@ -14552,12 +14889,12 @@ func (s *HTTPSHealthCheck) MarshalJSON() ([]byte, error) {
 // (/compute/docs/reference/rest/beta/regionHealthChecks) Internal
 // HTTP(S) load balancers must use regional health checks
 // (`compute.v1.regionHealthChecks`). Traffic Director must use global
-// health checks (`compute.v1.HealthChecks`). Internal TCP/UDP load
+// health checks (`compute.v1.healthChecks`). Internal TCP/UDP load
 // balancers can use either regional or global health checks
-// (`compute.v1.regionHealthChecks` or `compute.v1.HealthChecks`).
+// (`compute.v1.regionHealthChecks` or `compute.v1.healthChecks`).
 // External HTTP(S), TCP proxy, and SSL proxy load balancers as well as
 // managed instance group auto-healing must use global health checks
-// (`compute.v1.HealthChecks`). Backend service-based network load
+// (`compute.v1.healthChecks`). Backend service-based network load
 // balancers must use regional health checks
 // (`compute.v1.regionHealthChecks`). Target pool-based network load
 // balancers must use legacy HTTP health checks
@@ -15655,7 +15992,7 @@ type HealthStatus struct {
 	// instance.
 	ForwardingRuleIp string `json:"forwardingRuleIp,omitempty"`
 
-	// HealthState: Health state of the instance.
+	// HealthState: Health state of the IPv4 address of the instance.
 	//
 	// Possible values:
 	//   "HEALTHY"
@@ -15740,10 +16077,10 @@ type HealthStatusForNetworkEndpoint struct {
 	// the health checks configured.
 	//
 	// Possible values:
-	//   "DRAINING"
-	//   "HEALTHY"
-	//   "UNHEALTHY"
-	//   "UNKNOWN"
+	//   "DRAINING" - Endpoint is being drained.
+	//   "HEALTHY" - Endpoint is healthy.
+	//   "UNHEALTHY" - Endpoint is unhealthy.
+	//   "UNKNOWN" - Health status of the endpoint is unknown.
 	HealthState string `json:"healthState,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "BackendService") to
@@ -16282,6 +16619,7 @@ type HttpHealthCheck struct {
 
 	// RequestPath: The request path of the HTTP health check request. The
 	// default value is /. This field does not support query parameters.
+	// Must comply with RFC3986.
 	RequestPath string `json:"requestPath,omitempty"`
 
 	// SelfLink: [Output Only] Server-defined URL for the resource.
@@ -17091,7 +17429,7 @@ type HttpsHealthCheck struct {
 	Port int64 `json:"port,omitempty"`
 
 	// RequestPath: The request path of the HTTPS health check request. The
-	// default value is "/".
+	// default value is "/". Must comply with RFC3986.
 	RequestPath string `json:"requestPath,omitempty"`
 
 	// SelfLink: [Output Only] Server-defined URL for the resource.
@@ -18135,9 +18473,9 @@ type Instance struct {
 	// cycle.
 	//
 	// Possible values:
-	//   "DEPROVISIONING" - The Nanny is halted and we are performing tear
-	// down tasks like network deprogramming, releasing quota, IP, tearing
-	// down disks etc.
+	//   "DEPROVISIONING" - The instance is halted and we are performing
+	// tear down tasks like network deprogramming, releasing quota, IP,
+	// tearing down disks etc.
 	//   "PROVISIONING" - Resources are being allocated for the instance.
 	//   "REPAIRING" - The instance is in repair.
 	//   "RUNNING" - The instance is running.
@@ -20212,7 +20550,9 @@ func (s *InstanceGroupManagersCreateInstancesRequest) MarshalJSON() ([]byte, err
 type InstanceGroupManagersDeleteInstancesRequest struct {
 	// Instances: The URLs of one or more instances to delete. This can be a
 	// full URL or a partial URL, such as
-	// zones/[ZONE]/instances/[INSTANCE_NAME].
+	// zones/[ZONE]/instances/[INSTANCE_NAME]. Queued instances do not have
+	// URL and can be deleted only by name. One cannot specify both URLs and
+	// names in a single request.
 	Instances []string `json:"instances,omitempty"`
 
 	// SkipInstancesOnValidationError: Specifies whether the request should
@@ -22901,9 +23241,9 @@ type InstanceWithNamedPorts struct {
 	// Status: [Output Only] The status of the instance.
 	//
 	// Possible values:
-	//   "DEPROVISIONING" - The Nanny is halted and we are performing tear
-	// down tasks like network deprogramming, releasing quota, IP, tearing
-	// down disks etc.
+	//   "DEPROVISIONING" - The instance is halted and we are performing
+	// tear down tasks like network deprogramming, releasing quota, IP,
+	// tearing down disks etc.
 	//   "PROVISIONING" - Resources are being allocated for the instance.
 	//   "REPAIRING" - The instance is in repair.
 	//   "RUNNING" - The instance is running.
@@ -23571,9 +23911,9 @@ func (s *Int64RangeMatch) MarshalJSON() ([]byte, error) {
 }
 
 // Interconnect: Represents an Interconnect resource. An Interconnect
-// resource is a dedicated connection between the GCP network and your
-// on-premises network. For more information, read the Dedicated
-// Interconnect Overview.
+// resource is a dedicated connection between the Google Cloud network
+// and your on-premises network. For more information, read the
+// Dedicated Interconnect Overview.
 type Interconnect struct {
 	// AdminEnabled: Administrative status of the interconnect. When this is
 	// set to true, the Interconnect is functional and can carry traffic.
@@ -23920,8 +24260,7 @@ type InterconnectAttachment struct {
 	// attachment. If this field is not specified when creating the VLAN
 	// attachment, then later on when creating an HA VPN gateway on this
 	// VLAN attachment, the HA VPN gateway's IP address is allocated from
-	// the regional external IP address pool. Not currently available
-	// publicly.
+	// the regional external IP address pool.
 	IpsecInternalAddresses []string `json:"ipsecInternalAddresses,omitempty"`
 
 	// Kind: [Output Only] Type of the resource. Always
@@ -27588,9 +27927,9 @@ type ManagedInstance struct {
 	// is empty when the instance does not exist.
 	//
 	// Possible values:
-	//   "DEPROVISIONING" - The Nanny is halted and we are performing tear
-	// down tasks like network deprogramming, releasing quota, IP, tearing
-	// down disks etc.
+	//   "DEPROVISIONING" - The instance is halted and we are performing
+	// tear down tasks like network deprogramming, releasing quota, IP,
+	// tearing down disks etc.
 	//   "PROVISIONING" - Resources are being allocated for the instance.
 	//   "REPAIRING" - The instance is in repair.
 	//   "RUNNING" - The instance is running.
@@ -28129,7 +28468,7 @@ type Network struct {
 	FirewallPolicy string `json:"firewallPolicy,omitempty"`
 
 	// GatewayIPv4: [Output Only] The gateway address for default routing
-	// out of the network, selected by GCP.
+	// out of the network, selected by Google Cloud.
 	GatewayIPv4 string `json:"gatewayIPv4,omitempty"`
 
 	// Id: [Output Only] The unique identifier for the resource. This
@@ -28523,7 +28862,7 @@ type NetworkAttachmentConnectedEndpoint struct {
 	// the IP was assigned.
 	ProjectIdOrNum string `json:"projectIdOrNum,omitempty"`
 
-	// SecondaryIpCidrRanges: Alias IP ranges from the same subnetwork
+	// SecondaryIpCidrRanges: Alias IP ranges from the same subnetwork.
 	SecondaryIpCidrRanges []string `json:"secondaryIpCidrRanges,omitempty"`
 
 	// Status: The status of a connected endpoint to this network
@@ -30849,10 +31188,11 @@ type NetworkInterface struct {
 	// number. It'll be empty if not specified by the users.
 	QueueCount int64 `json:"queueCount,omitempty"`
 
-	// StackType: The stack type for this network interface to identify
-	// whether the IPv6 feature is enabled or not. If not specified,
-	// IPV4_ONLY will be used. This field can be both set at instance
-	// creation and update network interface operations.
+	// StackType: The stack type for this network interface. To assign only
+	// IPv4 addresses, use IPV4_ONLY. To assign both IPv4 and IPv6
+	// addresses, use IPV4_IPV6. If not specified, IPV4_ONLY is used. This
+	// field can be both set at instance creation and update network
+	// interface operations.
 	//
 	// Possible values:
 	//   "IPV4_IPV6" - The network interface can have both IPv4 and IPv6
@@ -38185,6 +38525,7 @@ type Quota struct {
 	//   "COMMITTED_NVIDIA_A100_80GB_GPUS"
 	//   "COMMITTED_NVIDIA_A100_GPUS"
 	//   "COMMITTED_NVIDIA_K80_GPUS"
+	//   "COMMITTED_NVIDIA_L4_GPUS"
 	//   "COMMITTED_NVIDIA_P100_GPUS"
 	//   "COMMITTED_NVIDIA_P4_GPUS"
 	//   "COMMITTED_NVIDIA_T4_GPUS"
@@ -38236,11 +38577,15 @@ type Quota struct {
 	//   "NETWORK_ATTACHMENTS"
 	//   "NETWORK_ENDPOINT_GROUPS"
 	//   "NETWORK_FIREWALL_POLICIES"
+	//   "NET_LB_SECURITY_POLICIES_PER_REGION"
+	//   "NET_LB_SECURITY_POLICY_RULES_PER_REGION"
+	//   "NET_LB_SECURITY_POLICY_RULE_ATTRIBUTES_PER_REGION"
 	//   "NODE_GROUPS"
 	//   "NODE_TEMPLATES"
 	//   "NVIDIA_A100_80GB_GPUS"
 	//   "NVIDIA_A100_GPUS"
 	//   "NVIDIA_K80_GPUS"
+	//   "NVIDIA_L4_GPUS"
 	//   "NVIDIA_P100_GPUS"
 	//   "NVIDIA_P100_VWS_GPUS"
 	//   "NVIDIA_P4_GPUS"
@@ -38255,6 +38600,7 @@ type Quota struct {
 	//   "PREEMPTIBLE_NVIDIA_A100_80GB_GPUS"
 	//   "PREEMPTIBLE_NVIDIA_A100_GPUS"
 	//   "PREEMPTIBLE_NVIDIA_K80_GPUS"
+	//   "PREEMPTIBLE_NVIDIA_L4_GPUS"
 	//   "PREEMPTIBLE_NVIDIA_P100_GPUS"
 	//   "PREEMPTIBLE_NVIDIA_P100_VWS_GPUS"
 	//   "PREEMPTIBLE_NVIDIA_P4_GPUS"
@@ -38279,6 +38625,7 @@ type Quota struct {
 	//   "ROUTES"
 	//   "SECURITY_POLICIES"
 	//   "SECURITY_POLICIES_PER_REGION"
+	//   "SECURITY_POLICY_ADVANCED_RULES_PER_REGION"
 	//   "SECURITY_POLICY_CEVAL_RULES"
 	//   "SECURITY_POLICY_RULES"
 	//   "SECURITY_POLICY_RULES_PER_REGION"
@@ -38514,6 +38861,44 @@ type Region struct {
 
 func (s *Region) MarshalJSON() ([]byte, error) {
 	type NoMethod Region
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type RegionAddressesMoveRequest struct {
+	// Description: An optional destination address description if intended
+	// to be different from the source.
+	Description string `json:"description,omitempty"`
+
+	// DestinationAddress: The URL of the destination address to move to.
+	// This can be a full or partial URL. For example, the following are all
+	// valid URLs to a address: -
+	// https://www.googleapis.com/compute/v1/projects/project/regions/region
+	// /addresses/address -
+	// projects/project/regions/region/addresses/address Note that
+	// destination project must be different from the source project. So
+	// /regions/region/addresses/address is not valid partial url.
+	DestinationAddress string `json:"destinationAddress,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Description") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Description") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *RegionAddressesMoveRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod RegionAddressesMoveRequest
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -39004,6 +39389,42 @@ type RegionDisksResizeRequest struct {
 
 func (s *RegionDisksResizeRequest) MarshalJSON() ([]byte, error) {
 	type NoMethod RegionDisksResizeRequest
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type RegionDisksStartAsyncReplicationRequest struct {
+	// AsyncSecondaryDisk: The secondary disk to start asynchronous
+	// replication to. You can provide this as a partial or full URL to the
+	// resource. For example, the following are valid values: -
+	// https://www.googleapis.com/compute/v1/projects/project/zones/zone
+	// /disks/disk -
+	// https://www.googleapis.com/compute/v1/projects/project/regions/region
+	// /disks/disk - projects/project/zones/zone/disks/disk -
+	// projects/project/regions/region/disks/disk - zones/zone/disks/disk -
+	// regions/region/disks/disk
+	AsyncSecondaryDisk string `json:"asyncSecondaryDisk,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "AsyncSecondaryDisk")
+	// to unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AsyncSecondaryDisk") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *RegionDisksStartAsyncReplicationRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod RegionDisksStartAsyncReplicationRequest
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -41766,6 +42187,10 @@ type ResourcePolicy struct {
 
 	Description string `json:"description,omitempty"`
 
+	// DiskConsistencyGroupPolicy: Resource policy for disk consistency
+	// groups.
+	DiskConsistencyGroupPolicy *ResourcePolicyDiskConsistencyGroupPolicy `json:"diskConsistencyGroupPolicy,omitempty"`
+
 	// GroupPlacementPolicy: Resource policy for instances for placement
 	// configuration.
 	GroupPlacementPolicy *ResourcePolicyGroupPlacementPolicy `json:"groupPlacementPolicy,omitempty"`
@@ -42075,6 +42500,11 @@ func (s *ResourcePolicyDailyCycle) MarshalJSON() ([]byte, error) {
 	type NoMethod ResourcePolicyDailyCycle
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// ResourcePolicyDiskConsistencyGroupPolicy: Resource policy for disk
+// consistency groups.
+type ResourcePolicyDiskConsistencyGroupPolicy struct {
 }
 
 // ResourcePolicyGroupPlacementPolicy: A GroupPlacementPolicy specifies
@@ -43774,6 +44204,17 @@ type RouterBgpPeer struct {
 	// Bfd: BFD configuration for the BGP peering.
 	Bfd *RouterBgpPeerBfd `json:"bfd,omitempty"`
 
+	// CustomLearnedIpRanges: A list of user-defined custom learned route IP
+	// address ranges for a BGP session.
+	CustomLearnedIpRanges []*RouterBgpPeerCustomLearnedIpRange `json:"customLearnedIpRanges,omitempty"`
+
+	// CustomLearnedRoutePriority: The user-defined custom learned route
+	// priority for a BGP session. This value is applied to all custom
+	// learned route ranges for the session. You can choose a value from `0`
+	// to `65335`. If you don't provide a value, Google Cloud assigns a
+	// priority of `100` to the ranges.
+	CustomLearnedRoutePriority int64 `json:"customLearnedRoutePriority,omitempty"`
+
 	// Enable: The status of the BGP peer connection. If set to FALSE, any
 	// active session with the peer is terminated and all associated routing
 	// information is removed. If set to TRUE, the peer connection can be
@@ -43930,6 +44371,36 @@ type RouterBgpPeerBfd struct {
 
 func (s *RouterBgpPeerBfd) MarshalJSON() ([]byte, error) {
 	type NoMethod RouterBgpPeerBfd
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type RouterBgpPeerCustomLearnedIpRange struct {
+	// Range: The custom learned route IP address range. Must be a valid
+	// CIDR-formatted prefix. If an IP address is provided without a subnet
+	// mask, it is interpreted as, for IPv4, a `/32` singular IP address
+	// range, and, for IPv6, `/128`.
+	Range string `json:"range,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Range") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Range") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *RouterBgpPeerCustomLearnedIpRange) MarshalJSON() ([]byte, error) {
+	type NoMethod RouterBgpPeerCustomLearnedIpRange
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -44263,6 +44734,21 @@ func (s *RouterMd5AuthenticationKey) MarshalJSON() ([]byte, error) {
 // that would be used for NAT. GCP would auto-allocate ephemeral IPs if
 // no external IPs are provided.
 type RouterNat struct {
+	// AutoNetworkTier: The network tier to use when automatically reserving
+	// IP addresses. Must be one of: PREMIUM, STANDARD. If not specified,
+	// PREMIUM tier will be used.
+	//
+	// Possible values:
+	//   "FIXED_STANDARD" - Public internet quality with fixed bandwidth.
+	//   "PREMIUM" - High quality, Google-grade network tier, support for
+	// all networking products.
+	//   "STANDARD" - Public internet quality, only limited support for
+	// other networking products.
+	//   "STANDARD_OVERRIDES_FIXED_STANDARD" - (Output only) Temporary tier
+	// for FIXED_STANDARD when fixed standard tier is expired or not
+	// configured.
+	AutoNetworkTier string `json:"autoNetworkTier,omitempty"`
+
 	// DrainNatIps: A list of URLs of the IP resources to be drained. These
 	// IPs must be valid static external IPs that have been assigned to the
 	// NAT. These IPs should be used for updating/patching a NAT only.
@@ -44381,7 +44867,7 @@ type RouterNat struct {
 	// to 30s if not set.
 	UdpIdleTimeoutSec int64 `json:"udpIdleTimeoutSec,omitempty"`
 
-	// ForceSendFields is a list of field names (e.g. "DrainNatIps") to
+	// ForceSendFields is a list of field names (e.g. "AutoNetworkTier") to
 	// unconditionally include in API requests. By default, fields with
 	// empty or default values are omitted from API requests. However, any
 	// non-pointer, non-interface field appearing in ForceSendFields will be
@@ -44389,12 +44875,13 @@ type RouterNat struct {
 	// This may be used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "DrainNatIps") to include
-	// in API requests with the JSON null value. By default, fields with
-	// empty values are omitted from API requests. However, any field with
-	// an empty value appearing in NullFields will be sent to the server as
-	// null. It is an error if a field in this list has a non-empty value.
-	// This may be used to include null fields in Patch requests.
+	// NullFields is a list of field names (e.g. "AutoNetworkTier") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
 	NullFields []string `json:"-"`
 }
 
@@ -46267,13 +46754,17 @@ func (s *SecurityPolicyAdaptiveProtectionConfigAutoDeployConfig) UnmarshalJSON(d
 }
 
 // SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfig:
-// Configuration options for L7 DDoS detection.
+// Configuration options for L7 DDoS detection. This field is only
+// supported in Global Security Policies of type CLOUD_ARMOR.
 type SecurityPolicyAdaptiveProtectionConfigLayer7DdosDefenseConfig struct {
-	// Enable: If set to true, enables CAAP for L7 DDoS detection.
+	// Enable: If set to true, enables CAAP for L7 DDoS detection. This
+	// field is only supported in Global Security Policies of type
+	// CLOUD_ARMOR.
 	Enable bool `json:"enable,omitempty"`
 
 	// RuleVisibility: Rule visibility can be one of the following: STANDARD
-	// - opaque rules. (default) PREMIUM - transparent rules.
+	// - opaque rules. (default) PREMIUM - transparent rules. This field is
+	// only supported in Global Security Policies of type CLOUD_ARMOR.
 	//
 	// Possible values:
 	//   "PREMIUM"
@@ -46317,6 +46808,10 @@ type SecurityPolicyAdvancedOptionsConfig struct {
 	//   "NORMAL"
 	//   "VERBOSE"
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// UserIpRequestHeaders: An optional list of case-insensitive request
+	// header names to use for resolving the callers client IP address.
+	UserIpRequestHeaders []string `json:"userIpRequestHeaders,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "JsonCustomConfig") to
 	// unconditionally include in API requests. By default, fields with
@@ -46639,7 +47134,8 @@ type SecurityPolicyRecaptchaOptionsConfig struct {
 	// GOOGLE_RECAPTCHA under the security policy. The specified site key
 	// needs to be created from the reCAPTCHA API. The user is responsible
 	// for the validity of the specified site key. If not specified, a
-	// Google-managed site key is used.
+	// Google-managed site key is used. This field is only supported in
+	// Global Security Policies of type CLOUD_ARMOR.
 	RedirectSiteKey string `json:"redirectSiteKey,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "RedirectSiteKey") to
@@ -46707,10 +47203,11 @@ type SecurityPolicyRule struct {
 	// rate_limit_options to be set. - redirect: redirect to a different
 	// target. This can either be an internal reCAPTCHA redirect, or an
 	// external URL-based redirect via a 302 response. Parameters for this
-	// action can be configured via redirectOptions. - throttle: limit
-	// client traffic to the configured threshold. Configure parameters for
-	// this action in rateLimitOptions. Requires rate_limit_options to be
-	// set for this.
+	// action can be configured via redirectOptions. This action is only
+	// supported in Global Security Policies of type CLOUD_ARMOR. -
+	// throttle: limit client traffic to the configured threshold. Configure
+	// parameters for this action in rateLimitOptions. Requires
+	// rate_limit_options to be set for this.
 	Action string `json:"action,omitempty"`
 
 	// Description: An optional description of this resource. Provide this
@@ -46734,7 +47231,8 @@ type SecurityPolicyRule struct {
 	EnableLogging bool `json:"enableLogging,omitempty"`
 
 	// HeaderAction: Optional, additional actions that are performed on
-	// headers.
+	// headers. This field is only supported in Global Security Policies of
+	// type CLOUD_ARMOR.
 	HeaderAction *SecurityPolicyRuleHttpHeaderAction `json:"headerAction,omitempty"`
 
 	// Kind: [Output only] Type of the resource. Always
@@ -46765,7 +47263,8 @@ type SecurityPolicyRule struct {
 	RateLimitOptions *SecurityPolicyRuleRateLimitOptions `json:"rateLimitOptions,omitempty"`
 
 	// RedirectOptions: Parameters defining the redirect action. Cannot be
-	// specified for any other actions.
+	// specified for any other actions. This field is only supported in
+	// Global Security Policies of type CLOUD_ARMOR.
 	RedirectOptions *SecurityPolicyRuleRedirectOptions `json:"redirectOptions,omitempty"`
 
 	// RuleNumber: Identifier for the rule. This is only unique within the
@@ -46885,7 +47384,13 @@ type SecurityPolicyRuleMatcher struct {
 
 	// Expr: User defined CEVAL expression. A CEVAL expression is used to
 	// specify match criteria such as origin.ip, source.region_code and
-	// contents in the request header.
+	// contents in the request header. Expressions containing
+	// `evaluateThreatIntelligence` require Cloud Armor Managed Protection
+	// Plus tier and are not supported in Edge Policies nor in Regional
+	// Policies. Expressions containing
+	// `evaluatePreconfiguredExpr('sourceiplist-*')` require Cloud Armor
+	// Managed Protection Plus tier and are only supported in Global
+	// Security Policies.
 	Expr *Expr `json:"expr,omitempty"`
 
 	// VersionedExpr: Preconfigured versioned expression. If this field is
@@ -47191,12 +47696,14 @@ type SecurityPolicyRuleRateLimitOptions struct {
 	// response code, or redirect to a different endpoint. Valid options are
 	// `deny(STATUS)`, where valid values for `STATUS` are 403, 404, 429,
 	// and 502, and `redirect`, where the redirect parameters come from
-	// `exceedRedirectOptions` below.
+	// `exceedRedirectOptions` below. The `redirect` action is only
+	// supported in Global Security Policies of type CLOUD_ARMOR.
 	ExceedAction string `json:"exceedAction,omitempty"`
 
 	// ExceedRedirectOptions: Parameters defining the redirect action that
 	// is used as the exceed action. Cannot be specified if the exceed
-	// action is not redirect.
+	// action is not redirect. This field is only supported in Global
+	// Security Policies of type CLOUD_ARMOR.
 	ExceedRedirectOptions *SecurityPolicyRuleRedirectOptions `json:"exceedRedirectOptions,omitempty"`
 
 	// RateLimitThreshold: Threshold at which to begin ratelimiting.
@@ -47539,7 +48046,7 @@ func (s *ServiceAccount) MarshalJSON() ([]byte, error) {
 // attachment represents a service that a producer has exposed. It
 // encapsulates the load balancer which fronts the service runs and a
 // list of NAT IP ranges that the producers uses to represent the
-// consumers connecting to the service. next tag = 20
+// consumers connecting to the service.
 type ServiceAttachment struct {
 	// ConnectedEndpoints: [Output Only] An array of connections for all the
 	// consumers connected to this service attachment.
@@ -47623,6 +48130,18 @@ type ServiceAttachment struct {
 	// PscServiceAttachmentId: [Output Only] An 128-bit global unique ID of
 	// the PSC service attachment.
 	PscServiceAttachmentId *Uint128 `json:"pscServiceAttachmentId,omitempty"`
+
+	// ReconcileConnections: This flag determines whether a consumer
+	// accept/reject list change can reconcile the statuses of existing
+	// ACCEPTED or REJECTED PSC endpoints. - If false, connection policy
+	// update will only affect existing PENDING PSC endpoints. Existing
+	// ACCEPTED/REJECTED endpoints will remain untouched regardless how the
+	// connection policy is modified . - If true, update will affect both
+	// PENDING and ACCEPTED/REJECTED PSC endpoints. For example, an ACCEPTED
+	// PSC endpoint will be moved to REJECTED if its project is added to the
+	// reject list. For newly created service attachment, this boolean
+	// defaults to true.
+	ReconcileConnections bool `json:"reconcileConnections,omitempty"`
 
 	// Region: [Output Only] URL of the region where the service attachment
 	// resides. This field applies only to the region resource. You must
@@ -53295,7 +53814,9 @@ func (s *TargetHttpsProxiesScopedListWarningData) MarshalJSON() ([]byte, error) 
 
 type TargetHttpsProxiesSetCertificateMapRequest struct {
 	// CertificateMap: URL of the Certificate Map to associate with this
-	// TargetHttpsProxy.
+	// TargetHttpsProxy. Accepted format is
+	// //certificatemanager.googleapis.com/projects/{project
+	// }/locations/{location}/certificateMaps/{resourceName}.
 	CertificateMap string `json:"certificateMap,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "CertificateMap") to
@@ -53418,7 +53939,9 @@ type TargetHttpsProxy struct {
 	// CertificateMap: URL of a certificate map that identifies a
 	// certificate map associated with the given target proxy. This field
 	// can only be set for global target proxies. If set, sslCertificates
-	// will be ignored.
+	// will be ignored. Accepted format is
+	// //certificatemanager.googleapis.com/projects/{project
+	// }/locations/{location}/certificateMaps/{resourceName}.
 	CertificateMap string `json:"certificateMap,omitempty"`
 
 	// CreationTimestamp: [Output Only] Creation timestamp in RFC3339 text
@@ -53511,9 +54034,11 @@ type TargetHttpsProxy struct {
 	// networksecurity.ServerTlsPolicy resource that describes how the proxy
 	// should authenticate inbound traffic. serverTlsPolicy only applies to
 	// a global TargetHttpsProxy attached to globalForwardingRules with the
-	// loadBalancingScheme set to INTERNAL_SELF_MANAGED. If left blank,
-	// communications are not encrypted. Note: This field currently has no
-	// impact.
+	// loadBalancingScheme set to INTERNAL_SELF_MANAGED or EXTERNAL or
+	// EXTERNAL_MANAGED. For details which ServerTlsPolicy resources are
+	// accepted with INTERNAL_SELF_MANAGED and which with EXTERNAL,
+	// EXTERNAL_MANAGED loadBalancingScheme consult ServerTlsPolicy
+	// documentation. If left blank, communications are not encrypted.
 	ServerTlsPolicy string `json:"serverTlsPolicy,omitempty"`
 
 	// SslCertificates: URLs to SslCertificate resources that are used to
@@ -55499,7 +56024,9 @@ func (s *TargetSslProxiesSetBackendServiceRequest) MarshalJSON() ([]byte, error)
 
 type TargetSslProxiesSetCertificateMapRequest struct {
 	// CertificateMap: URL of the Certificate Map to associate with this
-	// TargetSslProxy.
+	// TargetSslProxy. Accepted format is
+	// //certificatemanager.googleapis.com/projects/{project
+	// }/locations/{location}/certificateMaps/{resourceName}.
 	CertificateMap string `json:"certificateMap,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "CertificateMap") to
@@ -55597,7 +56124,9 @@ type TargetSslProxy struct {
 	// CertificateMap: URL of a certificate map that identifies a
 	// certificate map associated with the given target proxy. This field
 	// can only be set for global target proxies. If set, sslCertificates
-	// will be ignored.
+	// will be ignored. Accepted format is
+	// //certificatemanager.googleapis.com/projects/{project
+	// }/locations/{location}/certificateMaps/{resourceName}.
 	CertificateMap string `json:"certificateMap,omitempty"`
 
 	// CreationTimestamp: [Output Only] Creation timestamp in RFC3339 text
@@ -59112,6 +59641,16 @@ type VpnGateway struct {
 	// property when you create the resource.
 	Description string `json:"description,omitempty"`
 
+	// GatewayIpVersion: The IP family of the gateway IPs for the HA-VPN
+	// gateway interfaces. If not specified, IPV4 will be used.
+	//
+	// Possible values:
+	//   "IPV4" - Every HA-VPN gateway interface is configured with an IPv4
+	// address.
+	//   "IPV6" - Every HA-VPN gateway interface is configured with an IPv6
+	// address.
+	GatewayIpVersion string `json:"gatewayIpVersion,omitempty"`
+
 	// Id: [Output Only] The unique identifier for the resource. This
 	// identifier is defined by the server.
 	Id uint64 `json:"id,omitempty,string"`
@@ -59766,6 +60305,12 @@ type VpnGatewayVpnGatewayInterface struct {
 	// regular (non HA VPN over Cloud Interconnect) HA VPN tunnels, the IP
 	// address must be a regional external IP address.
 	IpAddress string `json:"ipAddress,omitempty"`
+
+	// Ipv6Address: [Output Only] IPv6 address for this VPN interface
+	// associated with the VPN gateway. The IPv6 address must be a regional
+	// external IPv6 address. The format is RFC 5952 format (e.g.
+	// 2001:db8::2d9:51:0:0).
+	Ipv6Address string `json:"ipv6Address,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Id") to
 	// unconditionally include in API requests. By default, fields with
@@ -63300,6 +63845,194 @@ func (c *AddressesListCall) Pages(ctx context.Context, f func(*AddressList) erro
 		}
 		c.PageToken(x.NextPageToken)
 	}
+}
+
+// method id "compute.addresses.move":
+
+type AddressesMoveCall struct {
+	s                          *Service
+	project                    string
+	region                     string
+	address                    string
+	regionaddressesmoverequest *RegionAddressesMoveRequest
+	urlParams_                 gensupport.URLParams
+	ctx_                       context.Context
+	header_                    http.Header
+}
+
+// Move: Moves the specified address resource.
+//
+// - address: Name of the address resource to move.
+// - project: Source project ID which the Address is moved from.
+// - region: Name of the region for this request.
+func (r *AddressesService) Move(project string, region string, address string, regionaddressesmoverequest *RegionAddressesMoveRequest) *AddressesMoveCall {
+	c := &AddressesMoveCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.address = address
+	c.regionaddressesmoverequest = regionaddressesmoverequest
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *AddressesMoveCall) RequestId(requestId string) *AddressesMoveCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *AddressesMoveCall) Fields(s ...googleapi.Field) *AddressesMoveCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *AddressesMoveCall) Context(ctx context.Context) *AddressesMoveCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *AddressesMoveCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *AddressesMoveCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.regionaddressesmoverequest)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/addresses/{address}/move")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"region":  c.region,
+		"address": c.address,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.addresses.move" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *AddressesMoveCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Moves the specified address resource.",
+	//   "flatPath": "projects/{project}/regions/{region}/addresses/{address}/move",
+	//   "httpMethod": "POST",
+	//   "id": "compute.addresses.move",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "address"
+	//   ],
+	//   "parameters": {
+	//     "address": {
+	//       "description": "Name of the address resource to move.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Source project ID which the Address is moved from.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "Name of the region for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/addresses/{address}/move",
+	//   "request": {
+	//     "$ref": "RegionAddressesMoveRequest"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
 }
 
 // method id "compute.addresses.setLabels":
@@ -71498,6 +72231,182 @@ func (c *DisksAggregatedListCall) Pages(ctx context.Context, f func(*DiskAggrega
 	}
 }
 
+// method id "compute.disks.bulkInsert":
+
+type DisksBulkInsertCall struct {
+	s                      *Service
+	project                string
+	zone                   string
+	bulkinsertdiskresource *BulkInsertDiskResource
+	urlParams_             gensupport.URLParams
+	ctx_                   context.Context
+	header_                http.Header
+}
+
+// BulkInsert: Bulk create a set of disks.
+//
+// - project: Project ID for this request.
+// - zone: The name of the zone for this request.
+func (r *DisksService) BulkInsert(project string, zone string, bulkinsertdiskresource *BulkInsertDiskResource) *DisksBulkInsertCall {
+	c := &DisksBulkInsertCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.zone = zone
+	c.bulkinsertdiskresource = bulkinsertdiskresource
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *DisksBulkInsertCall) RequestId(requestId string) *DisksBulkInsertCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *DisksBulkInsertCall) Fields(s ...googleapi.Field) *DisksBulkInsertCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *DisksBulkInsertCall) Context(ctx context.Context) *DisksBulkInsertCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *DisksBulkInsertCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *DisksBulkInsertCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.bulkinsertdiskresource)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/zones/{zone}/disks/bulkInsert")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"zone":    c.zone,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.disks.bulkInsert" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *DisksBulkInsertCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Bulk create a set of disks.",
+	//   "flatPath": "projects/{project}/zones/{zone}/disks/bulkInsert",
+	//   "httpMethod": "POST",
+	//   "id": "compute.disks.bulkInsert",
+	//   "parameterOrder": [
+	//     "project",
+	//     "zone"
+	//   ],
+	//   "parameters": {
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "zone": {
+	//       "description": "The name of the zone for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/zones/{zone}/disks/bulkInsert",
+	//   "request": {
+	//     "$ref": "BulkInsertDiskResource"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
 // method id "compute.disks.createSnapshot":
 
 type DisksCreateSnapshotCall struct {
@@ -73447,6 +74356,553 @@ func (c *DisksSetLabelsCall) Do(opts ...googleapi.CallOption) (*Operation, error
 	//   "path": "projects/{project}/zones/{zone}/disks/{resource}/setLabels",
 	//   "request": {
 	//     "$ref": "ZoneSetLabelsRequest"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.disks.startAsyncReplication":
+
+type DisksStartAsyncReplicationCall struct {
+	s                                 *Service
+	project                           string
+	zone                              string
+	disk                              string
+	disksstartasyncreplicationrequest *DisksStartAsyncReplicationRequest
+	urlParams_                        gensupport.URLParams
+	ctx_                              context.Context
+	header_                           http.Header
+}
+
+// StartAsyncReplication: Starts asynchronous replication. Must be
+// invoked on the primary disk.
+//
+// - disk: The name of the persistent disk.
+// - project: Project ID for this request.
+// - zone: The name of the zone for this request.
+func (r *DisksService) StartAsyncReplication(project string, zone string, disk string, disksstartasyncreplicationrequest *DisksStartAsyncReplicationRequest) *DisksStartAsyncReplicationCall {
+	c := &DisksStartAsyncReplicationCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.zone = zone
+	c.disk = disk
+	c.disksstartasyncreplicationrequest = disksstartasyncreplicationrequest
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *DisksStartAsyncReplicationCall) RequestId(requestId string) *DisksStartAsyncReplicationCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *DisksStartAsyncReplicationCall) Fields(s ...googleapi.Field) *DisksStartAsyncReplicationCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *DisksStartAsyncReplicationCall) Context(ctx context.Context) *DisksStartAsyncReplicationCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *DisksStartAsyncReplicationCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *DisksStartAsyncReplicationCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.disksstartasyncreplicationrequest)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/zones/{zone}/disks/{disk}/startAsyncReplication")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"zone":    c.zone,
+		"disk":    c.disk,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.disks.startAsyncReplication" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *DisksStartAsyncReplicationCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Starts asynchronous replication. Must be invoked on the primary disk.",
+	//   "flatPath": "projects/{project}/zones/{zone}/disks/{disk}/startAsyncReplication",
+	//   "httpMethod": "POST",
+	//   "id": "compute.disks.startAsyncReplication",
+	//   "parameterOrder": [
+	//     "project",
+	//     "zone",
+	//     "disk"
+	//   ],
+	//   "parameters": {
+	//     "disk": {
+	//       "description": "The name of the persistent disk.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "zone": {
+	//       "description": "The name of the zone for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/zones/{zone}/disks/{disk}/startAsyncReplication",
+	//   "request": {
+	//     "$ref": "DisksStartAsyncReplicationRequest"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.disks.stopAsyncReplication":
+
+type DisksStopAsyncReplicationCall struct {
+	s          *Service
+	project    string
+	zone       string
+	disk       string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// StopAsyncReplication: Stops asynchronous replication. Can be invoked
+// either on the primary or on the secondary disk.
+//
+// - disk: The name of the persistent disk.
+// - project: Project ID for this request.
+// - zone: The name of the zone for this request.
+func (r *DisksService) StopAsyncReplication(project string, zone string, disk string) *DisksStopAsyncReplicationCall {
+	c := &DisksStopAsyncReplicationCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.zone = zone
+	c.disk = disk
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *DisksStopAsyncReplicationCall) RequestId(requestId string) *DisksStopAsyncReplicationCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *DisksStopAsyncReplicationCall) Fields(s ...googleapi.Field) *DisksStopAsyncReplicationCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *DisksStopAsyncReplicationCall) Context(ctx context.Context) *DisksStopAsyncReplicationCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *DisksStopAsyncReplicationCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *DisksStopAsyncReplicationCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/zones/{zone}/disks/{disk}/stopAsyncReplication")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"zone":    c.zone,
+		"disk":    c.disk,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.disks.stopAsyncReplication" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *DisksStopAsyncReplicationCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Stops asynchronous replication. Can be invoked either on the primary or on the secondary disk.",
+	//   "flatPath": "projects/{project}/zones/{zone}/disks/{disk}/stopAsyncReplication",
+	//   "httpMethod": "POST",
+	//   "id": "compute.disks.stopAsyncReplication",
+	//   "parameterOrder": [
+	//     "project",
+	//     "zone",
+	//     "disk"
+	//   ],
+	//   "parameters": {
+	//     "disk": {
+	//       "description": "The name of the persistent disk.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "zone": {
+	//       "description": "The name of the zone for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/zones/{zone}/disks/{disk}/stopAsyncReplication",
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.disks.stopGroupAsyncReplication":
+
+type DisksStopGroupAsyncReplicationCall struct {
+	s                                      *Service
+	project                                string
+	zone                                   string
+	disksstopgroupasyncreplicationresource *DisksStopGroupAsyncReplicationResource
+	urlParams_                             gensupport.URLParams
+	ctx_                                   context.Context
+	header_                                http.Header
+}
+
+// StopGroupAsyncReplication: Stops asynchronous replication for a
+// consistency group of disks. Can be invoked either in the primary or
+// secondary scope.
+//
+//   - project: Project ID for this request.
+//   - zone: The name of the zone for this request. This must be the zone
+//     of the primary or secondary disks in the consistency group.
+func (r *DisksService) StopGroupAsyncReplication(project string, zone string, disksstopgroupasyncreplicationresource *DisksStopGroupAsyncReplicationResource) *DisksStopGroupAsyncReplicationCall {
+	c := &DisksStopGroupAsyncReplicationCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.zone = zone
+	c.disksstopgroupasyncreplicationresource = disksstopgroupasyncreplicationresource
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *DisksStopGroupAsyncReplicationCall) RequestId(requestId string) *DisksStopGroupAsyncReplicationCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *DisksStopGroupAsyncReplicationCall) Fields(s ...googleapi.Field) *DisksStopGroupAsyncReplicationCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *DisksStopGroupAsyncReplicationCall) Context(ctx context.Context) *DisksStopGroupAsyncReplicationCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *DisksStopGroupAsyncReplicationCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *DisksStopGroupAsyncReplicationCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.disksstopgroupasyncreplicationresource)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/zones/{zone}/disks/stopGroupAsyncReplication")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"zone":    c.zone,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.disks.stopGroupAsyncReplication" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *DisksStopGroupAsyncReplicationCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Stops asynchronous replication for a consistency group of disks. Can be invoked either in the primary or secondary scope.",
+	//   "flatPath": "projects/{project}/zones/{zone}/disks/stopGroupAsyncReplication",
+	//   "httpMethod": "POST",
+	//   "id": "compute.disks.stopGroupAsyncReplication",
+	//   "parameterOrder": [
+	//     "project",
+	//     "zone"
+	//   ],
+	//   "parameters": {
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "zone": {
+	//       "description": "The name of the zone for this request. This must be the zone of the primary or secondary disks in the consistency group.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/zones/{zone}/disks/stopGroupAsyncReplication",
+	//   "request": {
+	//     "$ref": "DisksStopGroupAsyncReplicationResource"
 	//   },
 	//   "response": {
 	//     "$ref": "Operation"
@@ -81852,6 +83308,183 @@ func (c *GlobalAddressesListCall) Pages(ctx context.Context, f func(*AddressList
 		}
 		c.PageToken(x.NextPageToken)
 	}
+}
+
+// method id "compute.globalAddresses.move":
+
+type GlobalAddressesMoveCall struct {
+	s                          *Service
+	project                    string
+	address                    string
+	globaladdressesmoverequest *GlobalAddressesMoveRequest
+	urlParams_                 gensupport.URLParams
+	ctx_                       context.Context
+	header_                    http.Header
+}
+
+// Move: Moves the specified address resource from one project to
+// another project.
+//
+// - address: Name of the address resource to move.
+// - project: Source project ID which the Address is moved from.
+func (r *GlobalAddressesService) Move(project string, address string, globaladdressesmoverequest *GlobalAddressesMoveRequest) *GlobalAddressesMoveCall {
+	c := &GlobalAddressesMoveCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.address = address
+	c.globaladdressesmoverequest = globaladdressesmoverequest
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *GlobalAddressesMoveCall) RequestId(requestId string) *GlobalAddressesMoveCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *GlobalAddressesMoveCall) Fields(s ...googleapi.Field) *GlobalAddressesMoveCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *GlobalAddressesMoveCall) Context(ctx context.Context) *GlobalAddressesMoveCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *GlobalAddressesMoveCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *GlobalAddressesMoveCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.globaladdressesmoverequest)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/global/addresses/{address}/move")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"address": c.address,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.globalAddresses.move" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *GlobalAddressesMoveCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Moves the specified address resource from one project to another project.",
+	//   "flatPath": "projects/{project}/global/addresses/{address}/move",
+	//   "httpMethod": "POST",
+	//   "id": "compute.globalAddresses.move",
+	//   "parameterOrder": [
+	//     "project",
+	//     "address"
+	//   ],
+	//   "parameters": {
+	//     "address": {
+	//       "description": "Name of the address resource to move.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Source project ID which the Address is moved from.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/global/addresses/{address}/move",
+	//   "request": {
+	//     "$ref": "GlobalAddressesMoveRequest"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
 }
 
 // method id "compute.globalAddresses.setLabels":
@@ -97887,6 +99520,7 @@ func (c *InstanceGroupManagersSetAutoHealingPoliciesCall) Do(opts ...googleapi.C
 	}
 	return ret, nil
 	// {
+	//   "deprecated": true,
 	//   "description": "Motifies the autohealing policy for the instances in this managed instance group. [Deprecated] This method is deprecated. Use instanceGroupManagers.patch instead.",
 	//   "flatPath": "projects/{project}/zones/{zone}/instanceGroupManagers/{instanceGroupManager}/setAutoHealingPolicies",
 	//   "httpMethod": "POST",
@@ -109874,6 +111508,22 @@ func (r *InstancesService) SimulateMaintenanceEvent(project string, zone string,
 	return c
 }
 
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *InstancesSimulateMaintenanceEventCall) RequestId(requestId string) *InstancesSimulateMaintenanceEventCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
 // Fields allows partial responses to be retrieved. See
 // https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
 // for more information.
@@ -109984,6 +111634,11 @@ func (c *InstancesSimulateMaintenanceEventCall) Do(opts ...googleapi.CallOption)
 	//       "location": "path",
 	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
 	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "zone": {
@@ -148590,6 +150245,182 @@ func (c *RegionDisksAddResourcePoliciesCall) Do(opts ...googleapi.CallOption) (*
 
 }
 
+// method id "compute.regionDisks.bulkInsert":
+
+type RegionDisksBulkInsertCall struct {
+	s                      *Service
+	project                string
+	region                 string
+	bulkinsertdiskresource *BulkInsertDiskResource
+	urlParams_             gensupport.URLParams
+	ctx_                   context.Context
+	header_                http.Header
+}
+
+// BulkInsert: Bulk create a set of disks.
+//
+// - project: Project ID for this request.
+// - region: The name of the region for this request.
+func (r *RegionDisksService) BulkInsert(project string, region string, bulkinsertdiskresource *BulkInsertDiskResource) *RegionDisksBulkInsertCall {
+	c := &RegionDisksBulkInsertCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.bulkinsertdiskresource = bulkinsertdiskresource
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *RegionDisksBulkInsertCall) RequestId(requestId string) *RegionDisksBulkInsertCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionDisksBulkInsertCall) Fields(s ...googleapi.Field) *RegionDisksBulkInsertCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionDisksBulkInsertCall) Context(ctx context.Context) *RegionDisksBulkInsertCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionDisksBulkInsertCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionDisksBulkInsertCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.bulkinsertdiskresource)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/disks/bulkInsert")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"region":  c.region,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionDisks.bulkInsert" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionDisksBulkInsertCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Bulk create a set of disks.",
+	//   "flatPath": "projects/{project}/regions/{region}/disks/bulkInsert",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionDisks.bulkInsert",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region"
+	//   ],
+	//   "parameters": {
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "The name of the region for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/disks/bulkInsert",
+	//   "request": {
+	//     "$ref": "BulkInsertDiskResource"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
 // method id "compute.regionDisks.createSnapshot":
 
 type RegionDisksCreateSnapshotCall struct {
@@ -150521,6 +152352,553 @@ func (c *RegionDisksSetLabelsCall) Do(opts ...googleapi.CallOption) (*Operation,
 	//   "path": "projects/{project}/regions/{region}/disks/{resource}/setLabels",
 	//   "request": {
 	//     "$ref": "RegionSetLabelsRequest"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.regionDisks.startAsyncReplication":
+
+type RegionDisksStartAsyncReplicationCall struct {
+	s                                       *Service
+	project                                 string
+	region                                  string
+	disk                                    string
+	regiondisksstartasyncreplicationrequest *RegionDisksStartAsyncReplicationRequest
+	urlParams_                              gensupport.URLParams
+	ctx_                                    context.Context
+	header_                                 http.Header
+}
+
+// StartAsyncReplication: Starts asynchronous replication. Must be
+// invoked on the primary disk.
+//
+// - disk: The name of the persistent disk.
+// - project: Project ID for this request.
+// - region: The name of the region for this request.
+func (r *RegionDisksService) StartAsyncReplication(project string, region string, disk string, regiondisksstartasyncreplicationrequest *RegionDisksStartAsyncReplicationRequest) *RegionDisksStartAsyncReplicationCall {
+	c := &RegionDisksStartAsyncReplicationCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.disk = disk
+	c.regiondisksstartasyncreplicationrequest = regiondisksstartasyncreplicationrequest
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *RegionDisksStartAsyncReplicationCall) RequestId(requestId string) *RegionDisksStartAsyncReplicationCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionDisksStartAsyncReplicationCall) Fields(s ...googleapi.Field) *RegionDisksStartAsyncReplicationCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionDisksStartAsyncReplicationCall) Context(ctx context.Context) *RegionDisksStartAsyncReplicationCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionDisksStartAsyncReplicationCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionDisksStartAsyncReplicationCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.regiondisksstartasyncreplicationrequest)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/disks/{disk}/startAsyncReplication")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"region":  c.region,
+		"disk":    c.disk,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionDisks.startAsyncReplication" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionDisksStartAsyncReplicationCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Starts asynchronous replication. Must be invoked on the primary disk.",
+	//   "flatPath": "projects/{project}/regions/{region}/disks/{disk}/startAsyncReplication",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionDisks.startAsyncReplication",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "disk"
+	//   ],
+	//   "parameters": {
+	//     "disk": {
+	//       "description": "The name of the persistent disk.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "The name of the region for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/disks/{disk}/startAsyncReplication",
+	//   "request": {
+	//     "$ref": "RegionDisksStartAsyncReplicationRequest"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.regionDisks.stopAsyncReplication":
+
+type RegionDisksStopAsyncReplicationCall struct {
+	s          *Service
+	project    string
+	region     string
+	disk       string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// StopAsyncReplication: Stops asynchronous replication. Can be invoked
+// either on the primary or on the secondary disk.
+//
+// - disk: The name of the persistent disk.
+// - project: Project ID for this request.
+// - region: The name of the region for this request.
+func (r *RegionDisksService) StopAsyncReplication(project string, region string, disk string) *RegionDisksStopAsyncReplicationCall {
+	c := &RegionDisksStopAsyncReplicationCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.disk = disk
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *RegionDisksStopAsyncReplicationCall) RequestId(requestId string) *RegionDisksStopAsyncReplicationCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionDisksStopAsyncReplicationCall) Fields(s ...googleapi.Field) *RegionDisksStopAsyncReplicationCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionDisksStopAsyncReplicationCall) Context(ctx context.Context) *RegionDisksStopAsyncReplicationCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionDisksStopAsyncReplicationCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionDisksStopAsyncReplicationCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/disks/{disk}/stopAsyncReplication")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"region":  c.region,
+		"disk":    c.disk,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionDisks.stopAsyncReplication" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionDisksStopAsyncReplicationCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Stops asynchronous replication. Can be invoked either on the primary or on the secondary disk.",
+	//   "flatPath": "projects/{project}/regions/{region}/disks/{disk}/stopAsyncReplication",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionDisks.stopAsyncReplication",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "disk"
+	//   ],
+	//   "parameters": {
+	//     "disk": {
+	//       "description": "The name of the persistent disk.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "The name of the region for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/disks/{disk}/stopAsyncReplication",
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.regionDisks.stopGroupAsyncReplication":
+
+type RegionDisksStopGroupAsyncReplicationCall struct {
+	s                                      *Service
+	project                                string
+	region                                 string
+	disksstopgroupasyncreplicationresource *DisksStopGroupAsyncReplicationResource
+	urlParams_                             gensupport.URLParams
+	ctx_                                   context.Context
+	header_                                http.Header
+}
+
+// StopGroupAsyncReplication: Stops asynchronous replication for a
+// consistency group of disks. Can be invoked either in the primary or
+// secondary scope.
+//
+//   - project: Project ID for this request.
+//   - region: The name of the region for this request. This must be the
+//     region of the primary or secondary disks in the consistency group.
+func (r *RegionDisksService) StopGroupAsyncReplication(project string, region string, disksstopgroupasyncreplicationresource *DisksStopGroupAsyncReplicationResource) *RegionDisksStopGroupAsyncReplicationCall {
+	c := &RegionDisksStopGroupAsyncReplicationCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.disksstopgroupasyncreplicationresource = disksstopgroupasyncreplicationresource
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *RegionDisksStopGroupAsyncReplicationCall) RequestId(requestId string) *RegionDisksStopGroupAsyncReplicationCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionDisksStopGroupAsyncReplicationCall) Fields(s ...googleapi.Field) *RegionDisksStopGroupAsyncReplicationCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionDisksStopGroupAsyncReplicationCall) Context(ctx context.Context) *RegionDisksStopGroupAsyncReplicationCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionDisksStopGroupAsyncReplicationCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionDisksStopGroupAsyncReplicationCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.disksstopgroupasyncreplicationresource)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/disks/stopGroupAsyncReplication")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+		"region":  c.region,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionDisks.stopGroupAsyncReplication" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionDisksStopGroupAsyncReplicationCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Stops asynchronous replication for a consistency group of disks. Can be invoked either in the primary or secondary scope.",
+	//   "flatPath": "projects/{project}/regions/{region}/disks/stopGroupAsyncReplication",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionDisks.stopGroupAsyncReplication",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region"
+	//   ],
+	//   "parameters": {
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "The name of the region for this request. This must be the region of the primary or secondary disks in the consistency group.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/disks/stopGroupAsyncReplication",
+	//   "request": {
+	//     "$ref": "DisksStopGroupAsyncReplicationResource"
 	//   },
 	//   "response": {
 	//     "$ref": "Operation"
@@ -157223,6 +159601,7 @@ func (c *RegionInstanceGroupManagersSetAutoHealingPoliciesCall) Do(opts ...googl
 	}
 	return ret, nil
 	// {
+	//   "deprecated": true,
 	//   "description": "Modifies the autohealing policy for the instances in this managed instance group. [Deprecated] This method is deprecated. Use regionInstanceGroupManagers.patch instead.",
 	//   "flatPath": "projects/{project}/regions/{region}/instanceGroupManagers/{instanceGroupManager}/setAutoHealingPolicies",
 	//   "httpMethod": "POST",
@@ -166166,6 +168545,185 @@ func (c *RegionOperationsWaitCall) Do(opts ...googleapi.CallOption) (*Operation,
 
 }
 
+// method id "compute.regionSecurityPolicies.addRule":
+
+type RegionSecurityPoliciesAddRuleCall struct {
+	s                  *Service
+	project            string
+	region             string
+	securityPolicy     string
+	securitypolicyrule *SecurityPolicyRule
+	urlParams_         gensupport.URLParams
+	ctx_               context.Context
+	header_            http.Header
+}
+
+// AddRule: Inserts a rule into a security policy.
+//
+// - project: Project ID for this request.
+// - region: Name of the region scoping this request.
+// - securityPolicy: Name of the security policy to update.
+func (r *RegionSecurityPoliciesService) AddRule(project string, region string, securityPolicy string, securitypolicyrule *SecurityPolicyRule) *RegionSecurityPoliciesAddRuleCall {
+	c := &RegionSecurityPoliciesAddRuleCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.securityPolicy = securityPolicy
+	c.securitypolicyrule = securitypolicyrule
+	return c
+}
+
+// ValidateOnly sets the optional parameter "validateOnly": If true, the
+// request will not be committed.
+func (c *RegionSecurityPoliciesAddRuleCall) ValidateOnly(validateOnly bool) *RegionSecurityPoliciesAddRuleCall {
+	c.urlParams_.Set("validateOnly", fmt.Sprint(validateOnly))
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionSecurityPoliciesAddRuleCall) Fields(s ...googleapi.Field) *RegionSecurityPoliciesAddRuleCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionSecurityPoliciesAddRuleCall) Context(ctx context.Context) *RegionSecurityPoliciesAddRuleCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionSecurityPoliciesAddRuleCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionSecurityPoliciesAddRuleCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.securitypolicyrule)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/addRule")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project":        c.project,
+		"region":         c.region,
+		"securityPolicy": c.securityPolicy,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionSecurityPolicies.addRule" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionSecurityPoliciesAddRuleCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Inserts a rule into a security policy.",
+	//   "flatPath": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/addRule",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionSecurityPolicies.addRule",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "securityPolicy"
+	//   ],
+	//   "parameters": {
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "Name of the region scoping this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "securityPolicy": {
+	//       "description": "Name of the security policy to update.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "validateOnly": {
+	//       "description": "If true, the request will not be committed.",
+	//       "location": "query",
+	//       "type": "boolean"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/addRule",
+	//   "request": {
+	//     "$ref": "SecurityPolicyRule"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
 // method id "compute.regionSecurityPolicies.delete":
 
 type RegionSecurityPoliciesDeleteCall struct {
@@ -166507,6 +169065,192 @@ func (c *RegionSecurityPoliciesGetCall) Do(opts ...googleapi.CallOption) (*Secur
 	//   "path": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}",
 	//   "response": {
 	//     "$ref": "SecurityPolicy"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute",
+	//     "https://www.googleapis.com/auth/compute.readonly"
+	//   ]
+	// }
+
+}
+
+// method id "compute.regionSecurityPolicies.getRule":
+
+type RegionSecurityPoliciesGetRuleCall struct {
+	s              *Service
+	project        string
+	region         string
+	securityPolicy string
+	urlParams_     gensupport.URLParams
+	ifNoneMatch_   string
+	ctx_           context.Context
+	header_        http.Header
+}
+
+// GetRule: Gets a rule at the specified priority.
+//
+//   - project: Project ID for this request.
+//   - region: Name of the region scoping this request.
+//   - securityPolicy: Name of the security policy to which the queried
+//     rule belongs.
+func (r *RegionSecurityPoliciesService) GetRule(project string, region string, securityPolicy string) *RegionSecurityPoliciesGetRuleCall {
+	c := &RegionSecurityPoliciesGetRuleCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.securityPolicy = securityPolicy
+	return c
+}
+
+// Priority sets the optional parameter "priority": The priority of the
+// rule to get from the security policy.
+func (c *RegionSecurityPoliciesGetRuleCall) Priority(priority int64) *RegionSecurityPoliciesGetRuleCall {
+	c.urlParams_.Set("priority", fmt.Sprint(priority))
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionSecurityPoliciesGetRuleCall) Fields(s ...googleapi.Field) *RegionSecurityPoliciesGetRuleCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *RegionSecurityPoliciesGetRuleCall) IfNoneMatch(entityTag string) *RegionSecurityPoliciesGetRuleCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionSecurityPoliciesGetRuleCall) Context(ctx context.Context) *RegionSecurityPoliciesGetRuleCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionSecurityPoliciesGetRuleCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionSecurityPoliciesGetRuleCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/getRule")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project":        c.project,
+		"region":         c.region,
+		"securityPolicy": c.securityPolicy,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionSecurityPolicies.getRule" call.
+// Exactly one of *SecurityPolicyRule or error will be non-nil. Any
+// non-2xx status code is an error. Response headers are in either
+// *SecurityPolicyRule.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *RegionSecurityPoliciesGetRuleCall) Do(opts ...googleapi.CallOption) (*SecurityPolicyRule, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &SecurityPolicyRule{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Gets a rule at the specified priority.",
+	//   "flatPath": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/getRule",
+	//   "httpMethod": "GET",
+	//   "id": "compute.regionSecurityPolicies.getRule",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "securityPolicy"
+	//   ],
+	//   "parameters": {
+	//     "priority": {
+	//       "description": "The priority of the rule to get from the security policy.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "Name of the region scoping this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "securityPolicy": {
+	//       "description": "Name of the security policy to which the queried rule belongs.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/getRule",
+	//   "response": {
+	//     "$ref": "SecurityPolicyRule"
 	//   },
 	//   "scopes": [
 	//     "https://www.googleapis.com/auth/cloud-platform",
@@ -167179,6 +169923,370 @@ func (c *RegionSecurityPoliciesPatchCall) Do(opts ...googleapi.CallOption) (*Ope
 	//   "request": {
 	//     "$ref": "SecurityPolicy"
 	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.regionSecurityPolicies.patchRule":
+
+type RegionSecurityPoliciesPatchRuleCall struct {
+	s                  *Service
+	project            string
+	region             string
+	securityPolicy     string
+	securitypolicyrule *SecurityPolicyRule
+	urlParams_         gensupport.URLParams
+	ctx_               context.Context
+	header_            http.Header
+}
+
+// PatchRule: Patches a rule at the specified priority. To clear fields
+// in the rule, leave the fields empty and specify them in the
+// updateMask.
+//
+// - project: Project ID for this request.
+// - region: Name of the region scoping this request.
+// - securityPolicy: Name of the security policy to update.
+func (r *RegionSecurityPoliciesService) PatchRule(project string, region string, securityPolicy string, securitypolicyrule *SecurityPolicyRule) *RegionSecurityPoliciesPatchRuleCall {
+	c := &RegionSecurityPoliciesPatchRuleCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.securityPolicy = securityPolicy
+	c.securitypolicyrule = securitypolicyrule
+	return c
+}
+
+// Priority sets the optional parameter "priority": The priority of the
+// rule to patch.
+func (c *RegionSecurityPoliciesPatchRuleCall) Priority(priority int64) *RegionSecurityPoliciesPatchRuleCall {
+	c.urlParams_.Set("priority", fmt.Sprint(priority))
+	return c
+}
+
+// ValidateOnly sets the optional parameter "validateOnly": If true, the
+// request will not be committed.
+func (c *RegionSecurityPoliciesPatchRuleCall) ValidateOnly(validateOnly bool) *RegionSecurityPoliciesPatchRuleCall {
+	c.urlParams_.Set("validateOnly", fmt.Sprint(validateOnly))
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionSecurityPoliciesPatchRuleCall) Fields(s ...googleapi.Field) *RegionSecurityPoliciesPatchRuleCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionSecurityPoliciesPatchRuleCall) Context(ctx context.Context) *RegionSecurityPoliciesPatchRuleCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionSecurityPoliciesPatchRuleCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionSecurityPoliciesPatchRuleCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.securitypolicyrule)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/patchRule")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project":        c.project,
+		"region":         c.region,
+		"securityPolicy": c.securityPolicy,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionSecurityPolicies.patchRule" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionSecurityPoliciesPatchRuleCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Patches a rule at the specified priority. To clear fields in the rule, leave the fields empty and specify them in the updateMask.",
+	//   "flatPath": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/patchRule",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionSecurityPolicies.patchRule",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "securityPolicy"
+	//   ],
+	//   "parameters": {
+	//     "priority": {
+	//       "description": "The priority of the rule to patch.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "Name of the region scoping this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "securityPolicy": {
+	//       "description": "Name of the security policy to update.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "validateOnly": {
+	//       "description": "If true, the request will not be committed.",
+	//       "location": "query",
+	//       "type": "boolean"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/patchRule",
+	//   "request": {
+	//     "$ref": "SecurityPolicyRule"
+	//   },
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.regionSecurityPolicies.removeRule":
+
+type RegionSecurityPoliciesRemoveRuleCall struct {
+	s              *Service
+	project        string
+	region         string
+	securityPolicy string
+	urlParams_     gensupport.URLParams
+	ctx_           context.Context
+	header_        http.Header
+}
+
+// RemoveRule: Deletes a rule at the specified priority.
+//
+// - project: Project ID for this request.
+// - region: Name of the region scoping this request.
+// - securityPolicy: Name of the security policy to update.
+func (r *RegionSecurityPoliciesService) RemoveRule(project string, region string, securityPolicy string) *RegionSecurityPoliciesRemoveRuleCall {
+	c := &RegionSecurityPoliciesRemoveRuleCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.securityPolicy = securityPolicy
+	return c
+}
+
+// Priority sets the optional parameter "priority": The priority of the
+// rule to remove from the security policy.
+func (c *RegionSecurityPoliciesRemoveRuleCall) Priority(priority int64) *RegionSecurityPoliciesRemoveRuleCall {
+	c.urlParams_.Set("priority", fmt.Sprint(priority))
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionSecurityPoliciesRemoveRuleCall) Fields(s ...googleapi.Field) *RegionSecurityPoliciesRemoveRuleCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionSecurityPoliciesRemoveRuleCall) Context(ctx context.Context) *RegionSecurityPoliciesRemoveRuleCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionSecurityPoliciesRemoveRuleCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionSecurityPoliciesRemoveRuleCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/removeRule")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project":        c.project,
+		"region":         c.region,
+		"securityPolicy": c.securityPolicy,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionSecurityPolicies.removeRule" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionSecurityPoliciesRemoveRuleCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Deletes a rule at the specified priority.",
+	//   "flatPath": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/removeRule",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionSecurityPolicies.removeRule",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "securityPolicy"
+	//   ],
+	//   "parameters": {
+	//     "priority": {
+	//       "description": "The priority of the rule to remove from the security policy.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "Name of the region scoping this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "securityPolicy": {
+	//       "description": "Name of the security policy to update.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/securityPolicies/{securityPolicy}/removeRule",
 	//   "response": {
 	//     "$ref": "Operation"
 	//   },
@@ -184524,6 +187632,13 @@ func (c *SecurityPoliciesPatchRuleCall) Priority(priority int64) *SecurityPolici
 	return c
 }
 
+// UpdateMask sets the optional parameter "updateMask": Indicates fields
+// to be cleared as part of this request.
+func (c *SecurityPoliciesPatchRuleCall) UpdateMask(updateMask string) *SecurityPoliciesPatchRuleCall {
+	c.urlParams_.Set("updateMask", updateMask)
+	return c
+}
+
 // ValidateOnly sets the optional parameter "validateOnly": If true, the
 // request will not be committed.
 func (c *SecurityPoliciesPatchRuleCall) ValidateOnly(validateOnly bool) *SecurityPoliciesPatchRuleCall {
@@ -184650,6 +187765,12 @@ func (c *SecurityPoliciesPatchRuleCall) Do(opts ...googleapi.CallOption) (*Opera
 	//       "location": "path",
 	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
 	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "updateMask": {
+	//       "description": "Indicates fields to be cleared as part of this request.",
+	//       "format": "google-fieldmask",
+	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "validateOnly": {
