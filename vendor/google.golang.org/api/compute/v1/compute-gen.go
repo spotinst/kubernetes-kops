@@ -173,6 +173,7 @@ func New(client *http.Client) (*Service, error) {
 	s.Instances = NewInstancesService(s)
 	s.InterconnectAttachments = NewInterconnectAttachmentsService(s)
 	s.InterconnectLocations = NewInterconnectLocationsService(s)
+	s.InterconnectRemoteLocations = NewInterconnectRemoteLocationsService(s)
 	s.Interconnects = NewInterconnectsService(s)
 	s.LicenseCodes = NewLicenseCodesService(s)
 	s.Licenses = NewLicensesService(s)
@@ -299,6 +300,8 @@ type Service struct {
 	InterconnectAttachments *InterconnectAttachmentsService
 
 	InterconnectLocations *InterconnectLocationsService
+
+	InterconnectRemoteLocations *InterconnectRemoteLocationsService
 
 	Interconnects *InterconnectsService
 
@@ -683,6 +686,15 @@ func NewInterconnectLocationsService(s *Service) *InterconnectLocationsService {
 }
 
 type InterconnectLocationsService struct {
+	s *Service
+}
+
+func NewInterconnectRemoteLocationsService(s *Service) *InterconnectRemoteLocationsService {
+	rs := &InterconnectRemoteLocationsService{s: s}
+	return rs
+}
+
+type InterconnectRemoteLocationsService struct {
 	s *Service
 }
 
@@ -3283,6 +3295,11 @@ type AttachedDiskInitializeParams struct {
 	// see the Extreme persistent disk documentation.
 	ProvisionedIops int64 `json:"provisionedIops,omitempty,string"`
 
+	// ProvisionedThroughput: Indicates how much throughput to provision for
+	// the disk. This sets the number of throughput mb per second that the
+	// disk can handle. Values must be between 1 and 7,124.
+	ProvisionedThroughput int64 `json:"provisionedThroughput,omitempty,string"`
+
 	// ReplicaZones: Required for each regional disk associated with the
 	// instance. Specify the URLs of the zones where the disk should be
 	// replicated to. You must provide exactly two replica zones, and one
@@ -5618,6 +5635,10 @@ type BackendService struct {
 	// loadBalancingScheme of the backend service is INTERNAL_SELF_MANAGED.
 	MaxStreamDuration *Duration `json:"maxStreamDuration,omitempty"`
 
+	// Metadatas: Deployment metadata associated with the resource to be set
+	// by a GKE hub controller and read by the backend RCTH
+	Metadatas map[string]string `json:"metadatas,omitempty"`
+
 	// Name: Name of the resource. Provided by the client when the resource
 	// is created. The name must be 1-63 characters long, and comply with
 	// RFC1035. Specifically, the name must be 1-63 characters long and
@@ -7712,7 +7733,7 @@ type Commitment struct {
 	// SelfLink: [Output Only] Server-defined URL for the resource.
 	SelfLink string `json:"selfLink,omitempty"`
 
-	// SplitSourceCommitment: Source commitment to be splitted into a new
+	// SplitSourceCommitment: Source commitment to be split into a new
 	// commitment.
 	SplitSourceCommitment string `json:"splitSourceCommitment,omitempty"`
 
@@ -8911,6 +8932,11 @@ type Disk struct {
 	// handle. Values must be between 10,000 and 120,000. For more details,
 	// see the Extreme persistent disk documentation.
 	ProvisionedIops int64 `json:"provisionedIops,omitempty,string"`
+
+	// ProvisionedThroughput: Indicates how much throughput to provision for
+	// the disk. This sets the number of throughput mb per second that the
+	// disk can handle. Values must be between 1 and 7,124.
+	ProvisionedThroughput int64 `json:"provisionedThroughput,omitempty,string"`
 
 	// Region: [Output Only] URL of the region where the disk resides. Only
 	// applicable for regional resources. You must specify this field as
@@ -16725,6 +16751,15 @@ type HttpRouteRuleMatch struct {
 	// validateForProxyless field set to true.
 	MetadataFilters []*MetadataFilter `json:"metadataFilters,omitempty"`
 
+	// PathTemplateMatch: If specified, the route is a pattern match
+	// expression that must match the :path header once the query string is
+	// removed. A pattern match allows you to match - The value must be
+	// between 1 and 1024 characters - The pattern must start with a leading
+	// slash ("/") - There may be no more than 5 operators in pattern
+	// Precisely one of prefix_match, full_path_match, regex_match or
+	// path_template_match must be set.
+	PathTemplateMatch string `json:"pathTemplateMatch,omitempty"`
+
 	// PrefixMatch: For satisfying the matchRule condition, the request's
 	// path must begin with the specified prefixMatch. prefixMatch must
 	// begin with a /. The value must be from 1 to 1024 characters. Only one
@@ -19050,13 +19085,14 @@ type InstanceGroupManagerAutoHealingPolicy struct {
 	// HealthCheck: The URL for the health check that signals autohealing.
 	HealthCheck string `json:"healthCheck,omitempty"`
 
-	// InitialDelaySec: The number of seconds that the managed instance
-	// group waits before it applies autohealing policies to new instances
-	// or recently recreated instances. This initial delay allows instances
-	// to initialize and run their startup scripts before the instance group
-	// determines that they are UNHEALTHY. This prevents the managed
-	// instance group from recreating its instances prematurely. This value
-	// must be from range [0, 3600].
+	// InitialDelaySec: The initial delay is the number of seconds that a
+	// new VM takes to initialize and run its startup script. During a VM's
+	// initial delay period, the MIG ignores unsuccessful health checks
+	// because the VM might be in the startup process. This prevents the MIG
+	// from prematurely recreating a VM. If the health check receives a
+	// healthy response during the initial delay, it indicates that the
+	// startup process is complete and the VM is ready. The value of initial
+	// delay must be between 0 and 3600 seconds. The default value is 0.
 	InitialDelaySec int64 `json:"initialDelaySec,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "HealthCheck") to
@@ -23023,6 +23059,11 @@ type Interconnect struct {
 	// provisioned in this interconnect.
 	ProvisionedLinkCount int64 `json:"provisionedLinkCount,omitempty"`
 
+	// RemoteLocation: Indicates that this is a Cross-Cloud Interconnect.
+	// This field specifies the location outside of Google's network that
+	// the interconnect is connected to.
+	RemoteLocation string `json:"remoteLocation,omitempty"`
+
 	// RequestedLinkCount: Target number of physical links in the link
 	// bundle, as requested by the customer.
 	RequestedLinkCount int64 `json:"requestedLinkCount,omitempty"`
@@ -23137,6 +23178,11 @@ type InterconnectAttachment struct {
 
 	// CloudRouterIpv6InterfaceId: This field is not available.
 	CloudRouterIpv6InterfaceId string `json:"cloudRouterIpv6InterfaceId,omitempty"`
+
+	// ConfigurationConstraints: [Output Only] Constraints for this
+	// attachment, if any. The attachment does not work if these constraints
+	// are not met.
+	ConfigurationConstraints *InterconnectAttachmentConfigurationConstraints `json:"configurationConstraints,omitempty"`
 
 	// CreationTimestamp: [Output Only] Creation timestamp in RFC3339 text
 	// format.
@@ -23307,6 +23353,14 @@ type InterconnectAttachment struct {
 	// body.
 	Region string `json:"region,omitempty"`
 
+	// RemoteService: [Output Only] If the attachment is on a Cross-Cloud
+	// Interconnect connection, this field contains the interconnect's
+	// remote location service provider. Example values: "Amazon Web
+	// Services" "Microsoft Azure". The field is set only for attachments on
+	// Cross-Cloud Interconnect connections. Its value is copied from the
+	// InterconnectRemoteLocation remoteService field.
+	RemoteService string `json:"remoteService,omitempty"`
+
 	// Router: URL of the Cloud Router to be used for dynamic routing. This
 	// router must be in the same region as this InterconnectAttachment. The
 	// InterconnectAttachment will automatically connect the Interconnect to
@@ -23369,6 +23423,16 @@ type InterconnectAttachment struct {
 	//   "UNPROVISIONED" - Indicates that attachment is not ready to use
 	// yet, because turnup is not complete.
 	State string `json:"state,omitempty"`
+
+	// SubnetLength: Length of the IPv4 subnet mask. Allowed values: - 29
+	// (default) - 30 The default value is 29, except for Cross-Cloud
+	// Interconnect connections that use an InterconnectRemoteLocation with
+	// a constraints.subnetLengthRange.min equal to 30. For example,
+	// connections that use an Azure remote location fall into this
+	// category. In these cases, the default value is 30, and requesting 29
+	// returns an error. Where both 29 and 30 are allowed, 29 is preferred,
+	// because it gives Google Cloud Support more debugging visibility.
+	SubnetLength int64 `json:"subnetLength,omitempty"`
 
 	// Type: The type of interconnect attachment this is, which can take one
 	// of the following values: - DEDICATED: an attachment to a Dedicated
@@ -23604,6 +23668,87 @@ type InterconnectAttachmentAggregatedListWarningData struct {
 
 func (s *InterconnectAttachmentAggregatedListWarningData) MarshalJSON() ([]byte, error) {
 	type NoMethod InterconnectAttachmentAggregatedListWarningData
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type InterconnectAttachmentConfigurationConstraints struct {
+	// BgpMd5: [Output Only] Whether the attachment's BGP session
+	// requires/allows/disallows BGP MD5 authentication. This can take one
+	// of the following values: MD5_OPTIONAL, MD5_REQUIRED, MD5_UNSUPPORTED.
+	// For example, a Cross-Cloud Interconnect connection to a remote cloud
+	// provider that requires BGP MD5 authentication has the
+	// interconnectRemoteLocation
+	// attachment_configuration_constraints.bgp_md5 field set to
+	// MD5_REQUIRED, and that property is propagated to the attachment.
+	// Similarly, if BGP MD5 is MD5_UNSUPPORTED, an error is returned if MD5
+	// is requested.
+	//
+	// Possible values:
+	//   "MD5_OPTIONAL" - MD5_OPTIONAL: BGP MD5 authentication is supported
+	// and can optionally be configured.
+	//   "MD5_REQUIRED" - MD5_REQUIRED: BGP MD5 authentication must be
+	// configured.
+	//   "MD5_UNSUPPORTED" - MD5_UNSUPPORTED: BGP MD5 authentication must
+	// not be configured
+	BgpMd5 string `json:"bgpMd5,omitempty"`
+
+	// BgpPeerAsnRanges: [Output Only] List of ASN ranges that the remote
+	// location is known to support. Formatted as an array of inclusive
+	// ranges {min: min-value, max: max-value}. For example, [{min: 123,
+	// max: 123}, {min: 64512, max: 65534}] allows the peer ASN to be 123 or
+	// anything in the range 64512-65534. This field is only advisory.
+	// Although the API accepts other ranges, these are the ranges that we
+	// recommend.
+	BgpPeerAsnRanges []*InterconnectAttachmentConfigurationConstraintsBgpPeerASNRange `json:"bgpPeerAsnRanges,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "BgpMd5") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "BgpMd5") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectAttachmentConfigurationConstraints) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectAttachmentConfigurationConstraints
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type InterconnectAttachmentConfigurationConstraintsBgpPeerASNRange struct {
+	Max int64 `json:"max,omitempty"`
+
+	Min int64 `json:"min,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Max") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Max") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectAttachmentConfigurationConstraintsBgpPeerASNRange) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectAttachmentConfigurationConstraintsBgpPeerASNRange
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -24996,6 +25141,468 @@ func (s *InterconnectOutageNotification) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// InterconnectRemoteLocation: Represents a Cross-Cloud Interconnect
+// Remote Location resource. You can use this resource to find remote
+// location details about an Interconnect attachment (VLAN).
+type InterconnectRemoteLocation struct {
+	// Address: [Output Only] The postal address of the Point of Presence,
+	// each line in the address is separated by a newline character.
+	Address string `json:"address,omitempty"`
+
+	// AttachmentConfigurationConstraints: [Output Only] Subset of fields
+	// from InterconnectAttachment's |configurationConstraints| field that
+	// apply to all attachments for this remote location.
+	AttachmentConfigurationConstraints *InterconnectAttachmentConfigurationConstraints `json:"attachmentConfigurationConstraints,omitempty"`
+
+	// City: [Output Only] Metropolitan area designator that indicates which
+	// city an interconnect is located. For example: "Chicago, IL",
+	// "Amsterdam, Netherlands".
+	City string `json:"city,omitempty"`
+
+	// Constraints: [Output Only] Constraints on the parameters for creating
+	// Cross-Cloud Interconnect and associated InterconnectAttachments.
+	Constraints *InterconnectRemoteLocationConstraints `json:"constraints,omitempty"`
+
+	// Continent: [Output Only] Continent for this location, which can take
+	// one of the following values: - AFRICA - ASIA_PAC - EUROPE -
+	// NORTH_AMERICA - SOUTH_AMERICA
+	//
+	// Possible values:
+	//   "AFRICA"
+	//   "ASIA_PAC"
+	//   "EUROPE"
+	//   "NORTH_AMERICA"
+	//   "SOUTH_AMERICA"
+	Continent string `json:"continent,omitempty"`
+
+	// CreationTimestamp: [Output Only] Creation timestamp in RFC3339 text
+	// format.
+	CreationTimestamp string `json:"creationTimestamp,omitempty"`
+
+	// Description: [Output Only] An optional description of the resource.
+	Description string `json:"description,omitempty"`
+
+	// FacilityProvider: [Output Only] The name of the provider for this
+	// facility (e.g., EQUINIX).
+	FacilityProvider string `json:"facilityProvider,omitempty"`
+
+	// FacilityProviderFacilityId: [Output Only] A provider-assigned
+	// Identifier for this facility (e.g., Ashburn-DC1).
+	FacilityProviderFacilityId string `json:"facilityProviderFacilityId,omitempty"`
+
+	// Id: [Output Only] The unique identifier for the resource. This
+	// identifier is defined by the server.
+	Id uint64 `json:"id,omitempty,string"`
+
+	// Kind: [Output Only] Type of the resource. Always
+	// compute#interconnectRemoteLocation for interconnect remote locations.
+	Kind string `json:"kind,omitempty"`
+
+	// Lacp: [Output Only] Link Aggregation Control Protocol (LACP)
+	// constraints, which can take one of the following values:
+	// LACP_SUPPORTED, LACP_UNSUPPORTED
+	//
+	// Possible values:
+	//   "LACP_SUPPORTED" - LACP_SUPPORTED: LACP is supported, and enabled
+	// by default on the Cross-Cloud Interconnect.
+	//   "LACP_UNSUPPORTED" - LACP_UNSUPPORTED: LACP is not supported and is
+	// not be enabled on this port. GetDiagnostics shows
+	// bundleAggregationType as "static". GCP does not support LAGs without
+	// LACP, so requestedLinkCount must be 1.
+	Lacp string `json:"lacp,omitempty"`
+
+	// MaxLagSize100Gbps: [Output Only] The maximum number of 100 Gbps ports
+	// supported in a link aggregation group (LAG). When linkType is 100
+	// Gbps, requestedLinkCount cannot exceed max_lag_size_100_gbps.
+	MaxLagSize100Gbps int64 `json:"maxLagSize100Gbps,omitempty"`
+
+	// MaxLagSize10Gbps: [Output Only] The maximum number of 10 Gbps ports
+	// supported in a link aggregation group (LAG). When linkType is 10
+	// Gbps, requestedLinkCount cannot exceed max_lag_size_10_gbps.
+	MaxLagSize10Gbps int64 `json:"maxLagSize10Gbps,omitempty"`
+
+	// Name: [Output Only] Name of the resource.
+	Name string `json:"name,omitempty"`
+
+	// PeeringdbFacilityId: [Output Only] The peeringdb identifier for this
+	// facility (corresponding with a netfac type in peeringdb).
+	PeeringdbFacilityId string `json:"peeringdbFacilityId,omitempty"`
+
+	// PermittedConnections: [Output Only] Permitted connections.
+	PermittedConnections []*InterconnectRemoteLocationPermittedConnections `json:"permittedConnections,omitempty"`
+
+	// RemoteService: [Output Only] Indicates the service provider present
+	// at the remote location. Example values: "Amazon Web Services",
+	// "Microsoft Azure".
+	RemoteService string `json:"remoteService,omitempty"`
+
+	// SelfLink: [Output Only] Server-defined URL for the resource.
+	SelfLink string `json:"selfLink,omitempty"`
+
+	// Status: [Output Only] The status of this InterconnectRemoteLocation,
+	// which can take one of the following values: - CLOSED: The
+	// InterconnectRemoteLocation is closed and is unavailable for
+	// provisioning new Cross-Cloud Interconnects. - AVAILABLE: The
+	// InterconnectRemoteLocation is available for provisioning new
+	// Cross-Cloud Interconnects.
+	//
+	// Possible values:
+	//   "AVAILABLE" - The InterconnectRemoteLocation is available for
+	// provisioning new Cross-Cloud Interconnects.
+	//   "CLOSED" - The InterconnectRemoteLocation is closed for
+	// provisioning new Cross-Cloud Interconnects.
+	Status string `json:"status,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "Address") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Address") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectRemoteLocation) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectRemoteLocation
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type InterconnectRemoteLocationConstraints struct {
+	// PortPairRemoteLocation: [Output Only] Port pair remote location
+	// constraints, which can take one of the following values:
+	// PORT_PAIR_UNCONSTRAINED_REMOTE_LOCATION,
+	// PORT_PAIR_MATCHING_REMOTE_LOCATION. GCP's API refers only to
+	// individual ports, but the UI uses this field when ordering a pair of
+	// ports, to prevent users from accidentally ordering something that is
+	// incompatible with their cloud provider. Specifically, when ordering a
+	// redundant pair of Cross-Cloud Interconnect ports, and one of them
+	// uses a remote location with portPairMatchingRemoteLocation set to
+	// matching, the UI requires that both ports use the same remote
+	// location.
+	//
+	// Possible values:
+	//   "PORT_PAIR_MATCHING_REMOTE_LOCATION" - If
+	// PORT_PAIR_MATCHING_REMOTE_LOCATION, the remote cloud provider
+	// allocates ports in pairs, and the user should choose the same remote
+	// location for both ports.
+	//   "PORT_PAIR_UNCONSTRAINED_REMOTE_LOCATION" - If
+	// PORT_PAIR_UNCONSTRAINED_REMOTE_LOCATION, a user may opt to provision
+	// a redundant pair of Cross-Cloud Interconnects using two different
+	// remote locations in the same city.
+	PortPairRemoteLocation string `json:"portPairRemoteLocation,omitempty"`
+
+	// PortPairVlan: [Output Only] Port pair VLAN constraints, which can
+	// take one of the following values: PORT_PAIR_UNCONSTRAINED_VLAN,
+	// PORT_PAIR_MATCHING_VLAN
+	//
+	// Possible values:
+	//   "PORT_PAIR_MATCHING_VLAN" - If PORT_PAIR_MATCHING_VLAN, the
+	// Interconnect for this attachment is part of a pair of ports that
+	// should have matching VLAN allocations. This occurs with Cross-Cloud
+	// Interconnect to Azure remote locations. While GCP's API does not
+	// explicitly group pairs of ports, the UI uses this field to ensure
+	// matching VLAN ids when configuring a redundant VLAN pair.
+	//   "PORT_PAIR_UNCONSTRAINED_VLAN" - PORT_PAIR_UNCONSTRAINED_VLAN means
+	// there is no constraint.
+	PortPairVlan string `json:"portPairVlan,omitempty"`
+
+	// SubnetLengthRange: [Output Only] [min-length, max-length] The minimum
+	// and maximum value (inclusive) for the IPv4 subnet length. For
+	// example, an interconnectRemoteLocation for Azure has {min: 30, max:
+	// 30} because Azure requires /30 subnets. This range specifies the
+	// values supported by both cloud providers. Interconnect currently
+	// supports /29 and /30 IPv4 subnet lengths. If a remote cloud has no
+	// constraint on IPv4 subnet length, the range would thus be {min: 29,
+	// max: 30}.
+	SubnetLengthRange *InterconnectRemoteLocationConstraintsSubnetLengthRange `json:"subnetLengthRange,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "PortPairRemoteLocation") to unconditionally include in API requests.
+	// By default, fields with empty or default values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "PortPairRemoteLocation")
+	// to include in API requests with the JSON null value. By default,
+	// fields with empty values are omitted from API requests. However, any
+	// field with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectRemoteLocationConstraints) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectRemoteLocationConstraints
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type InterconnectRemoteLocationConstraintsSubnetLengthRange struct {
+	Max int64 `json:"max,omitempty"`
+
+	Min int64 `json:"min,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Max") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Max") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectRemoteLocationConstraintsSubnetLengthRange) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectRemoteLocationConstraintsSubnetLengthRange
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// InterconnectRemoteLocationList: Response to the list request, and
+// contains a list of interconnect remote locations.
+type InterconnectRemoteLocationList struct {
+	// Id: [Output Only] Unique identifier for the resource; defined by the
+	// server.
+	Id string `json:"id,omitempty"`
+
+	// Items: A list of InterconnectRemoteLocation resources.
+	Items []*InterconnectRemoteLocation `json:"items,omitempty"`
+
+	// Kind: [Output Only] Type of resource. Always
+	// compute#interconnectRemoteLocationList for lists of interconnect
+	// remote locations.
+	Kind string `json:"kind,omitempty"`
+
+	// NextPageToken: [Output Only] This token lets you get the next page of
+	// results for list requests. If the number of results is larger than
+	// maxResults, use the nextPageToken as a value for the query parameter
+	// pageToken in the next list request. Subsequent list requests will
+	// have their own nextPageToken to continue paging through the results.
+	NextPageToken string `json:"nextPageToken,omitempty"`
+
+	// SelfLink: [Output Only] Server-defined URL for this resource.
+	SelfLink string `json:"selfLink,omitempty"`
+
+	// Warning: [Output Only] Informational warning message.
+	Warning *InterconnectRemoteLocationListWarning `json:"warning,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "Id") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Id") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectRemoteLocationList) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectRemoteLocationList
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// InterconnectRemoteLocationListWarning: [Output Only] Informational
+// warning message.
+type InterconnectRemoteLocationListWarning struct {
+	// Code: [Output Only] A warning code, if applicable. For example,
+	// Compute Engine returns NO_RESULTS_ON_PAGE if there are no results in
+	// the response.
+	//
+	// Possible values:
+	//   "CLEANUP_FAILED" - Warning about failed cleanup of transient
+	// changes made by a failed operation.
+	//   "DEPRECATED_RESOURCE_USED" - A link to a deprecated resource was
+	// created.
+	//   "DEPRECATED_TYPE_USED" - When deploying and at least one of the
+	// resources has a type marked as deprecated
+	//   "DISK_SIZE_LARGER_THAN_IMAGE_SIZE" - The user created a boot disk
+	// that is larger than image size.
+	//   "EXPERIMENTAL_TYPE_USED" - When deploying and at least one of the
+	// resources has a type marked as experimental
+	//   "EXTERNAL_API_WARNING" - Warning that is present in an external api
+	// call
+	//   "FIELD_VALUE_OVERRIDEN" - Warning that value of a field has been
+	// overridden. Deprecated unused field.
+	//   "INJECTED_KERNELS_DEPRECATED" - The operation involved use of an
+	// injected kernel, which is deprecated.
+	//   "INVALID_HEALTH_CHECK_FOR_DYNAMIC_WIEGHTED_LB" - A WEIGHTED_MAGLEV
+	// backend service is associated with a health check that is not of type
+	// HTTP/HTTPS/HTTP2.
+	//   "LARGE_DEPLOYMENT_WARNING" - When deploying a deployment with a
+	// exceedingly large number of resources
+	//   "MISSING_TYPE_DEPENDENCY" - A resource depends on a missing type
+	//   "NEXT_HOP_ADDRESS_NOT_ASSIGNED" - The route's nextHopIp address is
+	// not assigned to an instance on the network.
+	//   "NEXT_HOP_CANNOT_IP_FORWARD" - The route's next hop instance cannot
+	// ip forward.
+	//   "NEXT_HOP_INSTANCE_HAS_NO_IPV6_INTERFACE" - The route's
+	// nextHopInstance URL refers to an instance that does not have an ipv6
+	// interface on the same network as the route.
+	//   "NEXT_HOP_INSTANCE_NOT_FOUND" - The route's nextHopInstance URL
+	// refers to an instance that does not exist.
+	//   "NEXT_HOP_INSTANCE_NOT_ON_NETWORK" - The route's nextHopInstance
+	// URL refers to an instance that is not on the same network as the
+	// route.
+	//   "NEXT_HOP_NOT_RUNNING" - The route's next hop instance does not
+	// have a status of RUNNING.
+	//   "NOT_CRITICAL_ERROR" - Error which is not critical. We decided to
+	// continue the process despite the mentioned error.
+	//   "NO_RESULTS_ON_PAGE" - No results are present on a particular list
+	// page.
+	//   "PARTIAL_SUCCESS" - Success is reported, but some results may be
+	// missing due to errors
+	//   "REQUIRED_TOS_AGREEMENT" - The user attempted to use a resource
+	// that requires a TOS they have not accepted.
+	//   "RESOURCE_IN_USE_BY_OTHER_RESOURCE_WARNING" - Warning that a
+	// resource is in use.
+	//   "RESOURCE_NOT_DELETED" - One or more of the resources set to
+	// auto-delete could not be deleted because they were in use.
+	//   "SCHEMA_VALIDATION_IGNORED" - When a resource schema validation is
+	// ignored.
+	//   "SINGLE_INSTANCE_PROPERTY_TEMPLATE" - Instance template used in
+	// instance group manager is valid as such, but its application does not
+	// make a lot of sense, because it allows only single instance in
+	// instance group.
+	//   "UNDECLARED_PROPERTIES" - When undeclared properties in the schema
+	// are present
+	//   "UNREACHABLE" - A given scope cannot be reached.
+	Code string `json:"code,omitempty"`
+
+	// Data: [Output Only] Metadata about this warning in key: value format.
+	// For example: "data": [ { "key": "scope", "value": "zones/us-east1-d"
+	// }
+	Data []*InterconnectRemoteLocationListWarningData `json:"data,omitempty"`
+
+	// Message: [Output Only] A human-readable description of the warning
+	// code.
+	Message string `json:"message,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Code") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Code") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectRemoteLocationListWarning) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectRemoteLocationListWarning
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type InterconnectRemoteLocationListWarningData struct {
+	// Key: [Output Only] A key that provides more detail on the warning
+	// being returned. For example, for warnings where there are no results
+	// in a list request for a particular zone, this key might be scope and
+	// the key value might be the zone name. Other examples might be a key
+	// indicating a deprecated resource and a suggested replacement, or a
+	// warning about invalid network settings (for example, if an instance
+	// attempts to perform IP forwarding but is not enabled for IP
+	// forwarding).
+	Key string `json:"key,omitempty"`
+
+	// Value: [Output Only] A warning data value corresponding to the key.
+	Value string `json:"value,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Key") to
+	// unconditionally include in API requests. By default, fields with
+	// empty or default values are omitted from API requests. However, any
+	// non-pointer, non-interface field appearing in ForceSendFields will be
+	// sent to the server regardless of whether the field is empty or not.
+	// This may be used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Key") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectRemoteLocationListWarningData) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectRemoteLocationListWarningData
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type InterconnectRemoteLocationPermittedConnections struct {
+	// InterconnectLocation: [Output Only] URL of an Interconnect location
+	// that is permitted to connect to this Interconnect remote location.
+	InterconnectLocation string `json:"interconnectLocation,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "InterconnectLocation") to unconditionally include in API requests.
+	// By default, fields with empty or default values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "InterconnectLocation") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InterconnectRemoteLocationPermittedConnections) MarshalJSON() ([]byte, error) {
+	type NoMethod InterconnectRemoteLocationPermittedConnections
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // InterconnectsGetDiagnosticsResponse: Response for the
 // InterconnectsGetDiagnosticsRequest.
 type InterconnectsGetDiagnosticsResponse struct {
@@ -26242,7 +26849,7 @@ type MachineTypeAccelerators struct {
 	GuestAcceleratorCount int64 `json:"guestAcceleratorCount,omitempty"`
 
 	// GuestAcceleratorType: The accelerator type resource name, not a full
-	// URL, e.g. 'nvidia-tesla-k80'.
+	// URL, e.g. nvidia-tesla-t4.
 	GuestAcceleratorType string `json:"guestAcceleratorType,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g.
@@ -27548,10 +28155,9 @@ type NetworkAttachment struct {
 	// property when you create the resource.
 	Description string `json:"description,omitempty"`
 
-	// Fingerprint: [Output Only] Fingerprint of this resource. A hash of
-	// the contents stored in this object. This field is used in optimistic
-	// locking. An up-to-date fingerprint must be provided in order to
-	// patch.
+	// Fingerprint: Fingerprint of this resource. A hash of the contents
+	// stored in this object. This field is used in optimistic locking. An
+	// up-to-date fingerprint must be provided in order to patch.
 	Fingerprint string `json:"fingerprint,omitempty"`
 
 	// Id: [Output Only] The unique identifier for the resource type. The
@@ -27571,7 +28177,11 @@ type NetworkAttachment struct {
 	Name string `json:"name,omitempty"`
 
 	// Network: [Output Only] The URL of the network which the Network
-	// Attachment belongs to.
+	// Attachment belongs to. Practically it is inferred by fetching the
+	// network of the first subnetwork associated. Because it is required
+	// that all the subnetworks must be from the same network, it is assured
+	// that the Network Attachment belongs to the same network as all the
+	// subnetworks.
 	Network string `json:"network,omitempty"`
 
 	// ProducerAcceptLists: Projects that are allowed to connect to this
@@ -43161,10 +43771,9 @@ type RouterNat struct {
 	// in every Subnetwork are allowed to Nat. - LIST_OF_SUBNETWORKS: A list
 	// of Subnetworks are allowed to Nat (specified in the field subnetwork
 	// below) The default is SUBNETWORK_IP_RANGE_TO_NAT_OPTION_UNSPECIFIED.
-	// Note that if this field contains ALL_SUBNETWORKS_ALL_IP_RANGES or
-	// ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES, then there should not be any
-	// other Router.Nat section in any Router for this network in this
-	// region.
+	// Note that if this field contains ALL_SUBNETWORKS_ALL_IP_RANGES then
+	// there should not be any other Router.Nat section in any Router for
+	// this network in this region.
 	//
 	// Possible values:
 	//   "ALL_SUBNETWORKS_ALL_IP_RANGES" - All the IP ranges in every
@@ -45954,7 +46563,7 @@ type SecuritySettings struct {
 	// should authenticate with this service's backends. clientTlsPolicy
 	// only applies to a global BackendService with the loadBalancingScheme
 	// set to INTERNAL_SELF_MANAGED. If left blank, communications are not
-	// encrypted. Note: This field currently has no impact.
+	// encrypted.
 	ClientTlsPolicy string `json:"clientTlsPolicy,omitempty"`
 
 	// SubjectAltNames: Optional. A list of Subject Alternative Names (SANs)
@@ -45969,8 +46578,7 @@ type SecuritySettings struct {
 	// Public Key Infrastructure which provisions server identities. Only
 	// applies to a global BackendService with loadBalancingScheme set to
 	// INTERNAL_SELF_MANAGED. Only applies when BackendService has an
-	// attached clientTlsPolicy with clientCertificate (mTLS mode). Note:
-	// This field currently has no impact.
+	// attached clientTlsPolicy with clientCertificate (mTLS mode).
 	SubjectAltNames []string `json:"subjectAltNames,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "ClientTlsPolicy") to
@@ -49426,8 +50034,8 @@ type Subnetwork struct {
 	// If this field is not explicitly set, it will not appear in get
 	// listings. If not set the default behavior is determined by the org
 	// policy, if there is no org policy specified, then it will default to
-	// disabled. This field isn't supported with the purpose field set to
-	// INTERNAL_HTTPS_LOAD_BALANCER.
+	// disabled. This field isn't supported if the subnet purpose field is
+	// set to REGIONAL_MANAGED_PROXY.
 	EnableFlowLogs bool `json:"enableFlowLogs,omitempty"`
 
 	// ExternalIpv6Prefix: The external IPv6 address range that is owned by
@@ -49520,12 +50128,20 @@ type Subnetwork struct {
 	PrivateIpv6GoogleAccess string `json:"privateIpv6GoogleAccess,omitempty"`
 
 	// Purpose: The purpose of the resource. This field can be either
-	// PRIVATE_RFC_1918 or INTERNAL_HTTPS_LOAD_BALANCER. A subnetwork with
-	// purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a user-created
-	// subnetwork that is reserved for Internal HTTP(S) Load Balancing. If
-	// unspecified, the purpose defaults to PRIVATE_RFC_1918. The
-	// enableFlowLogs field isn't supported with the purpose field set to
-	// INTERNAL_HTTPS_LOAD_BALANCER.
+	// PRIVATE, REGIONAL_MANAGED_PROXY, PRIVATE_SERVICE_CONNECT, or
+	// INTERNAL_HTTPS_LOAD_BALANCER. PRIVATE is the default purpose for
+	// user-created subnets or subnets that are automatically created in
+	// auto mode networks. A subnet with purpose set to
+	// REGIONAL_MANAGED_PROXY is a user-created subnetwork that is reserved
+	// for regional Envoy-based load balancers. A subnet with purpose set to
+	// PRIVATE_SERVICE_CONNECT is used to publish services using Private
+	// Service Connect. A subnet with purpose set to
+	// INTERNAL_HTTPS_LOAD_BALANCER is a proxy-only subnet that can be used
+	// only by regional internal HTTP(S) load balancers. Note that
+	// REGIONAL_MANAGED_PROXY is the preferred setting for all regional
+	// Envoy load balancers. If unspecified, the subnet purpose defaults to
+	// PRIVATE. The enableFlowLogs field isn't supported if the subnet
+	// purpose field is set to REGIONAL_MANAGED_PROXY.
 	//
 	// Possible values:
 	//   "INTERNAL_HTTPS_LOAD_BALANCER" - Subnet reserved for Internal
@@ -49544,9 +50160,9 @@ type Subnetwork struct {
 	Region string `json:"region,omitempty"`
 
 	// Role: The role of subnetwork. Currently, this field is only used when
-	// purpose = INTERNAL_HTTPS_LOAD_BALANCER. The value can be set to
-	// ACTIVE or BACKUP. An ACTIVE subnetwork is one that is currently being
-	// used for Internal HTTP(S) Load Balancing. A BACKUP subnetwork is one
+	// purpose = REGIONAL_MANAGED_PROXY. The value can be set to ACTIVE or
+	// BACKUP. An ACTIVE subnetwork is one that is currently being used for
+	// Envoy-based load balancers in a region. A BACKUP subnetwork is one
 	// that is ready to be promoted to ACTIVE or is currently draining. This
 	// field can be updated with a patch request.
 	//
@@ -50021,6 +50637,8 @@ type SubnetworkLogConfig struct {
 	// field is not explicitly set, it will not appear in get listings. If
 	// not set the default behavior is determined by the org policy, if
 	// there is no org policy specified, then it will default to disabled.
+	// Flow logging isn't supported if the subnet purpose field is set to
+	// REGIONAL_MANAGED_PROXY.
 	Enable bool `json:"enable,omitempty"`
 
 	// FilterExpr: Can only be specified if VPC flow logs for this
@@ -56498,6 +57116,22 @@ type UrlRewrite struct {
 	// characters.
 	PathPrefixRewrite string `json:"pathPrefixRewrite,omitempty"`
 
+	// PathTemplateRewrite:  If specified, the pattern rewrites the URL path
+	// (based on the :path header) using the HTTP template syntax. A
+	// corresponding path_template_match must be specified. Any template
+	// variables must exist in the path_template_match field. - -At least
+	// one variable must be specified in the path_template_match field - You
+	// can omit variables from the rewritten URL - The * and ** operators
+	// cannot be matched unless they have a corresponding variable name -
+	// e.g. {format=*} or {var=**}. For example, a path_template_match of
+	// /static/{format=**} could be rewritten as /static/content/{format} to
+	// prefix /content to the URL. Variables can also be re-ordered in a
+	// rewrite, so that /{country}/{format}/{suffix=**} can be rewritten as
+	// /content/{format}/{country}/{suffix}. At least one non-empty
+	// routeRules[].matchRules[].path_template_match is required. Only one
+	// of path_prefix_rewrite or path_template_rewrite may be specified.
+	PathTemplateRewrite string `json:"pathTemplateRewrite,omitempty"`
+
 	// ForceSendFields is a list of field names (e.g. "HostRewrite") to
 	// unconditionally include in API requests. By default, fields with
 	// empty or default values are omitted from API requests. However, any
@@ -56551,12 +57185,20 @@ type UsableSubnetwork struct {
 	Network string `json:"network,omitempty"`
 
 	// Purpose: The purpose of the resource. This field can be either
-	// PRIVATE_RFC_1918 or INTERNAL_HTTPS_LOAD_BALANCER. A subnetwork with
-	// purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a user-created
-	// subnetwork that is reserved for Internal HTTP(S) Load Balancing. If
-	// unspecified, the purpose defaults to PRIVATE_RFC_1918. The
-	// enableFlowLogs field isn't supported with the purpose field set to
-	// INTERNAL_HTTPS_LOAD_BALANCER.
+	// PRIVATE, REGIONAL_MANAGED_PROXY, PRIVATE_SERVICE_CONNECT, or
+	// INTERNAL_HTTPS_LOAD_BALANCER. PRIVATE is the default purpose for
+	// user-created subnets or subnets that are automatically created in
+	// auto mode networks. A subnet with purpose set to
+	// REGIONAL_MANAGED_PROXY is a user-created subnetwork that is reserved
+	// for regional Envoy-based load balancers. A subnet with purpose set to
+	// PRIVATE_SERVICE_CONNECT is used to publish services using Private
+	// Service Connect. A subnet with purpose set to
+	// INTERNAL_HTTPS_LOAD_BALANCER is a proxy-only subnet that can be used
+	// only by regional internal HTTP(S) load balancers. Note that
+	// REGIONAL_MANAGED_PROXY is the preferred setting for all regional
+	// Envoy load balancers. If unspecified, the subnet purpose defaults to
+	// PRIVATE. The enableFlowLogs field isn't supported if the subnet
+	// purpose field is set to REGIONAL_MANAGED_PROXY.
 	//
 	// Possible values:
 	//   "INTERNAL_HTTPS_LOAD_BALANCER" - Subnet reserved for Internal
@@ -56571,9 +57213,9 @@ type UsableSubnetwork struct {
 	Purpose string `json:"purpose,omitempty"`
 
 	// Role: The role of subnetwork. Currently, this field is only used when
-	// purpose = INTERNAL_HTTPS_LOAD_BALANCER. The value can be set to
-	// ACTIVE or BACKUP. An ACTIVE subnetwork is one that is currently being
-	// used for Internal HTTP(S) Load Balancing. A BACKUP subnetwork is one
+	// purpose = REGIONAL_MANAGED_PROXY. The value can be set to ACTIVE or
+	// BACKUP. An ACTIVE subnetwork is one that is currently being used for
+	// Envoy-based load balancers in a region. A BACKUP subnetwork is one
 	// that is ready to be promoted to ACTIVE or is currently draining. This
 	// field can be updated with a patch request.
 	//
@@ -57802,7 +58444,7 @@ type VpnGatewayStatusTunnel struct {
 
 	// PeerGatewayInterface: The peer gateway interface this VPN tunnel is
 	// connected to, the peer gateway could either be an external VPN
-	// gateway or GCP VPN gateway.
+	// gateway or a Google Cloud VPN gateway.
 	PeerGatewayInterface int64 `json:"peerGatewayInterface,omitempty"`
 
 	// TunnelUrl: URL reference to the VPN tunnel.
@@ -57835,8 +58477,8 @@ func (s *VpnGatewayStatusTunnel) MarshalJSON() ([]byte, error) {
 
 // VpnGatewayStatusVpnConnection: A VPN connection contains all VPN
 // tunnels connected from this VpnGateway to the same peer gateway. The
-// peer gateway could either be a external VPN gateway or GCP VPN
-// gateway.
+// peer gateway could either be an external VPN gateway or a Google
+// Cloud VPN gateway.
 type VpnGatewayStatusVpnConnection struct {
 	// PeerExternalGateway: URL reference to the peer external VPN gateways
 	// to which the VPN tunnels in this VPN connection are connected. This
@@ -109053,6 +109695,449 @@ func (c *InterconnectLocationsListCall) Do(opts ...googleapi.CallOption) (*Inter
 // A non-nil error returned from f will halt the iteration.
 // The provided context supersedes any context provided to the Context method.
 func (c *InterconnectLocationsListCall) Pages(ctx context.Context, f func(*InterconnectLocationList) error) error {
+	c.ctx_ = ctx
+	defer c.PageToken(c.urlParams_.Get("pageToken")) // reset paging to original point
+	for {
+		x, err := c.Do()
+		if err != nil {
+			return err
+		}
+		if err := f(x); err != nil {
+			return err
+		}
+		if x.NextPageToken == "" {
+			return nil
+		}
+		c.PageToken(x.NextPageToken)
+	}
+}
+
+// method id "compute.interconnectRemoteLocations.get":
+
+type InterconnectRemoteLocationsGetCall struct {
+	s                          *Service
+	project                    string
+	interconnectRemoteLocation string
+	urlParams_                 gensupport.URLParams
+	ifNoneMatch_               string
+	ctx_                       context.Context
+	header_                    http.Header
+}
+
+// Get: Returns the details for the specified interconnect remote
+// location. Gets a list of available interconnect remote locations by
+// making a list() request.
+//
+//   - interconnectRemoteLocation: Name of the interconnect remote
+//     location to return.
+//   - project: Project ID for this request.
+func (r *InterconnectRemoteLocationsService) Get(project string, interconnectRemoteLocation string) *InterconnectRemoteLocationsGetCall {
+	c := &InterconnectRemoteLocationsGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.interconnectRemoteLocation = interconnectRemoteLocation
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *InterconnectRemoteLocationsGetCall) Fields(s ...googleapi.Field) *InterconnectRemoteLocationsGetCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *InterconnectRemoteLocationsGetCall) IfNoneMatch(entityTag string) *InterconnectRemoteLocationsGetCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *InterconnectRemoteLocationsGetCall) Context(ctx context.Context) *InterconnectRemoteLocationsGetCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *InterconnectRemoteLocationsGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *InterconnectRemoteLocationsGetCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/global/interconnectRemoteLocations/{interconnectRemoteLocation}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project":                    c.project,
+		"interconnectRemoteLocation": c.interconnectRemoteLocation,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.interconnectRemoteLocations.get" call.
+// Exactly one of *InterconnectRemoteLocation or error will be non-nil.
+// Any non-2xx status code is an error. Response headers are in either
+// *InterconnectRemoteLocation.ServerResponse.Header or (if a response
+// was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *InterconnectRemoteLocationsGetCall) Do(opts ...googleapi.CallOption) (*InterconnectRemoteLocation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &InterconnectRemoteLocation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Returns the details for the specified interconnect remote location. Gets a list of available interconnect remote locations by making a list() request.",
+	//   "flatPath": "projects/{project}/global/interconnectRemoteLocations/{interconnectRemoteLocation}",
+	//   "httpMethod": "GET",
+	//   "id": "compute.interconnectRemoteLocations.get",
+	//   "parameterOrder": [
+	//     "project",
+	//     "interconnectRemoteLocation"
+	//   ],
+	//   "parameters": {
+	//     "interconnectRemoteLocation": {
+	//       "description": "Name of the interconnect remote location to return.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/global/interconnectRemoteLocations/{interconnectRemoteLocation}",
+	//   "response": {
+	//     "$ref": "InterconnectRemoteLocation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute",
+	//     "https://www.googleapis.com/auth/compute.readonly"
+	//   ]
+	// }
+
+}
+
+// method id "compute.interconnectRemoteLocations.list":
+
+type InterconnectRemoteLocationsListCall struct {
+	s            *Service
+	project      string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// List: Retrieves the list of interconnect remote locations available
+// to the specified project.
+//
+// - project: Project ID for this request.
+func (r *InterconnectRemoteLocationsService) List(project string) *InterconnectRemoteLocationsListCall {
+	c := &InterconnectRemoteLocationsListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	return c
+}
+
+// Filter sets the optional parameter "filter": A filter expression that
+// filters resources listed in the response. Most Compute resources
+// support two types of filter expressions: expressions that support
+// regular expressions and expressions that follow API improvement
+// proposal AIP-160. If you want to use AIP-160, your expression must
+// specify the field name, an operator, and the value that you want to
+// use for filtering. The value must be a string, a number, or a
+// boolean. The operator must be either `=`, `!=`, `>`, `<`, `<=`, `>=`
+// or `:`. For example, if you are filtering Compute Engine instances,
+// you can exclude instances named `example-instance` by specifying
+// `name != example-instance`. The `:` operator can be used with string
+// fields to match substrings. For non-string fields it is equivalent to
+// the `=` operator. The `:*` comparison can be used to test whether a
+// key has been defined. For example, to find all objects with `owner`
+// label use: ``` labels.owner:* ``` You can also filter nested fields.
+// For example, you could specify `scheduling.automaticRestart = false`
+// to include instances only if they are not scheduled for automatic
+// restarts. You can use filtering on nested fields to filter based on
+// resource labels. To filter on multiple expressions, provide each
+// separate expression within parentheses. For example: ```
+// (scheduling.automaticRestart = true) (cpuPlatform = "Intel Skylake")
+// ``` By default, each expression is an `AND` expression. However, you
+// can include `AND` and `OR` expressions explicitly. For example: ```
+// (cpuPlatform = "Intel Skylake") OR (cpuPlatform = "Intel Broadwell")
+// AND (scheduling.automaticRestart = true) ``` If you want to use a
+// regular expression, use the `eq` (equal) or `ne` (not equal) operator
+// against a single un-parenthesized expression with or without quotes
+// or against multiple parenthesized expressions. Examples: `fieldname
+// eq unquoted literal` `fieldname eq 'single quoted literal'`
+// `fieldname eq "double quoted literal" `(fieldname1 eq literal)
+// (fieldname2 ne "literal")` The literal value is interpreted as a
+// regular expression using Google RE2 library syntax. The literal value
+// must match the entire field. For example, to filter for instances
+// that do not end with name "instance", you would use `name ne
+// .*instance`.
+func (c *InterconnectRemoteLocationsListCall) Filter(filter string) *InterconnectRemoteLocationsListCall {
+	c.urlParams_.Set("filter", filter)
+	return c
+}
+
+// MaxResults sets the optional parameter "maxResults": The maximum
+// number of results per page that should be returned. If the number of
+// available results is larger than `maxResults`, Compute Engine returns
+// a `nextPageToken` that can be used to get the next page of results in
+// subsequent list requests. Acceptable values are `0` to `500`,
+// inclusive. (Default: `500`)
+func (c *InterconnectRemoteLocationsListCall) MaxResults(maxResults int64) *InterconnectRemoteLocationsListCall {
+	c.urlParams_.Set("maxResults", fmt.Sprint(maxResults))
+	return c
+}
+
+// OrderBy sets the optional parameter "orderBy": Sorts list results by
+// a certain order. By default, results are returned in alphanumerical
+// order based on the resource name. You can also sort results in
+// descending order based on the creation timestamp using
+// `orderBy="creationTimestamp desc". This sorts results based on the
+// `creationTimestamp` field in reverse chronological order (newest
+// result first). Use this to sort resources like operations so that the
+// newest operation is returned first. Currently, only sorting by `name`
+// or `creationTimestamp desc` is supported.
+func (c *InterconnectRemoteLocationsListCall) OrderBy(orderBy string) *InterconnectRemoteLocationsListCall {
+	c.urlParams_.Set("orderBy", orderBy)
+	return c
+}
+
+// PageToken sets the optional parameter "pageToken": Specifies a page
+// token to use. Set `pageToken` to the `nextPageToken` returned by a
+// previous list request to get the next page of results.
+func (c *InterconnectRemoteLocationsListCall) PageToken(pageToken string) *InterconnectRemoteLocationsListCall {
+	c.urlParams_.Set("pageToken", pageToken)
+	return c
+}
+
+// ReturnPartialSuccess sets the optional parameter
+// "returnPartialSuccess": Opt-in for partial success behavior which
+// provides partial results in case of failure. The default value is
+// false.
+func (c *InterconnectRemoteLocationsListCall) ReturnPartialSuccess(returnPartialSuccess bool) *InterconnectRemoteLocationsListCall {
+	c.urlParams_.Set("returnPartialSuccess", fmt.Sprint(returnPartialSuccess))
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *InterconnectRemoteLocationsListCall) Fields(s ...googleapi.Field) *InterconnectRemoteLocationsListCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *InterconnectRemoteLocationsListCall) IfNoneMatch(entityTag string) *InterconnectRemoteLocationsListCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *InterconnectRemoteLocationsListCall) Context(ctx context.Context) *InterconnectRemoteLocationsListCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *InterconnectRemoteLocationsListCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *InterconnectRemoteLocationsListCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/global/interconnectRemoteLocations")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.interconnectRemoteLocations.list" call.
+// Exactly one of *InterconnectRemoteLocationList or error will be
+// non-nil. Any non-2xx status code is an error. Response headers are in
+// either *InterconnectRemoteLocationList.ServerResponse.Header or (if a
+// response was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *InterconnectRemoteLocationsListCall) Do(opts ...googleapi.CallOption) (*InterconnectRemoteLocationList, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &InterconnectRemoteLocationList{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Retrieves the list of interconnect remote locations available to the specified project.",
+	//   "flatPath": "projects/{project}/global/interconnectRemoteLocations",
+	//   "httpMethod": "GET",
+	//   "id": "compute.interconnectRemoteLocations.list",
+	//   "parameterOrder": [
+	//     "project"
+	//   ],
+	//   "parameters": {
+	//     "filter": {
+	//       "description": "A filter expression that filters resources listed in the response. Most Compute resources support two types of filter expressions: expressions that support regular expressions and expressions that follow API improvement proposal AIP-160. If you want to use AIP-160, your expression must specify the field name, an operator, and the value that you want to use for filtering. The value must be a string, a number, or a boolean. The operator must be either `=`, `!=`, `\u003e`, `\u003c`, `\u003c=`, `\u003e=` or `:`. For example, if you are filtering Compute Engine instances, you can exclude instances named `example-instance` by specifying `name != example-instance`. The `:` operator can be used with string fields to match substrings. For non-string fields it is equivalent to the `=` operator. The `:*` comparison can be used to test whether a key has been defined. For example, to find all objects with `owner` label use: ``` labels.owner:* ``` You can also filter nested fields. For example, you could specify `scheduling.automaticRestart = false` to include instances only if they are not scheduled for automatic restarts. You can use filtering on nested fields to filter based on resource labels. To filter on multiple expressions, provide each separate expression within parentheses. For example: ``` (scheduling.automaticRestart = true) (cpuPlatform = \"Intel Skylake\") ``` By default, each expression is an `AND` expression. However, you can include `AND` and `OR` expressions explicitly. For example: ``` (cpuPlatform = \"Intel Skylake\") OR (cpuPlatform = \"Intel Broadwell\") AND (scheduling.automaticRestart = true) ``` If you want to use a regular expression, use the `eq` (equal) or `ne` (not equal) operator against a single un-parenthesized expression with or without quotes or against multiple parenthesized expressions. Examples: `fieldname eq unquoted literal` `fieldname eq 'single quoted literal'` `fieldname eq \"double quoted literal\"` `(fieldname1 eq literal) (fieldname2 ne \"literal\")` The literal value is interpreted as a regular expression using Google RE2 library syntax. The literal value must match the entire field. For example, to filter for instances that do not end with name \"instance\", you would use `name ne .*instance`.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "maxResults": {
+	//       "default": "500",
+	//       "description": "The maximum number of results per page that should be returned. If the number of available results is larger than `maxResults`, Compute Engine returns a `nextPageToken` that can be used to get the next page of results in subsequent list requests. Acceptable values are `0` to `500`, inclusive. (Default: `500`)",
+	//       "format": "uint32",
+	//       "location": "query",
+	//       "minimum": "0",
+	//       "type": "integer"
+	//     },
+	//     "orderBy": {
+	//       "description": "Sorts list results by a certain order. By default, results are returned in alphanumerical order based on the resource name. You can also sort results in descending order based on the creation timestamp using `orderBy=\"creationTimestamp desc\"`. This sorts results based on the `creationTimestamp` field in reverse chronological order (newest result first). Use this to sort resources like operations so that the newest operation is returned first. Currently, only sorting by `name` or `creationTimestamp desc` is supported.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "pageToken": {
+	//       "description": "Specifies a page token to use. Set `pageToken` to the `nextPageToken` returned by a previous list request to get the next page of results.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "returnPartialSuccess": {
+	//       "description": "Opt-in for partial success behavior which provides partial results in case of failure. The default value is false.",
+	//       "location": "query",
+	//       "type": "boolean"
+	//     }
+	//   },
+	//   "path": "projects/{project}/global/interconnectRemoteLocations",
+	//   "response": {
+	//     "$ref": "InterconnectRemoteLocationList"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute",
+	//     "https://www.googleapis.com/auth/compute.readonly"
+	//   ]
+	// }
+
+}
+
+// Pages invokes f for each page of results.
+// A non-nil error returned from f will halt the iteration.
+// The provided context supersedes any context provided to the Context method.
+func (c *InterconnectRemoteLocationsListCall) Pages(ctx context.Context, f func(*InterconnectRemoteLocationList) error) error {
 	c.ctx_ = ctx
 	defer c.PageToken(c.urlParams_.Get("pageToken")) // reset paging to original point
 	for {

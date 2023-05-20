@@ -70877,12 +70877,8 @@ type CreateLaunchTemplateInput struct {
 
 	// The information for the launch template.
 	//
-	// LaunchTemplateData is a sensitive parameter and its value will be
-	// replaced with "sensitive" in string returned by CreateLaunchTemplateInput's
-	// String and GoString methods.
-	//
 	// LaunchTemplateData is a required field
-	LaunchTemplateData *RequestLaunchTemplateData `type:"structure" required:"true" sensitive:"true"`
+	LaunchTemplateData *RequestLaunchTemplateData `type:"structure" required:"true"`
 
 	// A name for the launch template.
 	//
@@ -71039,12 +71035,8 @@ type CreateLaunchTemplateVersionInput struct {
 
 	// The information for the launch template.
 	//
-	// LaunchTemplateData is a sensitive parameter and its value will be
-	// replaced with "sensitive" in string returned by CreateLaunchTemplateVersionInput's
-	// String and GoString methods.
-	//
 	// LaunchTemplateData is a required field
-	LaunchTemplateData *RequestLaunchTemplateData `type:"structure" required:"true" sensitive:"true"`
+	LaunchTemplateData *RequestLaunchTemplateData `type:"structure" required:"true"`
 
 	// The ID of the launch template.
 	//
@@ -125895,7 +125887,11 @@ type ImageDiskContainer struct {
 
 	// The URL to the Amazon S3-based disk image being imported. The URL can either
 	// be a https URL (https://..) or an Amazon S3 URL (s3://..)
-	Url *string `type:"string"`
+	//
+	// Url is a sensitive parameter and its value will be
+	// replaced with "sensitive" in string returned by ImageDiskContainer's
+	// String and GoString methods.
+	Url *string `type:"string" sensitive:"true"`
 
 	// The S3 bucket for the disk image.
 	UserBucket *UserBucket `type:"structure"`
@@ -158245,7 +158241,7 @@ func (s *RequestIpamResourceTag) SetValue(v string) *RequestIpamResourceTag {
 //
 // You must specify at least one parameter for the launch template data.
 type RequestLaunchTemplateData struct {
-	_ struct{} `type:"structure" sensitive:"true"`
+	_ struct{} `type:"structure"`
 
 	// The block device mapping.
 	BlockDeviceMappings []*LaunchTemplateBlockDeviceMappingRequest `locationName:"BlockDeviceMapping" locationNameList:"BlockDeviceMapping" type:"list"`
@@ -158438,7 +158434,11 @@ type RequestLaunchTemplateData struct {
 	// must be provided in the MIME multi-part archive format (https://cloudinit.readthedocs.io/en/latest/topics/format.html#mime-multi-part-archive).
 	// For more information, see Amazon EC2 user data in launch templates (https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html)
 	// in the Batch User Guide.
-	UserData *string `type:"string"`
+	//
+	// UserData is a sensitive parameter and its value will be
+	// replaced with "sensitive" in string returned by RequestLaunchTemplateData's
+	// String and GoString methods.
+	UserData *string `type:"string" sensitive:"true"`
 }
 
 // String returns the string representation.
@@ -166762,7 +166762,11 @@ type SnapshotDetail struct {
 	StatusMessage *string `locationName:"statusMessage" type:"string"`
 
 	// The URL used to access the disk image.
-	Url *string `locationName:"url" type:"string"`
+	//
+	// Url is a sensitive parameter and its value will be
+	// replaced with "sensitive" in string returned by SnapshotDetail's
+	// String and GoString methods.
+	Url *string `locationName:"url" type:"string" sensitive:"true"`
 
 	// The Amazon S3 bucket for the disk image.
 	UserBucket *UserBucketDetails `locationName:"userBucket" type:"structure"`
@@ -166860,7 +166864,11 @@ type SnapshotDiskContainer struct {
 
 	// The URL to the Amazon S3-based disk image being imported. It can either be
 	// a https URL (https://..) or an Amazon S3 URL (s3://..).
-	Url *string `type:"string"`
+	//
+	// Url is a sensitive parameter and its value will be
+	// replaced with "sensitive" in string returned by SnapshotDiskContainer's
+	// String and GoString methods.
+	Url *string `type:"string" sensitive:"true"`
 
 	// The Amazon S3 bucket for the disk image.
 	UserBucket *UserBucket `type:"structure"`
@@ -167135,7 +167143,11 @@ type SnapshotTaskDetail struct {
 	StatusMessage *string `locationName:"statusMessage" type:"string"`
 
 	// The URL of the disk image from which the snapshot is created.
-	Url *string `locationName:"url" type:"string"`
+	//
+	// Url is a sensitive parameter and its value will be
+	// replaced with "sensitive" in string returned by SnapshotTaskDetail's
+	// String and GoString methods.
+	Url *string `locationName:"url" type:"string" sensitive:"true"`
 
 	// The Amazon S3 bucket for the disk image.
 	UserBucket *UserBucketDetails `locationName:"userBucket" type:"structure"`
@@ -185763,6 +185775,24 @@ const (
 
 	// InstanceTypeTrn1n32xlarge is a InstanceType enum value
 	InstanceTypeTrn1n32xlarge = "trn1n.32xlarge"
+
+	// InstanceTypeI4gLarge is a InstanceType enum value
+	InstanceTypeI4gLarge = "i4g.large"
+
+	// InstanceTypeI4gXlarge is a InstanceType enum value
+	InstanceTypeI4gXlarge = "i4g.xlarge"
+
+	// InstanceTypeI4g2xlarge is a InstanceType enum value
+	InstanceTypeI4g2xlarge = "i4g.2xlarge"
+
+	// InstanceTypeI4g4xlarge is a InstanceType enum value
+	InstanceTypeI4g4xlarge = "i4g.4xlarge"
+
+	// InstanceTypeI4g8xlarge is a InstanceType enum value
+	InstanceTypeI4g8xlarge = "i4g.8xlarge"
+
+	// InstanceTypeI4g16xlarge is a InstanceType enum value
+	InstanceTypeI4g16xlarge = "i4g.16xlarge"
 )
 
 // InstanceType_Values returns all elements of the InstanceType enum
@@ -186416,6 +186446,12 @@ func InstanceType_Values() []string {
 		InstanceTypeInf224xlarge,
 		InstanceTypeInf248xlarge,
 		InstanceTypeTrn1n32xlarge,
+		InstanceTypeI4gLarge,
+		InstanceTypeI4gXlarge,
+		InstanceTypeI4g2xlarge,
+		InstanceTypeI4g4xlarge,
+		InstanceTypeI4g8xlarge,
+		InstanceTypeI4g16xlarge,
 	}
 }
 

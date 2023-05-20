@@ -9429,6 +9429,7 @@
           ]
         },
         "setAutoHealingPolicies": {
+          "deprecated": true,
           "description": "Motifies the autohealing policy for the instances in this managed instance group. [Deprecated] This method is deprecated. Use instanceGroupManagers.patch instead.",
           "flatPath": "projects/{project}/zones/{zone}/instanceGroupManagers/{instanceGroupManager}/setAutoHealingPolicies",
           "httpMethod": "POST",
@@ -25828,6 +25829,7 @@
           ]
         },
         "setAutoHealingPolicies": {
+          "deprecated": true,
           "description": "Modifies the autohealing policy for the instances in this managed instance group. [Deprecated] This method is deprecated. Use regionInstanceGroupManagers.patch instead.",
           "flatPath": "projects/{project}/regions/{region}/instanceGroupManagers/{instanceGroupManager}/setAutoHealingPolicies",
           "httpMethod": "POST",
@@ -32637,6 +32639,53 @@
           "path": "projects/{project}/regions/{region}/routers/{router}",
           "response": {
             "$ref": "Router"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute",
+            "https://www.googleapis.com/auth/compute.readonly"
+          ]
+        },
+        "getNatIpInfo": {
+          "description": "Retrieves runtime NAT IP information.",
+          "flatPath": "projects/{project}/regions/{region}/routers/{router}/getNatIpInfo",
+          "httpMethod": "GET",
+          "id": "compute.routers.getNatIpInfo",
+          "parameterOrder": [
+            "project",
+            "region",
+            "router"
+          ],
+          "parameters": {
+            "natName": {
+              "description": "Name of the nat service to filter the NAT IP information. If it is omitted, all nats for this router will be returned. Name should conform to RFC1035.",
+              "location": "query",
+              "type": "string"
+            },
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "region": {
+              "description": "Name of the region for this request.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+              "required": true,
+              "type": "string"
+            },
+            "router": {
+              "description": "Name of the Router resource to query for Nat IP information. The name should conform to RFC1035.",
+              "location": "path",
+              "required": true,
+              "type": "string"
+            }
+          },
+          "path": "projects/{project}/regions/{region}/routers/{router}/getNatIpInfo",
+          "response": {
+            "$ref": "NatIpInfoResponse"
           },
           "scopes": [
             "https://www.googleapis.com/auth/cloud-platform",
@@ -41378,7 +41427,7 @@
       }
     }
   },
-  "revision": "20230403",
+  "revision": "20230509",
   "rootUrl": "https://compute.googleapis.com/",
   "schemas": {
     "AWSV4Signature": {
@@ -42859,6 +42908,10 @@
           "description": "Specifies the disk type to use to create the instance. If not specified, the default is pd-standard, specified using the full URL. For example: https://www.googleapis.com/compute/v1/projects/project/zones/zone /diskTypes/pd-standard For a full list of acceptable values, see Persistent disk types. If you specify this field when creating a VM, you can provide either the full or partial URL. For example, the following values are valid: - https://www.googleapis.com/compute/v1/projects/project/zones/zone /diskTypes/diskType - projects/project/zones/zone/diskTypes/diskType - zones/zone/diskTypes/diskType If you specify this field when creating or updating an instance template or all-instances configuration, specify the type of the disk, not the URL. For example: pd-standard.",
           "type": "string"
         },
+        "enableConfidentialCompute": {
+          "description": "Whether this disk is using confidential compute mode.",
+          "type": "boolean"
+        },
         "guestOsFeatures": {
           "description": "A list of features to enable on the guest operating system. Applicable only for bootable images. Read Enabling guest operating system features to see a list of available options. Guest OS features are applied by merging initializeParams.guestOsFeatures and disks.guestOsFeatures",
           "items": {
@@ -42970,6 +43023,10 @@
         "sourceSnapshotEncryptionKey": {
           "$ref": "CustomerEncryptionKey",
           "description": "The customer-supplied encryption key of the source snapshot."
+        },
+        "storagePool": {
+          "description": "The storage pool in which the new disk is created. You can provide this as a partial or full URL to the resource. For example, the following are valid values: - https://www.googleapis.com/compute/v1/projects/project/zones/zone /storagePools/storagePool - projects/project/zones/zone/storagePools/storagePool - zones/zone/storagePools/storagePool ",
+          "type": "string"
         }
       },
       "type": "object"
@@ -45593,7 +45650,7 @@
       "id": "BulkInsertInstanceResourcePerInstanceProperties",
       "properties": {
         "hostname": {
-          "description": "Specifies the hostname of the instance. More details in: https://cloud.google.com/compute/docs/instances/custom-hostname-vm#naming_convention hostname must be uniqe in per_instance_properties map.",
+          "description": "Specifies the hostname of the instance. More details in: https://cloud.google.com/compute/docs/instances/custom-hostname-vm#naming_convention",
           "type": "string"
         },
         "name": {
@@ -45929,6 +45986,10 @@
           },
           "type": "array"
         },
+        "resourceStatus": {
+          "$ref": "CommitmentResourceStatus",
+          "description": "[Output Only] Status information for Commitment resource."
+        },
         "resources": {
           "description": "A list of commitment amounts for particular resources. Note that VCPU and MEMORY resource commitments must occur together.",
           "items": {
@@ -45945,7 +46006,7 @@
           "type": "string"
         },
         "splitSourceCommitment": {
-          "description": "Source commitment to be splitted into a new commitment.",
+          "description": "Source commitment to be split into a new commitment.",
           "type": "string"
         },
         "startTimestamp": {
@@ -45981,6 +46042,7 @@
             "COMPUTE_OPTIMIZED",
             "COMPUTE_OPTIMIZED_C2D",
             "COMPUTE_OPTIMIZED_C3",
+            "COMPUTE_OPTIMIZED_C3D",
             "GENERAL_PURPOSE",
             "GENERAL_PURPOSE_E2",
             "GENERAL_PURPOSE_N2",
@@ -45992,6 +46054,7 @@
             "TYPE_UNSPECIFIED"
           ],
           "enumDescriptions": [
+            "",
             "",
             "",
             "",
@@ -46258,6 +46321,43 @@
       },
       "type": "object"
     },
+    "CommitmentResourceStatus": {
+      "description": "[Output Only] Contains output only fields.",
+      "id": "CommitmentResourceStatus",
+      "properties": {
+        "cancellationInformation": {
+          "$ref": "CommitmentResourceStatusCancellationInformation",
+          "description": "[Output Only] An optional, contains all the needed information of cancellation."
+        }
+      },
+      "type": "object"
+    },
+    "CommitmentResourceStatusCancellationInformation": {
+      "id": "CommitmentResourceStatusCancellationInformation",
+      "properties": {
+        "canceledCommitment": {
+          "$ref": "Money",
+          "description": "[Output Only] An optional, the amount of CUDs canceled so far in the last 365 days."
+        },
+        "canceledCommitmentLastUpdatedTimestamp": {
+          "description": "[Output Only] An optional last update time of canceled_commitment. RFC3339 text format.",
+          "type": "string"
+        },
+        "cancellationCap": {
+          "$ref": "Money",
+          "description": "[Output Only] An optional,the cancellation cap for how much commitments can be canceled in a rolling 365 per billing account."
+        },
+        "cancellationFee": {
+          "$ref": "Money",
+          "description": "[Output Only] An optional, cancellation fee."
+        },
+        "cancellationFeeExpirationTimestamp": {
+          "description": "[Output Only] An optional, cancellation fee expiration time. RFC3339 text format.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "CommitmentsScopedList": {
       "id": "CommitmentsScopedList",
       "properties": {
@@ -46449,12 +46549,14 @@
           "enum": [
             "CONFIDENTIAL_INSTANCE_TYPE_UNSPECIFIED",
             "SEV",
-            "SEV_SNP"
+            "SEV_SNP",
+            "TDX"
           ],
           "enumDescriptions": [
             "No type specified. Do not use this value.",
             "AMD Secure Encrypted Virtualization.",
-            "AMD Secure Encrypted Virtualization - Secure Nested Paging."
+            "AMD Secure Encrypted Virtualization - Secure Nested Paging.",
+            "Intel Trust Domain eXtension."
           ],
           "type": "string"
         },
@@ -46737,7 +46839,7 @@
           "description": "Encrypts the disk using a customer-supplied encryption key or a customer-managed encryption key. Encryption keys do not protect access to metadata of the disk. After you encrypt a disk with a customer-supplied key, you must provide the same key if you use the disk later. For example, to create a disk snapshot, to create a disk image, to create a machine image, or to attach the disk to a virtual machine. After you encrypt a disk with a customer-managed key, the diskEncryptionKey.kmsKeyName is set to a key *version* name once the disk is created. The disk is encrypted with this version of the key. In the response, diskEncryptionKey.kmsKeyName appears in the following format: \"diskEncryptionKey.kmsKeyName\": \"projects/kms_project_id/locations/region/keyRings/ key_region/cryptoKeys/key /cryptoKeysVersions/version If you do not provide an encryption key when creating the disk, then the disk is encrypted using an automatically generated key and you don't need to provide a key to use the disk later."
         },
         "enableConfidentialCompute": {
-          "description": "Whether this disk is using confidential compute mode. see go/confidential-mode-in-arcus for details.",
+          "description": "Whether this disk is using confidential compute mode.",
           "type": "boolean"
         },
         "eraseWindowsVssSignature": {
@@ -46962,6 +47064,10 @@
             "Disk is ready for use.",
             "Source data is being copied into the disk."
           ],
+          "type": "string"
+        },
+        "storagePool": {
+          "description": "The storage pool in which the new disk is created. You can provide this as a partial or full URL to the resource. For example, the following are valid values: - https://www.googleapis.com/compute/v1/projects/project/zones/zone /storagePools/storagePool - projects/project/zones/zone/storagePools/storagePool - zones/zone/storagePools/storagePool ",
           "type": "string"
         },
         "storageType": {
@@ -47360,6 +47466,11 @@
           },
           "description": "Key: disk, value: AsyncReplicationStatus message",
           "type": "object"
+        },
+        "usedBytes": {
+          "description": "[Output Only] Space used by data stored in the disk (in bytes). Note that this field is set only when the disk is in a storage pool.",
+          "format": "int64",
+          "type": "string"
         }
       },
       "type": "object"
@@ -50002,6 +50113,22 @@
       "description": "[Output only] Represents status related to the future reservation.",
       "id": "FutureReservationStatus",
       "properties": {
+        "amendmentStatus": {
+          "description": "The current status of the requested amendment.",
+          "enum": [
+            "AMENDMENT_APPROVED",
+            "AMENDMENT_DECLINED",
+            "AMENDMENT_IN_REVIEW",
+            "AMENDMENT_STATUS_UNSPECIFIED"
+          ],
+          "enumDescriptions": [
+            "The requested amendment to the Future Resevation has been approved and applied by GCP.",
+            "The requested amendment to the Future Reservation has been declined by GCP and the original state was restored.",
+            "The requested amendment to the Future Reservation is currently being reviewd by GCP.",
+            ""
+          ],
+          "type": "string"
+        },
         "autoCreatedReservations": {
           "description": "Fully qualified urls of the automatically created reservations at start_time.",
           "items": {
@@ -50013,6 +50140,10 @@
           "description": "This count indicates the fulfilled capacity so far. This is set during \"PROVISIONING\" state. This count also includes capacity delivered as part of existing matching reservations.",
           "format": "int64",
           "type": "string"
+        },
+        "lastKnownGoodState": {
+          "$ref": "FutureReservationStatusLastKnownGoodState",
+          "description": "This field represents the future reservation before an amendment was requested. If the amendment is declined, the Future Reservation will be reverted to the last known good state. The last known good state is not set when updating a future reservation whose Procurement Status is DRAFTING."
         },
         "lockTime": {
           "description": "Time when Future Reservation would become LOCKED, after which no modifications to Future Reservation will be allowed. Applicable only after the Future Reservation is in the APPROVED state. The lock_time is an RFC3339 string. The procurement_status will transition to PROCURING state at this time.",
@@ -50029,6 +50160,7 @@
             "FAILED",
             "FAILED_PARTIALLY_FULFILLED",
             "FULFILLED",
+            "PENDING_AMENDMENT_APPROVAL",
             "PENDING_APPROVAL",
             "PROCUREMENT_STATUS_UNSPECIFIED",
             "PROCURING",
@@ -50043,6 +50175,7 @@
             "Future reservation failed. No additional reservations were provided.",
             "Future reservation is partially fulfilled. Additional reservations were provided but did not reach total_count reserved instance slots.",
             "Future reservation is fulfilled completely.",
+            "An Amendment to the Future Reservation has been requested. If the Amendment is declined, the Future Reservation will be restored to the last known good state.",
             "Future reservation is pending approval by GCP.",
             "",
             "Future reservation is being procured by GCP. Beyond this point, Future reservation is locked and no further modifications are allowed.",
@@ -50052,6 +50185,77 @@
         },
         "specificSkuProperties": {
           "$ref": "FutureReservationStatusSpecificSKUProperties"
+        }
+      },
+      "type": "object"
+    },
+    "FutureReservationStatusLastKnownGoodState": {
+      "description": "The state that the future reservation will be reverted to should the amendment be declined.",
+      "id": "FutureReservationStatusLastKnownGoodState",
+      "properties": {
+        "description": {
+          "description": "The description of the FutureReservation before an amendment was requested.",
+          "type": "string"
+        },
+        "futureReservationSpecs": {
+          "$ref": "FutureReservationStatusLastKnownGoodStateFutureReservationSpecs"
+        },
+        "namePrefix": {
+          "description": "The name prefix of the Future Reservation before an amendment was requested.",
+          "type": "string"
+        },
+        "procurementStatus": {
+          "description": "The status of the last known good state for the Future Reservation.",
+          "enum": [
+            "APPROVED",
+            "CANCELLED",
+            "COMMITTED",
+            "DECLINED",
+            "DRAFTING",
+            "FAILED",
+            "FAILED_PARTIALLY_FULFILLED",
+            "FULFILLED",
+            "PENDING_AMENDMENT_APPROVAL",
+            "PENDING_APPROVAL",
+            "PROCUREMENT_STATUS_UNSPECIFIED",
+            "PROCURING",
+            "PROVISIONING"
+          ],
+          "enumDescriptions": [
+            "Future reservation is approved by GCP.",
+            "Future reservation is cancelled by the customer.",
+            "Future reservation is committed by the customer.",
+            "Future reservation is rejected by GCP.",
+            "Related status for PlanningStatus.Draft. Transitions to PENDING_APPROVAL upon user submitting FR.",
+            "Future reservation failed. No additional reservations were provided.",
+            "Future reservation is partially fulfilled. Additional reservations were provided but did not reach total_count reserved instance slots.",
+            "Future reservation is fulfilled completely.",
+            "An Amendment to the Future Reservation has been requested. If the Amendment is declined, the Future Reservation will be restored to the last known good state.",
+            "Future reservation is pending approval by GCP.",
+            "",
+            "Future reservation is being procured by GCP. Beyond this point, Future reservation is locked and no further modifications are allowed.",
+            "Future reservation capacity is being provisioned. This state will be entered after start_time, while reservations are being created to provide total_count reserved instance slots. This state will not persist past start_time + 24h."
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "FutureReservationStatusLastKnownGoodStateFutureReservationSpecs": {
+      "description": "The properties of the last known good state for the Future Reservation.",
+      "id": "FutureReservationStatusLastKnownGoodStateFutureReservationSpecs",
+      "properties": {
+        "shareSettings": {
+          "$ref": "ShareSettings",
+          "description": "The previous share settings of the Future Reservation."
+        },
+        "specificSkuProperties": {
+          "$ref": "FutureReservationSpecificSKUProperties",
+          "description": "The previous instance related properties of the Future Reservation."
+        },
+        "timeWindow": {
+          "$ref": "FutureReservationTimeWindow",
+          "description": "The previous time window of the Future Reservation."
         }
       },
       "type": "object"
@@ -50688,11 +50892,13 @@
             "SEV_CAPABLE",
             "SEV_LIVE_MIGRATABLE",
             "SEV_SNP_CAPABLE",
+            "TDX_CAPABLE",
             "UEFI_COMPATIBLE",
             "VIRTIO_SCSI_MULTIQUEUE",
             "WINDOWS"
           ],
           "enumDescriptions": [
+            "",
             "",
             "",
             "",
@@ -50912,7 +51118,7 @@
       "type": "object"
     },
     "HealthCheck": {
-      "description": "Represents a Health Check resource. Google Compute Engine has two Health Check resources: * [Global](/compute/docs/reference/rest/alpha/healthChecks) * [Regional](/compute/docs/reference/rest/alpha/regionHealthChecks) Internal HTTP(S) load balancers must use regional health checks (`compute.v1.regionHealthChecks`). Traffic Director must use global health checks (`compute.v1.HealthChecks`). Internal TCP/UDP load balancers can use either regional or global health checks (`compute.v1.regionHealthChecks` or `compute.v1.HealthChecks`). External HTTP(S), TCP proxy, and SSL proxy load balancers as well as managed instance group auto-healing must use global health checks (`compute.v1.HealthChecks`). Backend service-based network load balancers must use regional health checks (`compute.v1.regionHealthChecks`). Target pool-based network load balancers must use legacy HTTP health checks (`compute.v1.httpHealthChecks`). For more information, see Health checks overview.",
+      "description": "Represents a Health Check resource. Google Compute Engine has two Health Check resources: * [Global](/compute/docs/reference/rest/alpha/healthChecks) * [Regional](/compute/docs/reference/rest/alpha/regionHealthChecks) Internal HTTP(S) load balancers must use regional health checks (`compute.v1.regionHealthChecks`). Traffic Director must use global health checks (`compute.v1.healthChecks`). Internal TCP/UDP load balancers can use either regional or global health checks (`compute.v1.regionHealthChecks` or `compute.v1.healthChecks`). External HTTP(S), TCP proxy, and SSL proxy load balancers as well as managed instance group auto-healing must use global health checks (`compute.v1.healthChecks`). Backend service-based network load balancers must use regional health checks (`compute.v1.regionHealthChecks`). Target pool-based network load balancers must use legacy HTTP health checks (`compute.v1.httpHealthChecks`). For more information, see Health checks overview.",
       "id": "HealthCheck",
       "properties": {
         "checkIntervalSec": {
@@ -54052,6 +54258,10 @@
           "format": "uint64",
           "type": "string"
         },
+        "instanceFlexibilityPolicy": {
+          "$ref": "InstanceGroupManagerInstanceFlexibilityPolicy",
+          "description": "Instance flexibility allowing MIG to create VMs from multiple types of machines. Instance flexibility configuration on MIG overrides instance template configuration."
+        },
         "instanceGroup": {
           "description": "[Output Only] The URL of the Instance Group resource.",
           "type": "string"
@@ -54144,6 +54354,18 @@
           "description": "The target number of running instances for this managed instance group. You can reduce this number by using the instanceGroupManager deleteInstances or abandonInstances methods. Resizing the group also changes this number.",
           "format": "int32",
           "type": "integer"
+        },
+        "targetSizeUnit": {
+          "description": "The unit of measure for the target size.",
+          "enum": [
+            "VCPU",
+            "VM"
+          ],
+          "enumDescriptions": [
+            "TargetSize is the target count of vCPUs of VMs.",
+            "[Default] TargetSize is the target number of VMs."
+          ],
+          "type": "string"
         },
         "targetStoppedSize": {
           "description": "The target number of stopped instances for this managed instance group. This number changes when you: - Stop instance using the stopInstances method or start instances using the startInstances method. - Manually change the targetStoppedSize using the update method. ",
@@ -54403,7 +54625,7 @@
           "type": "string"
         },
         "initialDelaySec": {
-          "description": "The number of seconds that the managed instance group waits before it applies autohealing policies to new instances or recently recreated instances. This initial delay allows instances to initialize and run their startup scripts before the instance group determines that they are UNHEALTHY. This prevents the managed instance group from recreating its instances prematurely. This value must be from range [0, 3600].",
+          "description": "The initial delay is the number of seconds that a new VM takes to initialize and run its startup script. During a VM's initial delay period, the MIG ignores unsuccessful health checks because the VM might be in the startup process. This prevents the MIG from prematurely recreating a VM. If the health check receives a healthy response during the initial delay, it indicates that the startup process is complete and the VM is ready. The value of initial delay must be between 0 and 3600 seconds. The default value is 0.",
           "format": "int32",
           "type": "integer"
         },
@@ -54428,6 +54650,37 @@
             "(Default) The group recreates running VMs that fail the group's application-based health check."
           ],
           "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "InstanceGroupManagerInstanceFlexibilityPolicy": {
+      "id": "InstanceGroupManagerInstanceFlexibilityPolicy",
+      "properties": {
+        "instanceSelectionLists": {
+          "additionalProperties": {
+            "$ref": "InstanceGroupManagerInstanceFlexibilityPolicyInstanceSelection"
+          },
+          "description": "List of instance selection options that the group will use when creating new VMs.",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "InstanceGroupManagerInstanceFlexibilityPolicyInstanceSelection": {
+      "id": "InstanceGroupManagerInstanceFlexibilityPolicyInstanceSelection",
+      "properties": {
+        "machineTypes": {
+          "description": "Full machine-type names, e.g. \"n1-standard-16\".",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rank": {
+          "description": "Preference of this instance selection. Lower number means higher preference. MIG will first try to create a VM based on the machine-type with lowest rank and fallback to next rank based on availability. Machine types and instance selections with the same rank have the same preference.",
+          "format": "int32",
+          "type": "integer"
         }
       },
       "type": "object"
@@ -59452,7 +59705,7 @@
       "type": "object"
     },
     "InterconnectRemoteLocation": {
-      "description": "Represents an Cross-Cloud Interconnect Remote Location resource. You can use this resource to find remote location details about an Interconnect attachment (VLAN).",
+      "description": "Represents a Cross-Cloud Interconnect Remote Location resource. You can use this resource to find remote location details about an Interconnect attachment (VLAN).",
       "id": "InterconnectRemoteLocation",
       "properties": {
         "address": {
@@ -59523,7 +59776,7 @@
           ],
           "enumDescriptions": [
             "LACP_SUPPORTED: LACP is supported, and enabled by default on the Cross-Cloud Interconnect.",
-            "LACP_UNSUPPORTED: LACP is not supported and will not be enabled on this port. GetDiagnostics will show bundleAggregationType as \"static\". GCP does not support LAGs without LACP, so requestedLinkCount must be 1."
+            "LACP_UNSUPPORTED: LACP is not supported and is not be enabled on this port. GetDiagnostics shows bundleAggregationType as \"static\". GCP does not support LAGs without LACP, so requestedLinkCount must be 1."
           ],
           "type": "string"
         },
@@ -59583,7 +59836,7 @@
       "id": "InterconnectRemoteLocationConstraints",
       "properties": {
         "portPairRemoteLocation": {
-          "description": "[Output Only] Port pair remote location constraints, which can take one of the following values: PORT_PAIR_UNCONSTRAINED_REMOTE_LOCATION, PORT_PAIR_MATCHING_REMOTE_LOCATION. GCP's API refers only to individual ports, but the UI uses this field when ordering a pair of ports, to prevent users from accidentally ordering something that is incompatible with their cloud provider. Specifically, when ordering a redundant pair of Cross-Cloud Interconnect ports, and one of them uses a remote location with portPairMatchingRemoteLocation set to matching, the UI will require that both ports use the same remote location.",
+          "description": "[Output Only] Port pair remote location constraints, which can take one of the following values: PORT_PAIR_UNCONSTRAINED_REMOTE_LOCATION, PORT_PAIR_MATCHING_REMOTE_LOCATION. GCP's API refers only to individual ports, but the UI uses this field when ordering a pair of ports, to prevent users from accidentally ordering something that is incompatible with their cloud provider. Specifically, when ordering a redundant pair of Cross-Cloud Interconnect ports, and one of them uses a remote location with portPairMatchingRemoteLocation set to matching, the UI requires that both ports use the same remote location.",
           "enum": [
             "PORT_PAIR_MATCHING_REMOTE_LOCATION",
             "PORT_PAIR_UNCONSTRAINED_REMOTE_LOCATION"
@@ -59648,7 +59901,7 @@
           "type": "string"
         },
         "nextPageToken": {
-          "description": "[Output Only] This token allows you to get the next page of results for list requests. If the number of results is larger than maxResults, use the nextPageToken as a value for the query parameter pageToken in the next list request. Subsequent list requests will have their own nextPageToken to continue paging through the results.",
+          "description": "[Output Only] This token lets you get the next page of results for list requests. If the number of results is larger than maxResults, use the nextPageToken as a value for the query parameter pageToken in the next list request. Subsequent list requests will have their own nextPageToken to continue paging through the results.",
           "type": "string"
         },
         "selfLink": {
@@ -60878,7 +61131,7 @@
                 "type": "integer"
               },
               "guestAcceleratorType": {
-                "description": "The accelerator type resource name, not a full URL, e.g. 'nvidia-tesla-k80'.",
+                "description": "The accelerator type resource name, not a full URL, e.g. nvidia-tesla-t4.",
                 "type": "string"
               }
             },
@@ -61682,6 +61935,27 @@
       },
       "type": "object"
     },
+    "Money": {
+      "description": "Represents an amount of money with its currency type.",
+      "id": "Money",
+      "properties": {
+        "currencyCode": {
+          "description": "The three-letter currency code defined in ISO 4217.",
+          "type": "string"
+        },
+        "nanos": {
+          "description": "Number of nano (10^-9) units of the amount. The value must be between -999,999,999 and +999,999,999 inclusive. If `units` is positive, `nanos` must be positive or zero. If `units` is zero, `nanos` can be positive, zero, or negative. If `units` is negative, `nanos` must be negative or zero. For example $-1.75 is represented as `units`=-1 and `nanos`=-750,000,000.",
+          "format": "int32",
+          "type": "integer"
+        },
+        "units": {
+          "description": "The whole units of the amount. For example if `currencyCode` is `\"USD\"`, then 1 unit is one US dollar.",
+          "format": "int64",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "MutualTls": {
       "description": "[Deprecated] Configuration for the mutual Tls mode for peer authentication. Configuration for the mutual Tls mode for peer authentication.",
       "id": "MutualTls",
@@ -61715,6 +61989,72 @@
           "description": "The port number, which can be a value between 1 and 65535.",
           "format": "int32",
           "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "NatIpInfo": {
+      "description": "Contains NAT IP information of a NAT config (i.e. usage status, mode).",
+      "id": "NatIpInfo",
+      "properties": {
+        "natIpInfoMappings": {
+          "description": "A list of all NAT IPs assigned to this NAT config.",
+          "items": {
+            "$ref": "NatIpInfoNatIpInfoMapping"
+          },
+          "type": "array"
+        },
+        "natName": {
+          "description": "Name of the NAT config which the NAT IP belongs to.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "NatIpInfoNatIpInfoMapping": {
+      "description": "Contains information of a NAT IP.",
+      "id": "NatIpInfoNatIpInfoMapping",
+      "properties": {
+        "mode": {
+          "description": "Specifies whether NAT IP is auto or manual.",
+          "enum": [
+            "AUTO",
+            "MANUAL"
+          ],
+          "enumDescriptions": [
+            "",
+            ""
+          ],
+          "type": "string"
+        },
+        "natIp": {
+          "description": "NAT IP address. For example: 203.0.113.11.",
+          "type": "string"
+        },
+        "usage": {
+          "description": "Specifies whether NAT IP is currently serving at least one endpoint or not.",
+          "enum": [
+            "IN_USE",
+            "UNUSED"
+          ],
+          "enumDescriptions": [
+            "",
+            ""
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "NatIpInfoResponse": {
+      "id": "NatIpInfoResponse",
+      "properties": {
+        "result": {
+          "description": "[Output Only] A list of NAT IP information.",
+          "items": {
+            "$ref": "NatIpInfo"
+          },
+          "type": "array"
         }
       },
       "type": "object"
@@ -61860,7 +62200,7 @@
           "type": "string"
         },
         "fingerprint": {
-          "description": "[Output Only] Fingerprint of this resource. A hash of the contents stored in this object. This field is used in optimistic locking. An up-to-date fingerprint must be provided in order to patch.",
+          "description": "Fingerprint of this resource. A hash of the contents stored in this object. This field is used in optimistic locking. An up-to-date fingerprint must be provided in order to patch.",
           "format": "byte",
           "type": "string"
         },
@@ -61885,7 +62225,7 @@
           "type": "string"
         },
         "network": {
-          "description": "[Output Only] The URL of the network which the Network Attachment belongs to.",
+          "description": "[Output Only] The URL of the network which the Network Attachment belongs to. Practically it is inferred by fetching the network of the first subnetwork associated. Because it is required that all the subnetworks must be from the same network, it is assured that the Network Attachment belongs to the same network as all the subnetworks.",
           "type": "string"
         },
         "producerAcceptLists": {
@@ -73879,7 +74219,7 @@
           "type": "array"
         },
         "sourceSubnetworkIpRangesToNat": {
-          "description": "Specify the Nat option, which can take one of the following values: - ALL_SUBNETWORKS_ALL_IP_RANGES: All of the IP ranges in every Subnetwork are allowed to Nat. - ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES: All of the primary IP ranges in every Subnetwork are allowed to Nat. - LIST_OF_SUBNETWORKS: A list of Subnetworks are allowed to Nat (specified in the field subnetwork below) The default is SUBNETWORK_IP_RANGE_TO_NAT_OPTION_UNSPECIFIED. Note that if this field contains ALL_SUBNETWORKS_ALL_IP_RANGES or ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES, then there should not be any other Router.Nat section in any Router for this network in this region.",
+          "description": "Specify the Nat option, which can take one of the following values: - ALL_SUBNETWORKS_ALL_IP_RANGES: All of the IP ranges in every Subnetwork are allowed to Nat. - ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES: All of the primary IP ranges in every Subnetwork are allowed to Nat. - LIST_OF_SUBNETWORKS: A list of Subnetworks are allowed to Nat (specified in the field subnetwork below) The default is SUBNETWORK_IP_RANGE_TO_NAT_OPTION_UNSPECIFIED. Note that if this field contains ALL_SUBNETWORKS_ALL_IP_RANGES then there should not be any other Router.Nat section in any Router for this network in this region.",
           "enum": [
             "ALL_SUBNETWORKS_ALL_IP_RANGES",
             "ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES",
@@ -75344,9 +75684,11 @@
         "jsonParsing": {
           "enum": [
             "DISABLED",
-            "STANDARD"
+            "STANDARD",
+            "STANDARD_WITH_GRAPHQL"
           ],
           "enumDescriptions": [
+            "",
             "",
             ""
           ],
@@ -75730,6 +76072,10 @@
           "$ref": "Expr",
           "description": "User defined CEVAL expression. A CEVAL expression is used to specify match criteria such as origin.ip, source.region_code and contents in the request header. Expressions containing `evaluateThreatIntelligence` require Cloud Armor Managed Protection Plus tier and are not supported in Edge Policies nor in Regional Policies. Expressions containing `evaluatePreconfiguredExpr('sourceiplist-*')` require Cloud Armor Managed Protection Plus tier and are only supported in Global Security Policies."
         },
+        "exprOptions": {
+          "$ref": "SecurityPolicyRuleMatcherExprOptions",
+          "description": "The configuration options available when specifying a user defined CEVAL expression (i.e., 'expr')."
+        },
         "versionedExpr": {
           "description": "Preconfigured versioned expression. If this field is specified, config must also be specified. Available preconfigured expressions along with their requirements are: SRC_IPS_V1 - must specify the corresponding src_ip_range field in config.",
           "enum": [
@@ -75805,6 +76151,36 @@
         },
         "ports": {
           "description": "An optional list of ports to which this rule applies. This field is only applicable for UDP or TCP protocol. Each entry must be either an integer or a range. If not specified, this rule applies to connections through any port. Example inputs include: [\"22\"], [\"80\",\"443\"], and [\"12345-12349\"]. This field may only be specified when versioned_expr is set to FIREWALL.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "SecurityPolicyRuleMatcherExprOptions": {
+      "id": "SecurityPolicyRuleMatcherExprOptions",
+      "properties": {
+        "recaptchaOptions": {
+          "$ref": "SecurityPolicyRuleMatcherExprOptionsRecaptchaOptions",
+          "description": "reCAPTCHA configuration options to be applied for the rule. If the rule does not evaluate reCAPTCHA tokens, this field will have no effect."
+        }
+      },
+      "type": "object"
+    },
+    "SecurityPolicyRuleMatcherExprOptionsRecaptchaOptions": {
+      "id": "SecurityPolicyRuleMatcherExprOptionsRecaptchaOptions",
+      "properties": {
+        "actionTokenSiteKeys": {
+          "description": "A list of site keys to be used during the validation of reCAPTCHA action-tokens. The provided site keys need to be created from reCAPTCHA API under the same project where the security policy is created.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sessionTokenSiteKeys": {
+          "description": "A list of site keys to be used during the validation of reCAPTCHA session-tokens. The provided site keys need to be created from reCAPTCHA API under the same project where the security policy is created.",
           "items": {
             "type": "string"
           },
@@ -76203,7 +76579,7 @@
           "description": "The configuration needed to generate a signature for access to private storage buckets that support AWS's Signature Version 4 for authentication. Allowed only for INTERNET_IP_PORT and INTERNET_FQDN_PORT NEG backends."
         },
         "clientTlsPolicy": {
-          "description": "Optional. A URL referring to a networksecurity.ClientTlsPolicy resource that describes how clients should authenticate with this service's backends. clientTlsPolicy only applies to a global BackendService with the loadBalancingScheme set to INTERNAL_SELF_MANAGED. If left blank, communications are not encrypted. Note: This field currently has no impact.",
+          "description": "Optional. A URL referring to a networksecurity.ClientTlsPolicy resource that describes how clients should authenticate with this service's backends. clientTlsPolicy only applies to a global BackendService with the loadBalancingScheme set to INTERNAL_SELF_MANAGED. If left blank, communications are not encrypted.",
           "type": "string"
         },
         "clientTlsSettings": {
@@ -76211,7 +76587,7 @@
           "description": "[Deprecated] TLS Settings for the backend service."
         },
         "subjectAltNames": {
-          "description": "Optional. A list of Subject Alternative Names (SANs) that the client verifies during a mutual TLS handshake with an server/endpoint for this BackendService. When the server presents its X.509 certificate to the client, the client inspects the certificate's subjectAltName field. If the field contains one of the specified values, the communication continues. Otherwise, it fails. This additional check enables the client to verify that the server is authorized to run the requested service. Note that the contents of the server certificate's subjectAltName field are configured by the Public Key Infrastructure which provisions server identities. Only applies to a global BackendService with loadBalancingScheme set to INTERNAL_SELF_MANAGED. Only applies when BackendService has an attached clientTlsPolicy with clientCertificate (mTLS mode). Note: This field currently has no impact.",
+          "description": "Optional. A list of Subject Alternative Names (SANs) that the client verifies during a mutual TLS handshake with an server/endpoint for this BackendService. When the server presents its X.509 certificate to the client, the client inspects the certificate's subjectAltName field. If the field contains one of the specified values, the communication continues. Otherwise, it fails. This additional check enables the client to verify that the server is authorized to run the requested service. Note that the contents of the server certificate's subjectAltName field are configured by the Public Key Infrastructure which provisions server identities. Only applies to a global BackendService with loadBalancingScheme set to INTERNAL_SELF_MANAGED. Only applies when BackendService has an attached clientTlsPolicy with clientCertificate (mTLS mode).",
           "items": {
             "type": "string"
           },
@@ -76862,7 +77238,7 @@
       "type": "object"
     },
     "SetCommonInstanceMetadataOperationMetadata": {
-      "description": "Encapsulates partial completion metadata for SetCommonInstanceMetadata. Will be propagated on Operation.metadata as per go/partial-completion-api-clean. See go/gce-aips/2822 for API council results.",
+      "description": "Encapsulates partial completion metadata for SetCommonInstanceMetadata. Will be propagated on Operation.metadata.",
       "id": "SetCommonInstanceMetadataOperationMetadata",
       "properties": {
         "clientOperationId": {
@@ -77176,6 +77552,10 @@
           "format": "int64",
           "type": "string"
         },
+        "enableConfidentialCompute": {
+          "description": "Whether this snapshot is created from a confidential compute mode disk. [Output Only]: This field is not set by user, but from source disk.",
+          "type": "boolean"
+        },
         "guestFlush": {
           "description": "[Input Only] Whether to attempt an application consistent snapshot by informing the OS to prepare for the snapshot process.",
           "type": "boolean"
@@ -77236,6 +77616,7 @@
         "name": {
           "annotations": {
             "required": [
+              "compute.disks.createSnapshot",
               "compute.snapshots.insert"
             ]
           },
@@ -77278,6 +77659,10 @@
         "sourceDiskEncryptionKey": {
           "$ref": "CustomerEncryptionKey",
           "description": "The customer-supplied encryption key of the source disk. Required if the source disk is protected by a customer-supplied encryption key."
+        },
+        "sourceDiskForRecoveryCheckpoint": {
+          "description": "The source disk whose recovery checkpoint will be used to create this snapshot.",
+          "type": "string"
         },
         "sourceDiskId": {
           "description": "[Output Only] The ID value of the disk used to create this snapshot. This value may be used to determine whether the snapshot was taken from the current or a previous instance of a given disk name.",
@@ -79157,12 +79542,12 @@
           "type": "string"
         },
         "usedBytes": {
-          "description": "[Output Only] Sum of all the disks' local used bytes. This specifically refers to the amount of bytes used on the disk without any encryption or compression.",
+          "description": "[Output Only] Space used by data stored in disks within the storage pool (in bytes).",
           "format": "int64",
           "type": "string"
         },
         "usedReducedBytes": {
-          "description": "[Output Only] Sum of all the disks' used reduced bytes. This is the actual storage capacity consumed by all of the disks.",
+          "description": "[Output Only] Space used by compressed and deduped data stored in disks within the storage pool (in bytes).",
           "format": "int64",
           "type": "string"
         }
@@ -79308,7 +79693,7 @@
           "type": "string"
         },
         "enableFlowLogs": {
-          "description": "Whether to enable flow logging for this subnetwork. If this field is not explicitly set, it will not appear in get listings. If not set the default behavior is determined by the org policy, if there is no org policy specified, then it will default to disabled. This field isn't supported with the purpose field set to INTERNAL_HTTPS_LOAD_BALANCER.",
+          "description": "Whether to enable flow logging for this subnetwork. If this field is not explicitly set, it will not appear in get listings. If not set the default behavior is determined by the org policy, if there is no org policy specified, then it will default to disabled. This field isn't supported if the subnet purpose field is set to REGIONAL_MANAGED_PROXY.",
           "type": "boolean"
         },
         "enableL2": {
@@ -79415,7 +79800,7 @@
           "type": "string"
         },
         "purpose": {
-          "description": "The purpose of the resource. This field can be either PRIVATE_RFC_1918 or INTERNAL_HTTPS_LOAD_BALANCER. A subnetwork with purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a user-created subnetwork that is reserved for Internal HTTP(S) Load Balancing. If unspecified, the purpose defaults to PRIVATE_RFC_1918. The enableFlowLogs field isn't supported with the purpose field set to INTERNAL_HTTPS_LOAD_BALANCER.",
+          "description": "The purpose of the resource. This field can be either PRIVATE, REGIONAL_MANAGED_PROXY, PRIVATE_SERVICE_CONNECT, or INTERNAL_HTTPS_LOAD_BALANCER. PRIVATE is the default purpose for user-created subnets or subnets that are automatically created in auto mode networks. A subnet with purpose set to REGIONAL_MANAGED_PROXY is a user-created subnetwork that is reserved for regional Envoy-based load balancers. A subnet with purpose set to PRIVATE_SERVICE_CONNECT is used to publish services using Private Service Connect. A subnet with purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a proxy-only subnet that can be used only by regional internal HTTP(S) load balancers. Note that REGIONAL_MANAGED_PROXY is the preferred setting for all regional Envoy load balancers. If unspecified, the subnet purpose defaults to PRIVATE. The enableFlowLogs field isn't supported if the subnet purpose field is set to REGIONAL_MANAGED_PROXY.",
           "enum": [
             "AGGREGATE",
             "CLOUD_EXTENSION",
@@ -79449,7 +79834,7 @@
           "type": "string"
         },
         "role": {
-          "description": "The role of subnetwork. Currently, this field is only used when purpose = INTERNAL_HTTPS_LOAD_BALANCER. The value can be set to ACTIVE or BACKUP. An ACTIVE subnetwork is one that is currently being used for Internal HTTP(S) Load Balancing. A BACKUP subnetwork is one that is ready to be promoted to ACTIVE or is currently draining. This field can be updated with a patch request.",
+          "description": "The role of subnetwork. Currently, this field is only used when purpose = REGIONAL_MANAGED_PROXY. The value can be set to ACTIVE or BACKUP. An ACTIVE subnetwork is one that is currently being used for Envoy-based load balancers in a region. A BACKUP subnetwork is one that is ready to be promoted to ACTIVE or is currently draining. This field can be updated with a patch request.",
           "enum": [
             "ACTIVE",
             "BACKUP"
@@ -79782,7 +80167,7 @@
           "type": "string"
         },
         "enable": {
-          "description": "Whether to enable flow logging for this subnetwork. If this field is not explicitly set, it will not appear in get listings. If not set the default behavior is determined by the org policy, if there is no org policy specified, then it will default to disabled.",
+          "description": "Whether to enable flow logging for this subnetwork. If this field is not explicitly set, it will not appear in get listings. If not set the default behavior is determined by the org policy, if there is no org policy specified, then it will default to disabled. Flow logging isn't supported if the subnet purpose field is set to REGIONAL_MANAGED_PROXY.",
           "type": "boolean"
         },
         "filterExpr": {
@@ -80747,7 +81132,7 @@
       "id": "TargetHttpsProxiesSetCertificateMapRequest",
       "properties": {
         "certificateMap": {
-          "description": "URL of the Certificate Map to associate with this TargetHttpsProxy.",
+          "description": "URL of the Certificate Map to associate with this TargetHttpsProxy. Accepted format is //certificatemanager.googleapis.com/projects/{project }/locations/{location}/certificateMaps/{resourceName}.",
           "type": "string"
         }
       },
@@ -80803,7 +81188,7 @@
           "type": "string"
         },
         "certificateMap": {
-          "description": "URL of a certificate map that identifies a certificate map associated with the given target proxy. This field can only be set for global target proxies. If set, sslCertificates will be ignored.",
+          "description": "URL of a certificate map that identifies a certificate map associated with the given target proxy. This field can only be set for global target proxies. If set, sslCertificates will be ignored. Accepted format is //certificatemanager.googleapis.com/projects/{project }/locations/{location}/certificateMaps/{resourceName}.",
           "type": "string"
         },
         "creationTimestamp": {
@@ -82092,7 +82477,7 @@
       "id": "TargetSslProxiesSetCertificateMapRequest",
       "properties": {
         "certificateMap": {
-          "description": "URL of the Certificate Map to associate with this TargetSslProxy.",
+          "description": "URL of the Certificate Map to associate with this TargetSslProxy. Accepted format is //certificatemanager.googleapis.com/projects/{project }/locations/{location}/certificateMaps/{resourceName}.",
           "type": "string"
         }
       },
@@ -82134,7 +82519,7 @@
       "id": "TargetSslProxy",
       "properties": {
         "certificateMap": {
-          "description": "URL of a certificate map that identifies a certificate map associated with the given target proxy. This field can only be set for global target proxies. If set, sslCertificates will be ignored.",
+          "description": "URL of a certificate map that identifies a certificate map associated with the given target proxy. This field can only be set for global target proxies. If set, sslCertificates will be ignored. Accepted format is //certificatemanager.googleapis.com/projects/{project }/locations/{location}/certificateMaps/{resourceName}.",
           "type": "string"
         },
         "creationTimestamp": {
@@ -84085,7 +84470,7 @@
           "type": "string"
         },
         "purpose": {
-          "description": "The purpose of the resource. This field can be either PRIVATE_RFC_1918 or INTERNAL_HTTPS_LOAD_BALANCER. A subnetwork with purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a user-created subnetwork that is reserved for Internal HTTP(S) Load Balancing. If unspecified, the purpose defaults to PRIVATE_RFC_1918. The enableFlowLogs field isn't supported with the purpose field set to INTERNAL_HTTPS_LOAD_BALANCER.",
+          "description": "The purpose of the resource. This field can be either PRIVATE, REGIONAL_MANAGED_PROXY, PRIVATE_SERVICE_CONNECT, or INTERNAL_HTTPS_LOAD_BALANCER. PRIVATE is the default purpose for user-created subnets or subnets that are automatically created in auto mode networks. A subnet with purpose set to REGIONAL_MANAGED_PROXY is a user-created subnetwork that is reserved for regional Envoy-based load balancers. A subnet with purpose set to PRIVATE_SERVICE_CONNECT is used to publish services using Private Service Connect. A subnet with purpose set to INTERNAL_HTTPS_LOAD_BALANCER is a proxy-only subnet that can be used only by regional internal HTTP(S) load balancers. Note that REGIONAL_MANAGED_PROXY is the preferred setting for all regional Envoy load balancers. If unspecified, the subnet purpose defaults to PRIVATE. The enableFlowLogs field isn't supported if the subnet purpose field is set to REGIONAL_MANAGED_PROXY.",
           "enum": [
             "AGGREGATE",
             "CLOUD_EXTENSION",
@@ -84111,7 +84496,7 @@
           "type": "string"
         },
         "role": {
-          "description": "The role of subnetwork. Currently, this field is only used when purpose = INTERNAL_HTTPS_LOAD_BALANCER. The value can be set to ACTIVE or BACKUP. An ACTIVE subnetwork is one that is currently being used for Internal HTTP(S) Load Balancing. A BACKUP subnetwork is one that is ready to be promoted to ACTIVE or is currently draining. This field can be updated with a patch request.",
+          "description": "The role of subnetwork. Currently, this field is only used when purpose = REGIONAL_MANAGED_PROXY. The value can be set to ACTIVE or BACKUP. An ACTIVE subnetwork is one that is currently being used for Envoy-based load balancers in a region. A BACKUP subnetwork is one that is ready to be promoted to ACTIVE or is currently draining. This field can be updated with a patch request.",
           "enum": [
             "ACTIVE",
             "BACKUP"
@@ -84593,11 +84978,13 @@
           "description": "The stack type for this VPN gateway to identify the IP protocols that are enabled. Possible values are: IPV4_ONLY, IPV4_IPV6. If not specified, IPV4_ONLY will be used.",
           "enum": [
             "IPV4_IPV6",
-            "IPV4_ONLY"
+            "IPV4_ONLY",
+            "IPV6_ONLY"
           ],
           "enumDescriptions": [
             "Enable VPN gateway with both IPv4 and IPv6 protocols.",
-            "Enable VPN gateway with only IPv4 protocol."
+            "Enable VPN gateway with only IPv4 protocol.",
+            "Enable VPN gateway with only IPv6 protocol."
           ],
           "type": "string"
         },
@@ -84910,7 +85297,7 @@
           "type": "integer"
         },
         "peerGatewayInterface": {
-          "description": "The peer gateway interface this VPN tunnel is connected to, the peer gateway could either be an external VPN gateway or GCP VPN gateway.",
+          "description": "The peer gateway interface this VPN tunnel is connected to, the peer gateway could either be an external VPN gateway or a Google Cloud VPN gateway.",
           "format": "uint32",
           "type": "integer"
         },
@@ -84922,7 +85309,7 @@
       "type": "object"
     },
     "VpnGatewayStatusVpnConnection": {
-      "description": "A VPN connection contains all VPN tunnels connected from this VpnGateway to the same peer gateway. The peer gateway could either be a external VPN gateway or GCP VPN gateway.",
+      "description": "A VPN connection contains all VPN tunnels connected from this VpnGateway to the same peer gateway. The peer gateway could either be an external VPN gateway or a Google Cloud VPN gateway.",
       "id": "VpnGatewayStatusVpnConnection",
       "properties": {
         "peerExternalGateway": {
