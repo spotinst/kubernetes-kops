@@ -22949,6 +22949,100 @@
             "https://www.googleapis.com/auth/compute.readonly"
           ]
         },
+        "calculateCancellationFee": {
+          "description": "Calculate cancellation fee for the specified commitment.",
+          "flatPath": "projects/{project}/regions/{region}/commitments/{commitment}/calculateCancellationFee",
+          "httpMethod": "POST",
+          "id": "compute.regionCommitments.calculateCancellationFee",
+          "parameterOrder": [
+            "project",
+            "region",
+            "commitment"
+          ],
+          "parameters": {
+            "commitment": {
+              "description": "Name of the commitment to delete.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+              "required": true,
+              "type": "string"
+            },
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "region": {
+              "description": "Name of the region for this request.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+              "required": true,
+              "type": "string"
+            },
+            "requestId": {
+              "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+              "location": "query",
+              "type": "string"
+            }
+          },
+          "path": "projects/{project}/regions/{region}/commitments/{commitment}/calculateCancellationFee",
+          "response": {
+            "$ref": "Operation"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute"
+          ]
+        },
+        "cancel": {
+          "description": "Cancel the specified commitment.",
+          "flatPath": "projects/{project}/regions/{region}/commitments/{commitment}/cancel",
+          "httpMethod": "POST",
+          "id": "compute.regionCommitments.cancel",
+          "parameterOrder": [
+            "project",
+            "region",
+            "commitment"
+          ],
+          "parameters": {
+            "commitment": {
+              "description": "Name of the commitment to delete.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+              "required": true,
+              "type": "string"
+            },
+            "project": {
+              "description": "Project ID for this request.",
+              "location": "path",
+              "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+              "required": true,
+              "type": "string"
+            },
+            "region": {
+              "description": "Name of the region for this request.",
+              "location": "path",
+              "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+              "required": true,
+              "type": "string"
+            },
+            "requestId": {
+              "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+              "location": "query",
+              "type": "string"
+            }
+          },
+          "path": "projects/{project}/regions/{region}/commitments/{commitment}/cancel",
+          "response": {
+            "$ref": "Operation"
+          },
+          "scopes": [
+            "https://www.googleapis.com/auth/cloud-platform",
+            "https://www.googleapis.com/auth/compute"
+          ]
+        },
         "get": {
           "description": "Returns the specified commitment resource.",
           "flatPath": "projects/{project}/regions/{region}/commitments/{commitment}",
@@ -41427,7 +41521,7 @@
       }
     }
   },
-  "revision": "20230509",
+  "revision": "20230516",
   "rootUrl": "https://compute.googleapis.com/",
   "schemas": {
     "AWSV4Signature": {
@@ -42572,6 +42666,20 @@
             ""
           ],
           "type": "string"
+        },
+        "workloadType": {
+          "description": "The workload type of the instances that will target this reservation.",
+          "enum": [
+            "BATCH",
+            "SERVING",
+            "UNSPECIFIED"
+          ],
+          "enumDescriptions": [
+            "Reserved resources will be optimized for BATCH workloads, such as ML training.",
+            "Reserved resources will be optimized for SERVING workloads, such as ML inference.",
+            ""
+          ],
+          "type": "string"
         }
       },
       "type": "object"
@@ -43674,7 +43782,7 @@
       "id": "AutoscalingPolicy",
       "properties": {
         "coolDownPeriodSec": {
-          "description": "The number of seconds that the autoscaler waits before it starts collecting information from a new instance. This prevents the autoscaler from collecting information when the instance is initializing, during which the collected usage would not be reliable. The default time autoscaler waits is 60 seconds. Virtual machine initialization times might vary because of numerous factors. We recommend that you test how long an instance may take to initialize. To do this, create an instance and time the startup process.",
+          "description": "The number of seconds that your application takes to initialize on a VM instance. This is referred to as the [initialization period](/compute/docs/autoscaler#cool_down_period). Specifying an accurate initialization period improves autoscaler decisions. For example, when scaling out, the autoscaler ignores data from VMs that are still initializing because those VMs might not yet represent normal usage of your application. The default initialization period is 60 seconds. Initialization periods might vary because of numerous factors. We recommend that you test how long your application takes to initialize. To do this, create a VM and time your application's startup process.",
           "format": "int32",
           "type": "integer"
         },
@@ -43704,7 +43812,7 @@
           "type": "integer"
         },
         "mode": {
-          "description": "Defines operating mode for this policy.",
+          "description": "Defines the operating mode for this policy. The following modes are available: - OFF: Disables the autoscaler but maintains its configuration. - ONLY_SCALE_OUT: Restricts the autoscaler to add VM instances only. - ON: Enables all autoscaler activities according to its policy. For more information, see \"Turning off or restricting an autoscaler\"",
           "enum": [
             "OFF",
             "ON",
@@ -46017,12 +46125,16 @@
           "description": "[Output Only] Status of the commitment with regards to eventual expiration (each commitment has an end date defined). One of the following values: NOT_YET_ACTIVE, ACTIVE, EXPIRED.",
           "enum": [
             "ACTIVE",
+            "CANCELED_EARLY_TERMINATION",
+            "CANCELING",
             "CANCELLED",
             "CREATING",
             "EXPIRED",
             "NOT_YET_ACTIVE"
           ],
           "enumDescriptions": [
+            "",
+            "",
             "",
             "Deprecate CANCELED status. Will use separate status to differentiate cancel by mergeCud or manual cancellation.",
             "",
@@ -46337,7 +46449,7 @@
       "properties": {
         "canceledCommitment": {
           "$ref": "Money",
-          "description": "[Output Only] An optional, the amount of CUDs canceled so far in the last 365 days."
+          "description": "[Output Only] An optional amount of CUDs canceled so far in the last 365 days."
         },
         "canceledCommitmentLastUpdatedTimestamp": {
           "description": "[Output Only] An optional last update time of canceled_commitment. RFC3339 text format.",
@@ -50882,7 +50994,7 @@
       "id": "GuestOsFeature",
       "properties": {
         "type": {
-          "description": "The ID of a supported feature. To add multiple values, use commas to separate values. Set to one or more of the following values: - VIRTIO_SCSI_MULTIQUEUE - WINDOWS - MULTI_IP_SUBNET - UEFI_COMPATIBLE - GVNIC - SEV_CAPABLE - SUSPEND_RESUME_COMPATIBLE - SEV_LIVE_MIGRATABLE - SEV_SNP_CAPABLE - TDX_CAPABLE For more information, see Enabling guest operating system features.",
+          "description": "The ID of a supported feature. To add multiple values, use commas to separate values. Set to one or more of the following values: - VIRTIO_SCSI_MULTIQUEUE - WINDOWS - MULTI_IP_SUBNET - UEFI_COMPATIBLE - GVNIC - SEV_CAPABLE - SUSPEND_RESUME_COMPATIBLE - SEV_LIVE_MIGRATABLE - SEV_SNP_CAPABLE For more information, see Enabling guest operating system features.",
           "enum": [
             "BARE_METAL_LINUX_COMPATIBLE",
             "FEATURE_TYPE_UNSPECIFIED",
@@ -62389,7 +62501,7 @@
       "id": "NetworkAttachmentConnectedEndpoint",
       "properties": {
         "ipAddress": {
-          "description": "The IP address assigned to the producer instance network interface. This value will be a range in case of Serverless.",
+          "description": "The IPv4 address assigned to the producer instance network interface. This value will be a range in case of Serverless.",
           "type": "string"
         },
         "projectIdOrNum": {

@@ -3287,6 +3287,17 @@ type AttachedDisk struct {
 	// read-write mode.
 	Mode string `json:"mode,omitempty"`
 
+	// SavedState: For LocalSSD disks on VM Instances in STOPPED or
+	// SUSPENDED state, this field is set to PRESERVED if the LocalSSD data
+	// has been saved to a persistent location by customer request. (see the
+	// discard_local_ssd option on Stop/Suspend). Read-only in the api.
+	//
+	// Possible values:
+	//   "DISK_SAVED_STATE_UNSPECIFIED" - *[Default]* Disk state has not
+	// been preserved.
+	//   "PRESERVED" - Disk state has been preserved.
+	SavedState string `json:"savedState,omitempty"`
+
 	// ShieldedInstanceInitialState: [Output Only] shielded vm initial state
 	// stored on disk
 	ShieldedInstanceInitialState *InitialStateConfig `json:"shieldedInstanceInitialState,omitempty"`
@@ -4438,15 +4449,17 @@ func (s *AutoscalersScopedListWarningData) MarshalJSON() ([]byte, error) {
 
 // AutoscalingPolicy: Cloud Autoscaler policy.
 type AutoscalingPolicy struct {
-	// CoolDownPeriodSec: The number of seconds that the autoscaler waits
-	// before it starts collecting information from a new instance. This
-	// prevents the autoscaler from collecting information when the instance
-	// is initializing, during which the collected usage would not be
-	// reliable. The default time autoscaler waits is 60 seconds. Virtual
-	// machine initialization times might vary because of numerous factors.
-	// We recommend that you test how long an instance may take to
-	// initialize. To do this, create an instance and time the startup
-	// process.
+	// CoolDownPeriodSec: The number of seconds that your application takes
+	// to initialize on a VM instance. This is referred to as the
+	// initialization period (/compute/docs/autoscaler#cool_down_period).
+	// Specifying an accurate initialization period improves autoscaler
+	// decisions. For example, when scaling out, the autoscaler ignores data
+	// from VMs that are still initializing because those VMs might not yet
+	// represent normal usage of your application. The default
+	// initialization period is 60 seconds. Initialization periods might
+	// vary because of numerous factors. We recommend that you test how long
+	// your application takes to initialize. To do this, create a VM and
+	// time your application's startup process.
 	CoolDownPeriodSec int64 `json:"coolDownPeriodSec,omitempty"`
 
 	// CpuUtilization: Defines the CPU utilization policy that allows the
@@ -4474,7 +4487,12 @@ type AutoscalingPolicy struct {
 	// instances allowed.
 	MinNumReplicas int64 `json:"minNumReplicas,omitempty"`
 
-	// Mode: Defines operating mode for this policy.
+	// Mode: Defines the operating mode for this policy. The following modes
+	// are available: - OFF: Disables the autoscaler but maintains its
+	// configuration. - ONLY_SCALE_OUT: Restricts the autoscaler to add VM
+	// instances only. - ON: Enables all autoscaler activities according to
+	// its policy. For more information, see "Turning off or restricting an
+	// autoscaler"
 	//
 	// Possible values:
 	//   "OFF" - Do not automatically scale the MIG in or out. The
@@ -14640,8 +14658,8 @@ type GuestOsFeature struct {
 	// commas to separate values. Set to one or more of the following
 	// values: - VIRTIO_SCSI_MULTIQUEUE - WINDOWS - MULTI_IP_SUBNET -
 	// UEFI_COMPATIBLE - GVNIC - SEV_CAPABLE - SUSPEND_RESUME_COMPATIBLE -
-	// SEV_LIVE_MIGRATABLE - SEV_SNP_CAPABLE - TDX_CAPABLE For more
-	// information, see Enabling guest operating system features.
+	// SEV_LIVE_MIGRATABLE - SEV_SNP_CAPABLE For more information, see
+	// Enabling guest operating system features.
 	//
 	// Possible values:
 	//   "FEATURE_TYPE_UNSPECIFIED"
@@ -30348,7 +30366,7 @@ func (s *NetworkAttachmentAggregatedListWarningData) MarshalJSON() ([]byte, erro
 // NetworkAttachmentConnectedEndpoint: [Output Only] A connection
 // connected to this network attachment.
 type NetworkAttachmentConnectedEndpoint struct {
-	// IpAddress: The IP address assigned to the producer instance network
+	// IpAddress: The IPv4 address assigned to the producer instance network
 	// interface. This value will be a range in case of Serverless.
 	IpAddress string `json:"ipAddress,omitempty"`
 
@@ -54996,6 +55014,15 @@ type TargetHttpProxy struct {
 	// ForwardingRule for more details.
 	HttpFilters []string `json:"httpFilters,omitempty"`
 
+	// HttpKeepAliveTimeoutSec: Specifies how long to keep a connection
+	// open, after completing a response, while there is no matching traffic
+	// (in seconds). If an HTTP keep-alive is not specified, a default value
+	// (610 seconds) will be used. For Global external HTTP(S) load
+	// balancer, the minimum allowed value is 5 seconds and the maximum
+	// allowed value is 1200 seconds. For Global external HTTP(S) load
+	// balancer (classic), this option is not available publicly.
+	HttpKeepAliveTimeoutSec int64 `json:"httpKeepAliveTimeoutSec,omitempty"`
+
 	// Id: [Output Only] The unique identifier for the resource. This
 	// identifier is defined by the server.
 	Id uint64 `json:"id,omitempty,string"`
@@ -55779,6 +55806,15 @@ type TargetHttpsProxy struct {
 	// with loadBalancingScheme set to INTERNAL_SELF_MANAGED. See
 	// ForwardingRule for more details.
 	HttpFilters []string `json:"httpFilters,omitempty"`
+
+	// HttpKeepAliveTimeoutSec: Specifies how long to keep a connection
+	// open, after completing a response, while there is no matching traffic
+	// (in seconds). If an HTTP keep-alive is not specified, a default value
+	// (610 seconds) will be used. For Global external HTTP(S) load
+	// balancer, the minimum allowed value is 5 seconds and the maximum
+	// allowed value is 1200 seconds. For Global external HTTP(S) load
+	// balancer (classic), this option is not available publicly.
+	HttpKeepAliveTimeoutSec int64 `json:"httpKeepAliveTimeoutSec,omitempty"`
 
 	// Id: [Output Only] The unique identifier for the resource. This
 	// identifier is defined by the server.

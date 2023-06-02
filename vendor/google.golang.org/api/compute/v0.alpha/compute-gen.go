@@ -3077,6 +3077,17 @@ type AllocationAggregateReservation struct {
 	//   "VM_FAMILY_MEMORY_OPTIMIZED_M3"
 	VmFamily string `json:"vmFamily,omitempty"`
 
+	// WorkloadType: The workload type of the instances that will target
+	// this reservation.
+	//
+	// Possible values:
+	//   "BATCH" - Reserved resources will be optimized for BATCH workloads,
+	// such as ML training.
+	//   "SERVING" - Reserved resources will be optimized for SERVING
+	// workloads, such as ML inference.
+	//   "UNSPECIFIED"
+	WorkloadType string `json:"workloadType,omitempty"`
+
 	// ForceSendFields is a list of field names (e.g. "InUseResources") to
 	// unconditionally include in API requests. By default, fields with
 	// empty or default values are omitted from API requests. However, any
@@ -4795,15 +4806,17 @@ func (s *AutoscalersScopedListWarningData) MarshalJSON() ([]byte, error) {
 
 // AutoscalingPolicy: Cloud Autoscaler policy.
 type AutoscalingPolicy struct {
-	// CoolDownPeriodSec: The number of seconds that the autoscaler waits
-	// before it starts collecting information from a new instance. This
-	// prevents the autoscaler from collecting information when the instance
-	// is initializing, during which the collected usage would not be
-	// reliable. The default time autoscaler waits is 60 seconds. Virtual
-	// machine initialization times might vary because of numerous factors.
-	// We recommend that you test how long an instance may take to
-	// initialize. To do this, create an instance and time the startup
-	// process.
+	// CoolDownPeriodSec: The number of seconds that your application takes
+	// to initialize on a VM instance. This is referred to as the
+	// initialization period (/compute/docs/autoscaler#cool_down_period).
+	// Specifying an accurate initialization period improves autoscaler
+	// decisions. For example, when scaling out, the autoscaler ignores data
+	// from VMs that are still initializing because those VMs might not yet
+	// represent normal usage of your application. The default
+	// initialization period is 60 seconds. Initialization periods might
+	// vary because of numerous factors. We recommend that you test how long
+	// your application takes to initialize. To do this, create a VM and
+	// time your application's startup process.
 	CoolDownPeriodSec int64 `json:"coolDownPeriodSec,omitempty"`
 
 	// CpuUtilization: Defines the CPU utilization policy that allows the
@@ -4831,7 +4844,12 @@ type AutoscalingPolicy struct {
 	// instances allowed.
 	MinNumReplicas int64 `json:"minNumReplicas,omitempty"`
 
-	// Mode: Defines operating mode for this policy.
+	// Mode: Defines the operating mode for this policy. The following modes
+	// are available: - OFF: Disables the autoscaler but maintains its
+	// configuration. - ONLY_SCALE_OUT: Restricts the autoscaler to add VM
+	// instances only. - ON: Enables all autoscaler activities according to
+	// its policy. For more information, see "Turning off or restricting an
+	// autoscaler"
 	//
 	// Possible values:
 	//   "OFF" - Do not automatically scale the MIG in or out. The
@@ -8703,6 +8721,8 @@ type Commitment struct {
 	//
 	// Possible values:
 	//   "ACTIVE"
+	//   "CANCELED_EARLY_TERMINATION"
+	//   "CANCELING"
 	//   "CANCELLED" - Deprecate CANCELED status. Will use separate status
 	// to differentiate cancel by mergeCud or manual cancellation.
 	//   "CREATING"
@@ -9177,8 +9197,8 @@ func (s *CommitmentResourceStatus) MarshalJSON() ([]byte, error) {
 }
 
 type CommitmentResourceStatusCancellationInformation struct {
-	// CanceledCommitment: [Output Only] An optional, the amount of CUDs
-	// canceled so far in the last 365 days.
+	// CanceledCommitment: [Output Only] An optional amount of CUDs canceled
+	// so far in the last 365 days.
 	CanceledCommitment *Money `json:"canceledCommitment,omitempty"`
 
 	// CanceledCommitmentLastUpdatedTimestamp: [Output Only] An optional
@@ -16542,8 +16562,8 @@ type GuestOsFeature struct {
 	// commas to separate values. Set to one or more of the following
 	// values: - VIRTIO_SCSI_MULTIQUEUE - WINDOWS - MULTI_IP_SUBNET -
 	// UEFI_COMPATIBLE - GVNIC - SEV_CAPABLE - SUSPEND_RESUME_COMPATIBLE -
-	// SEV_LIVE_MIGRATABLE - SEV_SNP_CAPABLE - TDX_CAPABLE For more
-	// information, see Enabling guest operating system features.
+	// SEV_LIVE_MIGRATABLE - SEV_SNP_CAPABLE For more information, see
+	// Enabling guest operating system features.
 	//
 	// Possible values:
 	//   "BARE_METAL_LINUX_COMPATIBLE"
@@ -34797,7 +34817,7 @@ func (s *NetworkAttachmentAggregatedListWarningData) MarshalJSON() ([]byte, erro
 // NetworkAttachmentConnectedEndpoint: [Output Only] A connection
 // connected to this network attachment.
 type NetworkAttachmentConnectedEndpoint struct {
-	// IpAddress: The IP address assigned to the producer instance network
+	// IpAddress: The IPv4 address assigned to the producer instance network
 	// interface. This value will be a range in case of Serverless.
 	IpAddress string `json:"ipAddress,omitempty"`
 
@@ -168979,6 +168999,363 @@ func (c *RegionCommitmentsAggregatedListCall) Pages(ctx context.Context, f func(
 		}
 		c.PageToken(x.NextPageToken)
 	}
+}
+
+// method id "compute.regionCommitments.calculateCancellationFee":
+
+type RegionCommitmentsCalculateCancellationFeeCall struct {
+	s          *Service
+	project    string
+	region     string
+	commitment string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// CalculateCancellationFee: Calculate cancellation fee for the
+// specified commitment.
+//
+// - commitment: Name of the commitment to delete.
+// - project: Project ID for this request.
+// - region: Name of the region for this request.
+func (r *RegionCommitmentsService) CalculateCancellationFee(project string, region string, commitment string) *RegionCommitmentsCalculateCancellationFeeCall {
+	c := &RegionCommitmentsCalculateCancellationFeeCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.commitment = commitment
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *RegionCommitmentsCalculateCancellationFeeCall) RequestId(requestId string) *RegionCommitmentsCalculateCancellationFeeCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionCommitmentsCalculateCancellationFeeCall) Fields(s ...googleapi.Field) *RegionCommitmentsCalculateCancellationFeeCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionCommitmentsCalculateCancellationFeeCall) Context(ctx context.Context) *RegionCommitmentsCalculateCancellationFeeCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionCommitmentsCalculateCancellationFeeCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionCommitmentsCalculateCancellationFeeCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/commitments/{commitment}/calculateCancellationFee")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project":    c.project,
+		"region":     c.region,
+		"commitment": c.commitment,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionCommitments.calculateCancellationFee" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionCommitmentsCalculateCancellationFeeCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Calculate cancellation fee for the specified commitment.",
+	//   "flatPath": "projects/{project}/regions/{region}/commitments/{commitment}/calculateCancellationFee",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionCommitments.calculateCancellationFee",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "commitment"
+	//   ],
+	//   "parameters": {
+	//     "commitment": {
+	//       "description": "Name of the commitment to delete.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "Name of the region for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/commitments/{commitment}/calculateCancellationFee",
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
+}
+
+// method id "compute.regionCommitments.cancel":
+
+type RegionCommitmentsCancelCall struct {
+	s          *Service
+	project    string
+	region     string
+	commitment string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Cancel: Cancel the specified commitment.
+//
+// - commitment: Name of the commitment to delete.
+// - project: Project ID for this request.
+// - region: Name of the region for this request.
+func (r *RegionCommitmentsService) Cancel(project string, region string, commitment string) *RegionCommitmentsCancelCall {
+	c := &RegionCommitmentsCancelCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.project = project
+	c.region = region
+	c.commitment = commitment
+	return c
+}
+
+// RequestId sets the optional parameter "requestId": An optional
+// request ID to identify requests. Specify a unique request ID so that
+// if you must retry your request, the server will know to ignore the
+// request if it has already been completed. For example, consider a
+// situation where you make an initial request and the request times
+// out. If you make the request again with the same request ID, the
+// server can check if original operation with the same request ID was
+// received, and if so, will ignore the second request. This prevents
+// clients from accidentally creating duplicate commitments. The request
+// ID must be a valid UUID with the exception that zero UUID is not
+// supported ( 00000000-0000-0000-0000-000000000000).
+func (c *RegionCommitmentsCancelCall) RequestId(requestId string) *RegionCommitmentsCancelCall {
+	c.urlParams_.Set("requestId", requestId)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *RegionCommitmentsCancelCall) Fields(s ...googleapi.Field) *RegionCommitmentsCancelCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *RegionCommitmentsCancelCall) Context(ctx context.Context) *RegionCommitmentsCancelCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *RegionCommitmentsCancelCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RegionCommitmentsCancelCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/"+gensupport.GoVersion()+" gdcl/"+internal.Version)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{project}/regions/{region}/commitments/{commitment}/cancel")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"project":    c.project,
+		"region":     c.region,
+		"commitment": c.commitment,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "compute.regionCommitments.cancel" call.
+// Exactly one of *Operation or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Operation.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RegionCommitmentsCancelCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &Operation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Cancel the specified commitment.",
+	//   "flatPath": "projects/{project}/regions/{region}/commitments/{commitment}/cancel",
+	//   "httpMethod": "POST",
+	//   "id": "compute.regionCommitments.cancel",
+	//   "parameterOrder": [
+	//     "project",
+	//     "region",
+	//     "commitment"
+	//   ],
+	//   "parameters": {
+	//     "commitment": {
+	//       "description": "Name of the commitment to delete.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "project": {
+	//       "description": "Project ID for this request.",
+	//       "location": "path",
+	//       "pattern": "(?:(?:[-a-z0-9]{1,63}\\.)*(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?):)?(?:[0-9]{1,19}|(?:[a-z0-9](?:[-a-z0-9]{0,61}[a-z0-9])?))",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "region": {
+	//       "description": "Name of the region for this request.",
+	//       "location": "path",
+	//       "pattern": "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "requestId": {
+	//       "description": "An optional request ID to identify requests. Specify a unique request ID so that if you must retry your request, the server will know to ignore the request if it has already been completed. For example, consider a situation where you make an initial request and the request times out. If you make the request again with the same request ID, the server can check if original operation with the same request ID was received, and if so, will ignore the second request. This prevents clients from accidentally creating duplicate commitments. The request ID must be a valid UUID with the exception that zero UUID is not supported ( 00000000-0000-0000-0000-000000000000).",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "projects/{project}/regions/{region}/commitments/{commitment}/cancel",
+	//   "response": {
+	//     "$ref": "Operation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/compute"
+	//   ]
+	// }
+
 }
 
 // method id "compute.regionCommitments.get":
