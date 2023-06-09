@@ -87148,7 +87148,9 @@ type DeregisterInstanceEventNotificationAttributesInput struct {
 	DryRun *bool `type:"boolean"`
 
 	// Information about the tag keys to deregister.
-	InstanceTagAttribute *DeregisterInstanceTagAttributeRequest `type:"structure"`
+	//
+	// InstanceTagAttribute is a required field
+	InstanceTagAttribute *DeregisterInstanceTagAttributeRequest `type:"structure" required:"true"`
 }
 
 // String returns the string representation.
@@ -87167,6 +87169,19 @@ func (s DeregisterInstanceEventNotificationAttributesInput) String() string {
 // value will be replaced with "sensitive".
 func (s DeregisterInstanceEventNotificationAttributesInput) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeregisterInstanceEventNotificationAttributesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeregisterInstanceEventNotificationAttributesInput"}
+	if s.InstanceTagAttribute == nil {
+		invalidParams.Add(request.NewErrParamRequired("InstanceTagAttribute"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
 }
 
 // SetDryRun sets the DryRun field's value.
@@ -155758,7 +155773,9 @@ type RegisterInstanceEventNotificationAttributesInput struct {
 	DryRun *bool `type:"boolean"`
 
 	// Information about the tag keys to register.
-	InstanceTagAttribute *RegisterInstanceTagAttributeRequest `type:"structure"`
+	//
+	// InstanceTagAttribute is a required field
+	InstanceTagAttribute *RegisterInstanceTagAttributeRequest `type:"structure" required:"true"`
 }
 
 // String returns the string representation.
@@ -155777,6 +155794,19 @@ func (s RegisterInstanceEventNotificationAttributesInput) String() string {
 // value will be replaced with "sensitive".
 func (s RegisterInstanceEventNotificationAttributesInput) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RegisterInstanceEventNotificationAttributesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RegisterInstanceEventNotificationAttributesInput"}
+	if s.InstanceTagAttribute == nil {
+		invalidParams.Add(request.NewErrParamRequired("InstanceTagAttribute"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
 }
 
 // SetDryRun sets the DryRun field's value.
